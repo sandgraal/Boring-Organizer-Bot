@@ -118,6 +118,8 @@ The API provides:
 - `POST /index` - Start indexing jobs
 - `GET /index/{job_id}` - Check indexing progress
 - `GET /projects` - List all projects
+- `GET /documents` - List indexed documents with filters
+- `POST /open` - Open files at specific locations
 - `GET /health` - Health check
 
 OpenAPI docs available at `http://localhost:8080/docs`
