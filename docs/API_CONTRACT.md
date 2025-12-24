@@ -3,7 +3,7 @@
 > HTTP API specification for local-only B.O.B server.
 
 **Last Updated:** 2025-12-23  
-**Status:** Draft  
+**Status:** Implemented (Phase 2 Complete)  
 **Version:** 1.0.0
 
 ---

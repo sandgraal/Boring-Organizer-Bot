@@ -51,6 +51,8 @@ Every answer, recommendation, or generated content must be backed by evidence:
 ```
 bob/                    # Python source code
   cli/                  # CLI commands only
+  api/                  # FastAPI server and routes
+  ui/                   # Static web interface (HTML/CSS/JS)
   db/                   # Database and migrations
   ingest/               # Document parsers
   index/                # Chunking and embedding
@@ -84,6 +86,8 @@ data/                   # LOCAL DATA - GITIGNORED
 | CLI commands        | `bob/cli/main.py`        | Use Click decorators      |
 | Document parsers    | `bob/ingest/<type>.py`   | Inherit from `BaseParser` |
 | Search logic        | `bob/retrieval/`         | Pure functions preferred  |
+| API endpoints       | `bob/api/routes/`        | FastAPI route handlers    |
+| Web UI assets       | `bob/ui/`                | Static HTML/CSS/JS        |
 | Database migrations | `bob/db/migrations/`     | Sequential numbered SQL   |
 | Agent tools         | `bob/agents/tools.py`    | Stable API wrappers       |
 | Tests               | `tests/test_<module>.py` | Mirror source structure   |

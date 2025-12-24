@@ -324,7 +324,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Improve search quality with hybrid scoring, metadata boosts, and citation precision.
 
-### Status: � In Progress
+### Status: 🔄 In Progress
 
 ### Features
 

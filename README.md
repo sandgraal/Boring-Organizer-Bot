@@ -9,6 +9,7 @@
 - **Citations or nothing.** Every answer includes source file + locator. No hallucinated claims.
 - **Date-aware.** Answers include confidence about freshness and warn when content may be outdated.
 - **Beautiful & inspectable.** A local web UI that makes source verification one click away.
+- **Smart retrieval.** Hybrid search combining semantic vectors with keyword matching.
 
 ## Quick Start
 
@@ -124,21 +125,27 @@ The API provides:
 
 OpenAPI docs available at `http://localhost:8080/docs`
 
-### Web Interface (Coming Soon)
+### Web Interface
+
+B.O.B includes a beautiful local web interface for browsing and querying your knowledge base:
 
 ```bash
-# Start the local web server
+# Start the server
 bob serve
 
-# Open http://localhost:8080 in your browser
+# Open in your browser
+open http://localhost:8080
 ```
 
 The web UI provides:
 
-- **Ask view**: 3-pane layout with filters, answer, and clickable sources
-- **Library**: Browse and manage indexed documents
-- **Decisions**: View extracted decisions with status tracking
-- **Indexing dashboard**: Monitor indexing progress in real-time
+- **Ask page**: 3-pane layout with project filters, query input, and clickable source citations
+- **Library**: Browse all indexed documents with filtering by project and type
+- **Indexing**: Start indexing jobs and monitor progress in real-time
+
+All features work offline - no external network requests.
+
+![Ask Page](docs/screenshots/ask-page.png) _(screenshot placeholder)_
 
 ## Configuration
 
@@ -155,7 +162,13 @@ embedding:
 
 defaults:
   project: main
-  language: en
+  top_k: 5
+
+# Hybrid search (combines vector + keyword matching)
+search:
+  hybrid_enabled: true
+  vector_weight: 0.7
+  keyword_weight: 0.3
 ```
 
 Environment variables override config:

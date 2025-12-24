@@ -75,11 +75,15 @@ bob/
 ├── __init__.py          # Version and package info
 ├── config.py            # Configuration management
 ├── cli/                 # CLI commands
+├── api/                 # FastAPI server and routes
+├── ui/                  # Static web interface assets
 ├── db/                  # Database and migrations
 ├── ingest/              # Document parsers
 ├── index/               # Chunking and embedding
 ├── retrieval/           # Search functions
 ├── answer/              # Output formatting
+├── eval/                # Evaluation harness
+├── agents/              # Agent tool interfaces
 └── extract/             # Decision extraction (TODO)
 ```
 

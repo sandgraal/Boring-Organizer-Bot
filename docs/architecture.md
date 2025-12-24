@@ -15,8 +15,19 @@ B.O.B (Boring Organizer Bot) is a local-first personal knowledge assistant. This
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│                       Web Interface                          │
+│            bob/ui/ (HTML + CSS + vanilla JS)                │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                       API Layer                              │
+│       bob/api/ (FastAPI - localhost:8080)                   │
+│  POST /ask | POST /index | GET /projects | POST /open       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
 │                         CLI Layer                            │
-│  bob index | bob ask | bob status | bob extract-decisions   │
+│  bob index | bob ask | bob status | bob serve | bob eval    │
 └─────────────────────────────────────────────────────────────┘
                               │
         ┌─────────────────────┼─────────────────────┐
@@ -28,8 +39,8 @@ B.O.B (Boring Organizer Bot) is a local-first personal knowledge assistant. This
         │                     │                     │
         ▼                     ▼                     ▼
 ┌───────────────┐     ┌───────────────┐     ┌───────────────┐
-│    Index      │     │   Embedder    │     │  Formatter    │
-│  (chunking)   │     │ (vectors)     │     │ (output)      │
+│    Index      │     │   Scoring     │     │  Formatter    │
+│  (chunking)   │     │ (hybrid)      │     │ (output)      │
 └───────────────┘     └───────────────┘     └───────────────┘
         │                     │
         └──────────┬──────────┘
