@@ -204,6 +204,179 @@ def extract_decisions(paths: tuple[str, ...], project: str | None) -> None:
     console.print("\nSee: bob/extract/decisions.py (TODO)")
 
 
+@cli.group()
+def eval() -> None:
+    """Evaluation commands for measuring retrieval quality."""
+    pass
+
+
+@eval.command("run")
+@click.argument("golden_path", type=click.Path(exists=True))
+@click.option(
+    "--k",
+    "-k",
+    default=5,
+    type=int,
+    help="Number of results to evaluate (default: 5)",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output results as JSON",
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Write results to file",
+)
+def eval_run(golden_path: str, k: int, output_json: bool, output: str | None) -> None:
+    """Run evaluation against a golden dataset.
+
+    GOLDEN_PATH: Path to the golden dataset JSONL file.
+
+    Each line should be JSON with 'question' and optionally 'expected_chunks'.
+    """
+    from rich.table import Table
+
+    from bob.eval.runner import run_evaluation
+
+    console.print("[bold blue]Running evaluation...[/]\n")
+
+    try:
+        result = run_evaluation(golden_path=golden_path, k=k)
+
+        if output_json:
+            # JSON output using built-in serialization
+            json_str = result.to_json()
+
+            if output:
+                Path(output).write_text(json_str)
+                console.print(f"[green]✓[/] Results written to [cyan]{output}[/]")
+            else:
+                console.print(json_str)
+        else:
+            # Human-readable output
+            console.print(f"Golden dataset: [cyan]{golden_path}[/]")
+            console.print(f"Queries evaluated: [cyan]{result.num_queries}[/]")
+            console.print(f"Top-k: [cyan]{k}[/]\n")
+
+            # Metrics table
+            table = Table(title="Evaluation Metrics")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Mean", style="green")
+            table.add_column("Std Dev", style="yellow")
+
+            table.add_row("Recall@k", f"{result.recall_mean:.4f}", f"±{result.recall_std:.4f}")
+            table.add_row(
+                "Precision@k", f"{result.precision_mean:.4f}", f"±{result.precision_std:.4f}"
+            )
+            table.add_row("MRR", f"{result.mrr_mean:.4f}", f"±{result.mrr_std:.4f}")
+
+            console.print(table)
+
+            # Pass/fail summary
+            console.print()
+            console.print(f"Passed: [green]{result.num_passed}[/] / {result.num_queries}")
+            console.print(f"Failed: [red]{result.num_failed}[/] / {result.num_queries}")
+
+            # Quality assessment
+            console.print()
+            if result.recall_mean >= 0.8:
+                console.print("[green]✓[/] Retrieval quality is good")
+            elif result.recall_mean >= 0.5:
+                console.print("[yellow]![/] Retrieval quality is moderate")
+            else:
+                console.print("[red]✗[/] Retrieval quality needs improvement")
+
+            if output:
+                # Write detailed JSON even in human-readable mode
+                Path(output).write_text(result.to_json())
+                console.print(f"\n[dim]Results also written to {output}[/]")
+
+    except Exception as e:
+        console.print(f"[red]Error during evaluation:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
+
+
+@eval.command("compare")
+@click.argument("baseline_path", type=click.Path(exists=True))
+@click.argument("current_path", type=click.Path(exists=True))
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output results as JSON",
+)
+def eval_compare(baseline_path: str, current_path: str, output_json: bool) -> None:
+    """Compare two evaluation result files.
+
+    BASELINE_PATH: Path to the baseline evaluation JSON file.
+    CURRENT_PATH: Path to the current evaluation JSON file.
+    """
+    import json
+
+    from rich.table import Table
+
+    try:
+        baseline = json.loads(Path(baseline_path).read_text())
+        current = json.loads(Path(current_path).read_text())
+
+        metrics = ["recall_mean", "precision_mean", "mrr_mean"]
+
+        if output_json:
+            comparison = {
+                "baseline": {m: baseline.get(m, 0) for m in metrics},
+                "current": {m: current.get(m, 0) for m in metrics},
+                "delta": {m: current.get(m, 0) - baseline.get(m, 0) for m in metrics},
+            }
+            console.print(json.dumps(comparison, indent=2))
+        else:
+            console.print("[bold blue]Evaluation Comparison[/]\n")
+
+            table = Table(title="Metrics Comparison")
+            table.add_column("Metric", style="cyan")
+            table.add_column("Baseline", style="yellow")
+            table.add_column("Current", style="green")
+            table.add_column("Delta", style="magenta")
+
+            for key in metrics:
+                baseline_val = baseline.get(key, 0)
+                current_val = current.get(key, 0)
+                delta = current_val - baseline_val
+
+                delta_str = f"{delta:+.4f}"
+                if delta > 0:
+                    delta_str = f"[green]{delta_str}[/]"
+                elif delta < 0:
+                    delta_str = f"[red]{delta_str}[/]"
+
+                table.add_row(
+                    key,
+                    f"{baseline_val:.4f}",
+                    f"{current_val:.4f}",
+                    delta_str,
+                )
+
+            console.print(table)
+
+            # Summary
+            recall_delta = current.get("recall_mean", 0) - baseline.get("recall_mean", 0)
+            if recall_delta > 0.05:
+                console.print("\n[green]✓[/] Significant improvement in recall")
+            elif recall_delta < -0.05:
+                console.print("\n[red]✗[/] Regression detected in recall")
+            else:
+                console.print("\n[yellow]~[/] No significant change")
+
+    except Exception as e:
+        console.print(f"[red]Error comparing results:[/] {e}")
+        sys.exit(1)
+
+
 @cli.command()
 @click.option(
     "--project",
