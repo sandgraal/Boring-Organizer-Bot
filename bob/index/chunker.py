@@ -9,6 +9,27 @@ from typing import Any
 from bob.config import get_config
 from bob.ingest.base import ParsedDocument
 
+# Common boilerplate patterns to detect low-quality chunks
+BOILERPLATE_PATTERNS = [
+    r"^copyright\s+\d{4}",  # Copyright notices
+    r"^all\s+rights\s+reserved",  # Rights reserved
+    r"^table\s+of\s+contents?",  # TOC headers
+    r"^page\s+\d+\s*(of\s+\d+)?$",  # Page numbers
+    r"^\d+\s*/\s*\d+$",  # Slide numbers (1/10)
+    r"^(chapter|section|part)\s+\d+$",  # Just section numbers
+    r"^-{3,}$",  # Horizontal rules
+    r"^[_=]{3,}$",  # Alternative horizontal rules
+    r"^\s*\.{3,}\s*$",  # Ellipsis lines
+    r"^(click|tap|select)\s+here",  # Navigation instructions
+    r"^back\s+to\s+top$",  # Navigation links
+    r"^(next|previous|continue)$",  # Navigation buttons
+]
+
+# Minimum meaningful content thresholds
+MIN_WORDS = 10  # Minimum word count for a meaningful chunk
+MIN_UNIQUE_WORDS = 5  # Minimum unique words to avoid repetitive content
+MIN_ALPHA_RATIO = 0.5  # At least 50% alphabetic characters
+
 
 @dataclass
 class Chunk:
@@ -147,6 +168,71 @@ def chunk_text(
     return chunks
 
 
+def is_boilerplate(text: str) -> bool:
+    """Check if text is likely boilerplate content.
+
+    Args:
+        text: Text to check.
+
+    Returns:
+        True if text matches boilerplate patterns.
+    """
+    text_lower = text.lower().strip()
+    return any(re.match(pattern, text_lower, re.IGNORECASE) for pattern in BOILERPLATE_PATTERNS)
+
+
+def has_minimal_content(text: str) -> bool:
+    """Check if text has enough meaningful content.
+
+    Args:
+        text: Text to check.
+
+    Returns:
+        True if text has sufficient meaningful content.
+    """
+    # Count words
+    words = text.split()
+    if len(words) < MIN_WORDS:
+        return False
+
+    # Count unique words
+    unique_words = {w.lower() for w in words if len(w) > 1}
+    if len(unique_words) < MIN_UNIQUE_WORDS:
+        return False
+
+    # Check alpha ratio (avoid chunks that are mostly numbers/symbols)
+    alpha_chars = sum(1 for c in text if c.isalpha())
+    total_chars = len(text.replace(" ", ""))
+    return not (total_chars > 0 and alpha_chars / total_chars < MIN_ALPHA_RATIO)
+
+
+def validate_chunk(chunk: Chunk) -> bool:
+    """Validate that a chunk meets quality criteria.
+
+    Args:
+        chunk: Chunk to validate.
+
+    Returns:
+        True if chunk passes quality validation.
+    """
+    content = chunk.content.strip()
+
+    # Empty or whitespace-only
+    if not content:
+        return False
+
+    # Too short (use token count which is already computed)
+    if chunk.token_count < 5:  # Extremely short
+        return False
+
+    # Check for boilerplate
+    if is_boilerplate(content):
+        return False
+
+    # Check for minimal content
+    return has_minimal_content(content)
+
+
 def chunk_document(doc: ParsedDocument) -> list[Chunk]:
     """Chunk a parsed document into indexable chunks.
 
@@ -170,14 +256,14 @@ def chunk_document(doc: ParsedDocument) -> list[Chunk]:
 
         # If section fits in one chunk, keep it together
         if estimated_tokens <= config.max_size:
-            chunks.append(
-                Chunk(
-                    content=section_text,
-                    locator_type=section.locator_type,
-                    locator_value=section.locator_value.copy(),
-                    token_count=estimated_tokens,
-                )
+            chunk = Chunk(
+                content=section_text,
+                locator_type=section.locator_type,
+                locator_value=section.locator_value.copy(),
+                token_count=estimated_tokens,
             )
+            if validate_chunk(chunk):
+                chunks.append(chunk)
         else:
             # Split large sections
             text_chunks = chunk_text(section_text)
@@ -186,13 +272,13 @@ def chunk_document(doc: ParsedDocument) -> list[Chunk]:
                 locator["chunk_part"] = i + 1
                 locator["chunk_total"] = len(text_chunks)
 
-                chunks.append(
-                    Chunk(
-                        content=text,
-                        locator_type=section.locator_type,
-                        locator_value=locator,
-                        token_count=estimate_tokens(text),
-                    )
+                chunk = Chunk(
+                    content=text,
+                    locator_type=section.locator_type,
+                    locator_value=locator,
+                    token_count=estimate_tokens(text),
                 )
+                if validate_chunk(chunk):
+                    chunks.append(chunk)
 
     return chunks

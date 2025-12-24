@@ -1,6 +1,13 @@
 """Tests for the chunking module."""
 
-from bob.index.chunker import Chunk, chunk_text, estimate_tokens
+from bob.index.chunker import (
+    Chunk,
+    chunk_text,
+    estimate_tokens,
+    has_minimal_content,
+    is_boilerplate,
+    validate_chunk,
+)
 
 
 class TestEstimateTokens:
@@ -61,3 +68,110 @@ class TestChunkLocators:
         assert chunk.locator_value["heading"] == "Test"
         assert chunk.locator_value["start_line"] == 1
         assert chunk.locator_value["end_line"] == 5
+
+
+class TestIsBoilerplate:
+    """Tests for boilerplate detection."""
+
+    def test_copyright_notice(self):
+        assert is_boilerplate("Copyright 2024 Some Company")
+
+    def test_all_rights_reserved(self):
+        assert is_boilerplate("All rights reserved")
+
+    def test_table_of_contents(self):
+        assert is_boilerplate("Table of Contents")
+
+    def test_page_number(self):
+        assert is_boilerplate("Page 5 of 10")
+        assert is_boilerplate("page 12")
+
+    def test_slide_number(self):
+        assert is_boilerplate("1/10")
+        assert is_boilerplate("5 / 20")
+
+    def test_navigation_text(self):
+        assert is_boilerplate("Click here")
+        assert is_boilerplate("Back to top")
+
+    def test_normal_text_not_boilerplate(self):
+        assert not is_boilerplate("This is normal content about the topic.")
+        assert not is_boilerplate("The implementation uses a database.")
+
+
+class TestHasMinimalContent:
+    """Tests for minimal content validation."""
+
+    def test_sufficient_content(self):
+        text = "This is a sentence with enough words to pass the minimum threshold."
+        assert has_minimal_content(text)
+
+    def test_too_few_words(self):
+        text = "Too short."
+        assert not has_minimal_content(text)
+
+    def test_too_few_unique_words(self):
+        # Repetitive content
+        text = "the the the the the the the the the the"
+        assert not has_minimal_content(text)
+
+    def test_mostly_numbers(self):
+        # Low alpha ratio
+        text = "123 456 789 012 345 678 901 234 567 890 ab cd"
+        assert not has_minimal_content(text)
+
+    def test_real_content_passes(self):
+        text = (
+            "B.O.B is a local-first knowledge assistant that helps you organize "
+            "documents, extract decisions, and search with citations."
+        )
+        assert has_minimal_content(text)
+
+
+class TestValidateChunk:
+    """Tests for complete chunk validation."""
+
+    def test_valid_chunk_passes(self):
+        chunk = Chunk(
+            content="This is meaningful content with enough words to be useful for search.",
+            locator_type="heading",
+            locator_value={"heading": "Test"},
+            token_count=15,
+        )
+        assert validate_chunk(chunk)
+
+    def test_empty_chunk_fails(self):
+        chunk = Chunk(
+            content="",
+            locator_type="heading",
+            locator_value={"heading": "Test"},
+            token_count=0,
+        )
+        assert not validate_chunk(chunk)
+
+    def test_whitespace_chunk_fails(self):
+        chunk = Chunk(
+            content="   \n\t  ",
+            locator_type="heading",
+            locator_value={"heading": "Test"},
+            token_count=1,
+        )
+        assert not validate_chunk(chunk)
+
+    def test_too_short_chunk_fails(self):
+        chunk = Chunk(
+            content="Hi",
+            locator_type="heading",
+            locator_value={"heading": "Test"},
+            token_count=1,
+        )
+        assert not validate_chunk(chunk)
+
+    def test_boilerplate_chunk_fails(self):
+        chunk = Chunk(
+            content="Copyright 2024 All Rights Reserved",
+            locator_type="heading",
+            locator_value={"heading": "Test"},
+            token_count=6,
+        )
+        assert not validate_chunk(chunk)
