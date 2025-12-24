@@ -60,6 +60,22 @@ bob ask "What decisions were made about the API?" --top-k 10
 bob ask "How do I configure logging?" --json
 ```
 
+### Search (Retrieval Only)
+
+```bash
+# Search without answer synthesis - shows raw search results
+bob search "API configuration"
+
+# Filter by project
+bob search "deployment" --project devops
+
+# Limit results to documents less than 90 days old
+bob search "authentication" --max-age 90
+
+# Output as JSON for scripting
+bob search "error handling" --json
+```
+
 ### Advanced Search Syntax
 
 ```bash

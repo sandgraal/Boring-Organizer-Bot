@@ -358,13 +358,14 @@ These are explicit non-goals to avoid scope creep:
    - [x] Support quoted phrases for exact matching
    - [x] Support `-term` for exclusion
    - [x] Support `project:name` inline filter
-   - [ ] `bob search` as alias for `bob ask` (retrieval only)
+   - [x] `bob search` command for retrieval-only queries
+   - [x] `--max-age` filter to exclude old documents
 
 ### Acceptance Criteria
 
-- [ ] Hybrid search outperforms pure vector search on golden set
-- [ ] Recent documents rank higher (when relevance is similar)
-- [ ] `bob ask "exact phrase"` returns only exact matches
+- [x] Hybrid search outperforms pure vector search on golden set
+- [x] Recent documents rank higher (when relevance is similar)
+- [x] `bob ask "exact phrase"` returns only exact matches
 - [ ] Date confidence reflects actual document age, not just file mtime
 
 ### Test Plan

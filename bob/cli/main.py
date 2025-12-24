@@ -222,6 +222,169 @@ def ask(question: str, project: str | None, top_k: int | None, output_json: bool
         sys.exit(1)
 
 
+@cli.command()
+@click.argument("query")
+@click.option(
+    "--project",
+    "-p",
+    default=None,
+    help="Filter by project",
+)
+@click.option(
+    "--top-k",
+    "-k",
+    default=None,
+    type=int,
+    help="Number of results to retrieve",
+)
+@click.option(
+    "--max-age",
+    default=None,
+    type=int,
+    help="Maximum document age in days (filters out older content)",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output results as JSON for machine consumption",
+)
+def search(
+    query: str, project: str | None, top_k: int | None, max_age: int | None, output_json: bool
+) -> None:
+    """Search for relevant documents (retrieval only, no answer synthesis).
+
+    QUERY: The search query. Supports advanced syntax:
+
+    \b
+    Exact phrases:    "exact phrase"
+    Exclude terms:    -unwanted
+    Project filter:   project:name
+
+    \b
+    Examples:
+        bob search "API configuration"
+        bob search "error handling" -deprecated
+        bob search deployment project:devops
+    """
+    import json
+    from datetime import datetime, timedelta
+
+    from bob.answer.formatter import get_date_confidence, is_outdated
+    from bob.retrieval import search as do_search
+
+    config = get_config()
+    top_k = top_k or config.defaults.top_k
+
+    if not output_json:
+        console.print("[bold blue]Searching...[/]\n")
+
+    try:
+        results = do_search(
+            query=query,
+            project=project,
+            top_k=top_k,
+        )
+
+        # Apply max-age filter if specified
+        if max_age is not None and results:
+            cutoff = datetime.now() - timedelta(days=max_age)
+            original_count = len(results)
+            results = [r for r in results if r.source_date is None or r.source_date >= cutoff]
+            filtered_count = original_count - len(results)
+            if not output_json and filtered_count > 0:
+                console.print(
+                    f"[dim]Filtered out {filtered_count} results older than {max_age} days[/]\n"
+                )
+
+        if output_json:
+            # Machine-readable JSON output
+            json_results = {
+                "query": query,
+                "project": project,
+                "top_k": top_k,
+                "max_age_days": max_age,
+                "results_count": len(results),
+                "results": [
+                    {
+                        "chunk_id": r.chunk_id,
+                        "content": r.content,
+                        "score": r.score,
+                        "source": {
+                            "path": r.source_path,
+                            "type": r.source_type,
+                            "locator_type": r.locator_type,
+                            "locator_value": r.locator_value,
+                        },
+                        "metadata": {
+                            "project": r.project,
+                            "source_date": r.source_date.isoformat() if r.source_date else None,
+                            "date_confidence": get_date_confidence(r.source_date),
+                            "may_be_outdated": is_outdated(r.source_date),
+                            "git_repo": r.git_repo,
+                            "git_commit": r.git_commit,
+                        },
+                    }
+                    for r in results
+                ],
+            }
+            console.print(json.dumps(json_results, indent=2))
+        elif not results:
+            console.print("[yellow]No relevant documents found.[/]")
+            console.print("\nTry:")
+            console.print("  • Using different keywords")
+            console.print('  • Using exact phrases: "exact text"')
+            console.print("  • Indexing more documents")
+            if project:
+                console.print("  • Removing the --project filter")
+            if max_age:
+                console.print("  • Increasing or removing the --max-age filter")
+        else:
+            # Human-readable output - show raw search results
+            console.print(f"Found [cyan]{len(results)}[/] results\n")
+
+            for i, r in enumerate(results, 1):
+                # Result header
+                date_str = r.source_date.strftime("%Y-%m-%d") if r.source_date else "unknown"
+                confidence = get_date_confidence(r.source_date)
+                outdated = is_outdated(r.source_date)
+
+                console.print(f"[bold cyan]{i}.[/] [green]{r.source_path}[/]")
+                console.print(f"   Score: {r.score:.3f} | Date: {date_str} | {confidence}")
+                if outdated:
+                    console.print("   [yellow]⚠️  May be outdated[/]")
+
+                # Locator
+                locator_parts = []
+                if r.locator_value.get("heading"):
+                    locator_parts.append(f'heading: "{r.locator_value["heading"]}"')
+                if r.locator_value.get("start_line"):
+                    end = r.locator_value.get("end_line", r.locator_value["start_line"])
+                    locator_parts.append(f"lines {r.locator_value['start_line']}-{end}")
+                if r.locator_value.get("page"):
+                    locator_parts.append(f"page {r.locator_value['page']}")
+                if locator_parts:
+                    console.print(f"   [dim]{' | '.join(locator_parts)}[/]")
+
+                # Content snippet (truncated)
+                snippet = r.content[:200].replace("\n", " ")
+                if len(r.content) > 200:
+                    snippet += "..."
+                console.print(f"   [dim]{snippet}[/]")
+                console.print()
+
+    except Exception as e:
+        if output_json:
+            import json
+
+            console.print(json.dumps({"error": str(e)}, indent=2))
+            sys.exit(1)
+        console.print(f"[red]Error during search:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
+
+
 @cli.command("extract-decisions")
 @click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option(
