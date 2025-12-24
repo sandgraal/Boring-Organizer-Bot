@@ -336,7 +336,7 @@ These are explicit non-goals to avoid scope creep:
 
 2. **Metadata Boosts**
 
-   - [ ] Boost recent documents (configurable decay)
+   - [x] Boost recent documents (configurable decay)
    - [ ] Boost documents from same project as query context
    - [ ] Boost documents matching query language
    - [x] Configurable boost weights in `bob.yaml`

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
+
 import pytest
 
 from bob.retrieval.scoring import (
@@ -10,6 +12,7 @@ from bob.retrieval.scoring import (
     ScoringConfig,
     compute_bm25_score,
     compute_idf,
+    compute_recency_score,
     normalize_scores,
     tokenize,
 )
@@ -275,3 +278,137 @@ class TestScoringConfig:
         """Recency boost is disabled by default."""
         config = ScoringConfig()
         assert config.recency_boost_enabled is False
+
+
+class TestComputeRecencyScore:
+    """Tests for recency score computation."""
+
+    def test_current_date_full_score(self):
+        """Document dated today gets full score."""
+        now = datetime.now()
+        score = compute_recency_score(now, half_life_days=180, reference_date=now)
+        assert score == 1.0
+
+    def test_half_life_gives_half_score(self):
+        """Document at half_life age gets 0.5 score."""
+        now = datetime.now()
+        old_date = now - timedelta(days=180)
+        score = compute_recency_score(old_date, half_life_days=180, reference_date=now)
+        assert score == pytest.approx(0.5, rel=0.01)
+
+    def test_double_half_life_gives_quarter_score(self):
+        """Document at 2x half_life gets 0.25 score."""
+        now = datetime.now()
+        old_date = now - timedelta(days=360)
+        score = compute_recency_score(old_date, half_life_days=180, reference_date=now)
+        assert score == pytest.approx(0.25, rel=0.01)
+
+    def test_minimum_score_floor(self):
+        """Very old documents still get minimum score."""
+        now = datetime.now()
+        very_old = now - timedelta(days=3650)  # 10 years
+        score = compute_recency_score(very_old, half_life_days=180, reference_date=now)
+        assert score >= 0.1  # Minimum floor
+
+    def test_none_date_full_score(self):
+        """None date returns full score."""
+        score = compute_recency_score(None)
+        assert score == 1.0
+
+    def test_string_date_parsed(self):
+        """ISO string dates are parsed correctly."""
+        now = datetime.now()
+        date_str = (now - timedelta(days=90)).isoformat()
+        score = compute_recency_score(date_str, half_life_days=180, reference_date=now)
+        # At 90 days (half of half_life), should be ~0.707
+        assert 0.6 < score < 0.8
+
+    def test_invalid_string_full_score(self):
+        """Invalid date strings return full score."""
+        score = compute_recency_score("not-a-date")
+        assert score == 1.0
+
+    def test_future_date_full_score(self):
+        """Future dates get full score."""
+        now = datetime.now()
+        future = now + timedelta(days=30)
+        score = compute_recency_score(future, reference_date=now)
+        assert score == 1.0
+
+
+class TestRecencyBoostIntegration:
+    """Tests for recency boost in HybridScorer."""
+
+    def test_recency_boost_disabled_no_effect(self):
+        """With recency disabled, all recency scores are 1.0."""
+        config = ScoringConfig(recency_boost_enabled=False)
+        scorer = HybridScorer(config)
+
+        now = datetime.now()
+        results = [
+            {"id": 1, "content": "test content", "source_date": now.isoformat()},
+            {
+                "id": 2,
+                "content": "test content",
+                "source_date": (now - timedelta(days=365)).isoformat(),
+            },
+        ]
+        vector_scores = [0.8, 0.8]
+
+        scored = scorer.score_results("test", results, vector_scores)
+        assert all(r.recency_score == 1.0 for r in scored)
+
+    def test_recency_boost_enabled_affects_ranking(self):
+        """With recency enabled, newer docs rank higher with equal relevance."""
+        config = ScoringConfig(
+            recency_boost_enabled=True,
+            recency_half_life_days=180,
+            vector_weight=1.0,
+            keyword_weight=0.0,
+        )
+        scorer = HybridScorer(config)
+
+        now = datetime.now()
+        results = [
+            {
+                "id": 1,
+                "content": "test content",
+                "source_date": (now - timedelta(days=365)).isoformat(),
+            },
+            {"id": 2, "content": "test content", "source_date": now.isoformat()},
+        ]
+        # Equal vector scores
+        vector_scores = [0.8, 0.8]
+
+        scored = scorer.score_results("test", results, vector_scores)
+
+        # Newer doc (id=2) should rank first
+        assert scored[0].chunk_id == 2
+        assert scored[0].recency_score > scored[1].recency_score
+
+    def test_relevance_can_overcome_recency(self):
+        """A more relevant old doc can still rank above less relevant new doc."""
+        config = ScoringConfig(
+            recency_boost_enabled=True,
+            recency_half_life_days=180,
+            vector_weight=1.0,
+            keyword_weight=0.0,
+        )
+        scorer = HybridScorer(config)
+
+        now = datetime.now()
+        results = [
+            {
+                "id": 1,
+                "content": "very relevant test content",
+                "source_date": (now - timedelta(days=90)).isoformat(),
+            },
+            {"id": 2, "content": "barely relevant", "source_date": now.isoformat()},
+        ]
+        # Old doc has much higher vector score
+        vector_scores = [0.95, 0.3]
+
+        scored = scorer.score_results("test", results, vector_scores)
+
+        # More relevant old doc should still win
+        assert scored[0].chunk_id == 1

@@ -1,7 +1,8 @@
 """Hybrid scoring for retrieval.
 
 Combines vector similarity with BM25-style keyword matching for improved
-relevance ranking. Supports configurable weights and score normalization.
+relevance ranking. Supports configurable weights, recency boosts, and
+score normalization.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ import re
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 # BM25 parameters (standard defaults)
@@ -52,6 +54,9 @@ class ScoredResult:
 
     # Combined final score (0-1)
     final_score: float
+
+    # Recency score (1.0 = no decay, <1.0 = older content)
+    recency_score: float = 1.0
 
     # Original data
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -173,6 +178,51 @@ def normalize_scores(scores: Sequence[float]) -> list[float]:
     return [(s - min_score) / (max_score - min_score) for s in scores]
 
 
+def compute_recency_score(
+    source_date: datetime | str | None,
+    half_life_days: int = 180,
+    reference_date: datetime | None = None,
+) -> float:
+    """Compute recency score using exponential decay.
+
+    Documents decay in score based on age. A document that is
+    `half_life_days` old will have a recency score of 0.5.
+
+    Args:
+        source_date: Document date (datetime or ISO string).
+        half_life_days: Days after which score drops to 0.5.
+        reference_date: Reference date (defaults to now).
+
+    Returns:
+        Recency score in (0, 1]. Returns 1.0 if date is None.
+    """
+    if source_date is None:
+        return 1.0  # No date = no penalty
+
+    # Parse string dates
+    if isinstance(source_date, str):
+        try:
+            source_date = datetime.fromisoformat(source_date)
+        except ValueError:
+            return 1.0  # Invalid date = no penalty
+
+    if reference_date is None:
+        reference_date = datetime.now()
+
+    # Calculate age in days
+    age_days = (reference_date - source_date).days
+
+    if age_days <= 0:
+        return 1.0  # Future dates get full score
+
+    # Exponential decay: score = 0.5^(age/half_life)
+    # This gives score=1.0 at age=0, score=0.5 at age=half_life
+    decay = math.pow(0.5, age_days / half_life_days)
+
+    # Clamp to minimum score (don't completely eliminate old content)
+    return max(0.1, decay)
+
+
 class HybridScorer:
     """Combines vector similarity with keyword matching."""
 
@@ -233,14 +283,30 @@ class HybridScorer:
         normalized_vector = normalize_scores(vector_scores)
         normalized_keyword = normalize_scores(bm25_scores)
 
+        # Compute recency scores if enabled
+        recency_scores: list[float] = []
+        if self.config.recency_boost_enabled:
+            for result in results:
+                source_date = result.get("source_date")
+                recency = compute_recency_score(
+                    source_date,
+                    half_life_days=self.config.recency_half_life_days,
+                )
+                recency_scores.append(recency)
+        else:
+            recency_scores = [1.0] * len(results)
+
         # Combine scores
         scored_results: list[ScoredResult] = []
         for i, result in enumerate(results):
             v_score = normalized_vector[i]
             k_score = normalized_keyword[i]
+            r_score = recency_scores[i]
 
-            # Weighted combination
-            final_score = self.config.vector_weight * v_score + self.config.keyword_weight * k_score
+            # Weighted combination with recency boost
+            # Recency acts as a multiplier on the combined relevance score
+            base_score = self.config.vector_weight * v_score + self.config.keyword_weight * k_score
+            final_score = base_score * r_score
 
             scored_results.append(
                 ScoredResult(
@@ -248,6 +314,7 @@ class HybridScorer:
                     content=result.get("content", ""),
                     vector_score=v_score,
                     keyword_score=k_score,
+                    recency_score=r_score,
                     final_score=final_score,
                     metadata=result,
                 )
