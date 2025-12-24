@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>B.O.B - Boring Organizer Bot</title>
+    <link rel="stylesheet" href="/static/css/main.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-brand">
+          <span class="logo">📚</span>
+          <span class="brand-name">B.O.B</span>
+        </div>
+        <nav class="header-nav">
+          <a href="#ask" class="nav-link active" data-page="ask">Ask</a>
+          <a href="#library" class="nav-link" data-page="library">Library</a>
+          <a href="#indexing" class="nav-link" data-page="indexing">Indexing</a>
+        </nav>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main">
+        <!-- Ask Page (Default) -->
+        <div id="page-ask" class="page active">
+          <div class="ask-layout">
+            <!-- Filters Sidebar -->
+            <aside class="filters-sidebar">
+              <h3 class="sidebar-title">Filters</h3>
+
+              <div class="filter-group">
+                <label class="filter-label">Projects</label>
+                <div id="project-filters" class="checkbox-list">
+                  <!-- Populated by JS -->
+                  <div class="loading-placeholder">Loading...</div>
+                </div>
+              </div>
+
+              <div class="filter-group">
+                <label class="filter-label">Document Types</label>
+                <div class="checkbox-list">
+                  <label class="checkbox-item">
+                    <input
+                      type="checkbox"
+                      name="type"
+                      value="markdown"
+                      checked
+                    />
+                    <span>Markdown</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="type" value="pdf" checked />
+                    <span>PDF</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="type" value="docx" checked />
+                    <span>Word</span>
+                  </label>
+                  <label class="checkbox-item">
+                    <input type="checkbox" name="type" value="xlsx" checked />
+                    <span>Excel</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="filter-group">
+                <label class="filter-label">Date Range</label>
+                <input
+                  type="date"
+                  id="date-after"
+                  class="date-input"
+                  placeholder="After"
+                />
+                <input
+                  type="date"
+                  id="date-before"
+                  class="date-input"
+                  placeholder="Before"
+                />
+              </div>
+            </aside>
+
+            <!-- Query + Answer -->
+            <section class="query-section">
+              <form id="ask-form" class="query-form">
+                <div class="query-input-wrapper">
+                  <input
+                    type="text"
+                    id="query-input"
+                    class="query-input"
+                    placeholder="Ask a question about your documents..."
+                    autocomplete="off"
+                    autofocus
+                  />
+                  <button type="submit" class="query-submit" id="submit-btn">
+                    <span class="submit-text">Ask</span>
+                    <span class="submit-loading hidden">...</span>
+                  </button>
+                </div>
+              </form>
+
+              <div id="answer-container" class="answer-container">
+                <!-- Welcome state -->
+                <div id="welcome-state" class="welcome-state">
+                  <div class="welcome-icon">🔍</div>
+                  <h2>Ask B.O.B anything</h2>
+                  <p>
+                    Your answers will be grounded in your indexed documents with
+                    full citations.
+                  </p>
+                </div>
+
+                <!-- Answer content (hidden until query) -->
+                <div id="answer-content" class="answer-content hidden">
+                  <div class="answer-text" id="answer-text"></div>
+
+                  <!-- Mandatory Footer -->
+                  <div class="answer-footer" id="answer-footer">
+                    <div class="footer-item">
+                      <span class="footer-label">Sources:</span>
+                      <span id="source-count">0</span>
+                    </div>
+                    <div class="footer-item">
+                      <span class="footer-label">Date Confidence:</span>
+                      <span id="date-confidence" class="confidence-badge"
+                        >-</span
+                      >
+                    </div>
+                    <div class="footer-item" id="outdated-warning-container">
+                      <!-- Warning shown if any sources may be outdated -->
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Not found state -->
+                <div id="not-found-state" class="not-found-state hidden">
+                  <div class="not-found-icon">📭</div>
+                  <h3>Not found in sources</h3>
+                  <p id="not-found-query"></p>
+                  <div class="suggestions">
+                    <p><strong>Suggestions:</strong></p>
+                    <ul>
+                      <li>Try different keywords</li>
+                      <li>Check if relevant documents are indexed</li>
+                      <li>
+                        Index more documents with <code>bob index ./path</code>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                <!-- Error state -->
+                <div id="error-state" class="error-state hidden">
+                  <div class="error-icon">⚠️</div>
+                  <h3>Something went wrong</h3>
+                  <p id="error-message"></p>
+                </div>
+              </div>
+            </section>
+
+            <!-- Sources Panel -->
+            <aside class="sources-sidebar">
+              <h3 class="sidebar-title">Sources</h3>
+              <div id="sources-list" class="sources-list">
+                <div class="sources-empty">
+                  <p>Sources will appear here after you ask a question.</p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+
+        <!-- Library Page -->
+        <div id="page-library" class="page">
+          <div class="library-layout">
+            <aside class="filters-sidebar">
+              <h3 class="sidebar-title">Filters</h3>
+
+              <div class="filter-group">
+                <label class="filter-label">Project</label>
+                <select id="library-project-filter" class="select-input">
+                  <option value="">All Projects</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label class="filter-label">Type</label>
+                <select id="library-type-filter" class="select-input">
+                  <option value="">All Types</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">Word</option>
+                  <option value="xlsx">Excel</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label class="filter-label">Sort By</label>
+                <select id="library-sort" class="select-input">
+                  <option value="date_desc">Newest First</option>
+                  <option value="date_asc">Oldest First</option>
+                  <option value="name_asc">Name A-Z</option>
+                  <option value="name_desc">Name Z-A</option>
+                </select>
+              </div>
+            </aside>
+
+            <section class="document-list-section">
+              <div class="section-header">
+                <h2>Documents</h2>
+                <span id="document-count" class="document-count"
+                  >Loading...</span
+                >
+              </div>
+              <div id="document-list" class="document-list">
+                <!-- Populated by JS -->
+              </div>
+              <div id="load-more-container" class="load-more-container hidden">
+                <button id="load-more-btn" class="btn btn-secondary">
+                  Load More
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Indexing Page -->
+        <div id="page-indexing" class="page">
+          <div class="indexing-layout">
+            <section class="indexing-section">
+              <h2>Index Documents</h2>
+
+              <form id="index-form" class="index-form">
+                <div class="form-group">
+                  <label for="index-path" class="form-label"
+                    >Path to index</label
+                  >
+                  <input
+                    type="text"
+                    id="index-path"
+                    class="text-input"
+                    placeholder="/path/to/documents"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="index-project" class="form-label"
+                    >Project name</label
+                  >
+                  <input
+                    type="text"
+                    id="index-project"
+                    class="text-input"
+                    placeholder="my-project"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  id="start-index-btn"
+                >
+                  Start Indexing
+                </button>
+              </form>
+
+              <!-- Job Progress -->
+              <div id="job-progress" class="job-progress hidden">
+                <h3>Indexing Progress</h3>
+                <div class="progress-bar-container">
+                  <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-details">
+                  <span id="progress-status">Starting...</span>
+                  <span id="progress-percent">0%</span>
+                </div>
+                <div id="progress-files" class="progress-files"></div>
+              </div>
+
+              <!-- Job Result -->
+              <div id="job-result" class="job-result hidden">
+                <h3>Indexing Complete</h3>
+                <div class="result-stats">
+                  <div class="stat">
+                    <span class="stat-value" id="result-files">0</span>
+                    <span class="stat-label">Files indexed</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value" id="result-chunks">0</span>
+                    <span class="stat-label">Chunks created</span>
+                  </div>
+                </div>
+                <div id="job-errors" class="job-errors hidden"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

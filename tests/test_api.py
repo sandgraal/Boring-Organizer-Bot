@@ -463,3 +463,26 @@ class TestOpenEndpoint:
             )
 
         assert response.status_code == 200
+
+
+class TestUIEndpoint:
+    """Tests for root UI endpoint."""
+
+    def test_root_serves_ui(self, client: TestClient):
+        """Root endpoint serves the UI HTML page."""
+        response = client.get("/")
+        assert response.status_code == 200
+        assert "text/html" in response.headers["content-type"]
+        assert b"B.O.B" in response.content
+
+    def test_static_css_served(self, client: TestClient):
+        """Static CSS files are served."""
+        response = client.get("/static/css/main.css")
+        assert response.status_code == 200
+        assert "text/css" in response.headers["content-type"]
+
+    def test_static_js_served(self, client: TestClient):
+        """Static JS files are served."""
+        response = client.get("/static/js/app.js")
+        assert response.status_code == 200
+        assert "javascript" in response.headers["content-type"]
