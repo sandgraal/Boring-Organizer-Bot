@@ -300,12 +300,12 @@ These are explicit non-goals to avoid scope creep:
 
 ### Test Plan
 
-| Test              | Description                                | File                     |
-| ----------------- | ------------------------------------------ | ------------------------ |
-| Smoke: Load       | All pages load without JS errors           | `tests/test_api.py` ✅   |
-| E2E: Ask flow     | Query → Answer → Click source              | Manual testing           |
-| E2E: Index flow   | Start indexing → See progress → Complete   | Manual testing           |
-| Visual: Citations | Footer always present with required fields | Manual inspection        |
+| Test              | Description                                | File                   |
+| ----------------- | ------------------------------------------ | ---------------------- |
+| Smoke: Load       | All pages load without JS errors           | `tests/test_api.py` ✅ |
+| E2E: Ask flow     | Query → Answer → Click source              | Manual testing         |
+| E2E: Index flow   | Start indexing → See progress → Complete   | Manual testing         |
+| Visual: Citations | Footer always present with required fields | Manual inspection      |
 
 ### Risks
 
