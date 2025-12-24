@@ -411,31 +411,230 @@ def search(
 
 
 @cli.command("extract-decisions")
-@click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option(
     "--project",
     "-p",
     default=None,
     help="Filter by project",
 )
-def extract_decisions(paths: tuple[str, ...], project: str | None) -> None:
-    """Extract decisions from documents.
+@click.option(
+    "--min-confidence",
+    default=0.6,
+    type=float,
+    help="Minimum confidence threshold (default: 0.6)",
+)
+@click.option(
+    "--clear",
+    is_flag=True,
+    help="Clear existing decisions before extracting",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output results as JSON",
+)
+def extract_decisions(
+    project: str | None,
+    min_confidence: float,
+    clear: bool,
+    output_json: bool,
+) -> None:
+    """Extract decisions from indexed documents.
 
-    PATHS: Optional file paths to extract from. If not specified, extracts from all indexed documents.
+    Scans indexed documents for decision-like statements (ADRs, "we decided to...",
+    explicit decision markers) and stores them in the decisions table.
     """
-    # TODO: Implement decision extraction
-    # Next file to edit: bob/extract/decisions.py
-    if paths:
-        console.print(f"[dim]Paths:[/] {', '.join(paths)}")
-    if project:
-        console.print(f"[dim]Project filter:[/] {project}")
-    console.print("[yellow]Decision extraction is not yet implemented.[/]")
-    console.print("\nThis feature will:")
-    console.print("  • Scan documents for decision-like statements")
-    console.print("  • Extract decision text and context")
-    console.print("  • Store in the decisions table")
-    console.print("  • Track superseded decisions")
-    console.print("\nSee: bob/extract/decisions.py (TODO)")
+    import json
+
+    from bob.extract.decisions import (
+        clear_decisions,
+        extract_decisions_from_project,
+        save_decisions,
+    )
+
+    if clear:
+        count = clear_decisions(project)
+        if not output_json:
+            console.print(f"[dim]Cleared {count} existing decisions[/]")
+
+    if not output_json:
+        console.print("[bold blue]Extracting decisions...[/]\n")
+        if project:
+            console.print(f"[dim]Project:[/] {project}")
+        console.print(f"[dim]Min confidence:[/] {min_confidence}")
+
+    try:
+        decisions = extract_decisions_from_project(
+            project=project,
+            min_confidence=min_confidence,
+        )
+
+        if output_json:
+            output = {
+                "count": len(decisions),
+                "decisions": [
+                    {
+                        "chunk_id": d.chunk_id,
+                        "decision_text": d.decision_text,
+                        "context": d.context,
+                        "decision_type": d.decision_type,
+                        "confidence": d.confidence,
+                        "rejected_alternatives": d.rejected_alternatives,
+                    }
+                    for d in decisions
+                ],
+            }
+            console.print(json.dumps(output, indent=2))
+        else:
+            if not decisions:
+                console.print("[yellow]No decisions found.[/]")
+            else:
+                console.print(f"\n[green]Found {len(decisions)} decisions:[/]\n")
+
+                for i, d in enumerate(decisions[:20], 1):  # Show first 20
+                    confidence_color = (
+                        "green" if d.confidence >= 0.9 else "yellow" if d.confidence >= 0.7 else "dim"
+                    )
+                    console.print(
+                        f"[{confidence_color}]●[/] [{confidence_color}]{d.confidence:.0%}[/] "
+                        f"[dim]{d.decision_type or 'unknown'}[/]"
+                    )
+                    # Truncate long decisions
+                    text = d.decision_text[:200] + "..." if len(d.decision_text) > 200 else d.decision_text
+                    console.print(f"  {text}\n")
+
+                if len(decisions) > 20:
+                    console.print(f"[dim]... and {len(decisions) - 20} more[/]")
+
+                # Prompt to save
+                if click.confirm("\nSave these decisions to the database?", default=True):
+                    saved = save_decisions(decisions)
+                    console.print(f"[green]✓[/] Saved {saved} decisions")
+                else:
+                    console.print("[dim]Decisions not saved[/]")
+
+    except Exception as e:
+        console.print(f"[red]Error extracting decisions:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
+
+
+@cli.command("decisions")
+@click.option(
+    "--project",
+    "-p",
+    default=None,
+    help="Filter by project",
+)
+@click.option(
+    "--status",
+    type=click.Choice(["active", "superseded", "deprecated"]),
+    default=None,
+    help="Filter by status",
+)
+@click.option(
+    "--limit",
+    default=50,
+    type=int,
+    help="Maximum results (default: 50)",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output results as JSON",
+)
+def list_decisions(
+    project: str | None,
+    status: str | None,
+    limit: int,
+    output_json: bool,
+) -> None:
+    """List extracted decisions.
+
+    Shows decisions stored in the database with their confidence scores,
+    types, and source information.
+    """
+    import json
+
+    from rich.table import Table
+
+    from bob.extract.decisions import get_decisions
+
+    try:
+        decisions = get_decisions(project=project, status=status, limit=limit)
+
+        if output_json:
+            output = {
+                "count": len(decisions),
+                "decisions": [
+                    {
+                        "id": d.id,
+                        "decision_text": d.decision_text,
+                        "decision_type": d.decision_type,
+                        "status": d.status,
+                        "confidence": d.confidence,
+                        "source_path": d.source_path,
+                        "project": d.project,
+                        "decision_date": d.decision_date.isoformat() if d.decision_date else None,
+                        "extracted_at": d.extracted_at.isoformat(),
+                    }
+                    for d in decisions
+                ],
+            }
+            console.print(json.dumps(output, indent=2))
+        else:
+            if not decisions:
+                console.print("[yellow]No decisions found.[/]")
+                console.print("\nRun [cyan]bob extract-decisions[/] to extract decisions from documents.")
+            else:
+                console.print(f"[bold blue]Decisions ({len(decisions)})[/]\n")
+
+                table = Table(show_header=True, header_style="bold")
+                table.add_column("ID", style="dim", width=4)
+                table.add_column("Type", width=12)
+                table.add_column("Decision", width=50)
+                table.add_column("Conf", width=5)
+                table.add_column("Status", width=10)
+                table.add_column("Source", width=25)
+
+                for d in decisions:
+                    # Truncate long decisions
+                    text = d.decision_text[:47] + "..." if len(d.decision_text) > 50 else d.decision_text
+                    text = text.replace("\n", " ")
+
+                    # Color based on status
+                    status_color = {
+                        "active": "green",
+                        "superseded": "yellow",
+                        "deprecated": "red",
+                    }.get(d.status, "dim")
+
+                    # Color based on confidence
+                    conf_color = "green" if d.confidence >= 0.9 else "yellow" if d.confidence >= 0.7 else "dim"
+
+                    source = d.source_path or ""
+                    if len(source) > 25:
+                        source = "..." + source[-22:]
+
+                    table.add_row(
+                        str(d.id),
+                        d.decision_type or "-",
+                        text,
+                        f"[{conf_color}]{d.confidence:.0%}[/]",
+                        f"[{status_color}]{d.status}[/]",
+                        source,
+                    )
+
+                console.print(table)
+
+    except Exception as e:
+        console.print(f"[red]Error listing decisions:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
 
 
 @cli.group()
