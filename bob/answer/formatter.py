@@ -1,0 +1,258 @@
+"""Answer formatting with citations and date confidence."""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import TYPE_CHECKING
+
+from rich.console import Console
+from rich.markdown import Markdown
+from rich.panel import Panel
+from rich.text import Text
+
+from bob.config import get_config
+
+if TYPE_CHECKING:
+    from bob.retrieval import SearchResult
+
+
+class DateConfidence(Enum):
+    """Confidence level based on document age."""
+
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
+    UNKNOWN = "UNKNOWN"
+
+
+def get_date_confidence(source_date: datetime | None) -> DateConfidence:
+    """Determine confidence level based on document age.
+
+    Args:
+        source_date: Document date.
+
+    Returns:
+        DateConfidence level.
+    """
+    if source_date is None:
+        return DateConfidence.UNKNOWN
+
+    config = get_config().date_confidence
+    now = datetime.now()
+    age = now - source_date
+
+    if age <= timedelta(days=config.high_max_days):
+        return DateConfidence.HIGH
+    elif age <= timedelta(days=config.medium_max_days):
+        return DateConfidence.MEDIUM
+    else:
+        return DateConfidence.LOW
+
+
+def is_outdated(source_date: datetime | None) -> bool:
+    """Check if a document may be outdated.
+
+    Args:
+        source_date: Document date.
+
+    Returns:
+        True if document may be outdated.
+    """
+    if source_date is None:
+        return False
+
+    config = get_config().date_confidence
+    now = datetime.now()
+    age = now - source_date
+
+    return age > timedelta(days=config.outdated_threshold_days)
+
+
+def format_locator(result: "SearchResult") -> str:
+    """Format a locator for display.
+
+    Args:
+        result: Search result with locator information.
+
+    Returns:
+        Human-readable locator string.
+    """
+    locator = result.locator_value
+    loc_type = result.locator_type
+
+    if loc_type == "heading":
+        heading = locator.get("heading", "")
+        start = locator.get("start_line", 0)
+        end = locator.get("end_line", 0)
+
+        if locator.get("git_file"):
+            return f'{locator["git_file"]}:{locator.get("git_commit", "")} heading: "{heading}" (lines {start}-{end})'
+        return f'heading: "{heading}" (lines {start}-{end})'
+
+    elif loc_type == "page":
+        page = locator.get("page", 0)
+        total = locator.get("total_pages", 0)
+        return f"page {page}/{total}"
+
+    elif loc_type == "paragraph":
+        idx = locator.get("paragraph_index", 0)
+        heading = locator.get("parent_heading") or locator.get("heading", "")
+        if heading:
+            return f'paragraph {idx} under "{heading}"'
+        return f"paragraph {idx}"
+
+    elif loc_type == "sheet":
+        sheet = locator.get("sheet_name", "")
+        rows = locator.get("row_count", 0)
+        return f'sheet "{sheet}" ({rows} rows)'
+
+    elif loc_type == "section":
+        return f'section: {locator.get("section", "")}'
+
+    else:
+        return str(locator)
+
+
+def format_citation(result: "SearchResult", index: int) -> Text:
+    """Format a single citation.
+
+    Args:
+        result: Search result.
+        index: Citation number (1-based).
+
+    Returns:
+        Rich Text object with formatted citation.
+    """
+    text = Text()
+
+    # Citation number and path
+    text.append(f"  {index}. ", style="bold cyan")
+    text.append(f"[{result.source_path}]", style="blue")
+    text.append(" ")
+
+    # Locator
+    locator_str = format_locator(result)
+    text.append(locator_str, style="dim")
+    text.append("\n")
+
+    # Date and confidence
+    text.append("     ", style="")
+
+    if result.source_date:
+        date_str = result.source_date.strftime("%Y-%m-%d")
+        text.append(f"Date: {date_str}", style="")
+    else:
+        text.append("Date: unknown", style="dim")
+
+    text.append(" | ", style="dim")
+
+    confidence = get_date_confidence(result.source_date)
+    conf_style = {
+        DateConfidence.HIGH: "green",
+        DateConfidence.MEDIUM: "yellow",
+        DateConfidence.LOW: "red",
+        DateConfidence.UNKNOWN: "dim",
+    }[confidence]
+    text.append(f"Confidence: {confidence.value}", style=conf_style)
+
+    # Outdated warning
+    if is_outdated(result.source_date):
+        text.append("\n     ", style="")
+        text.append("⚠️  This may be outdated", style="yellow italic")
+
+    text.append("\n")
+
+    return text
+
+
+def format_answer(query: str, results: list["SearchResult"]) -> str:
+    """Format an answer with citations.
+
+    This function enforces the "no citation => no claim" rule by only
+    returning retrieved passages with citations, not generating claims.
+
+    Args:
+        query: Original query.
+        results: Search results.
+
+    Returns:
+        Formatted answer string (for Rich console output).
+    """
+    console = Console(force_terminal=True, width=100)
+
+    # Build output
+    output_parts = []
+
+    # Header
+    output_parts.append("[bold]Answer based on retrieved documents:[/]\n")
+
+    # Note about generation
+    config = get_config()
+    if not config.llm.enabled:
+        output_parts.append(
+            "[dim](LLM generation disabled - showing retrieved passages)[/]\n\n"
+        )
+
+    # Top result as primary answer
+    if results:
+        top = results[0]
+        output_parts.append("[bold cyan]Most Relevant:[/]\n")
+        output_parts.append(f"[italic]{top.content[:500]}{'...' if len(top.content) > 500 else ''}[/]\n\n")
+
+    # Sources section
+    output_parts.append("[bold]Sources:[/]\n")
+
+    # Build source text
+    with console.capture() as capture:
+        for i, result in enumerate(results, start=1):
+            citation = format_citation(result, i)
+            console.print(citation, end="")
+
+    output_parts.append(capture.get())
+
+    # Quality gate: remind about citation requirement
+    output_parts.append("\n[dim]────────────────────────────────────────[/]\n")
+    output_parts.append("[dim italic]All claims above are grounded in the cited sources.[/]")
+
+    return "\n".join(output_parts)
+
+
+def format_answer_plain(query: str, results: list["SearchResult"]) -> str:
+    """Format an answer without Rich markup (for testing/logging).
+
+    Args:
+        query: Original query.
+        results: Search results.
+
+    Returns:
+        Plain text formatted answer.
+    """
+    lines = []
+    lines.append("Answer based on retrieved documents:\n")
+
+    if results:
+        top = results[0]
+        lines.append("Most Relevant:")
+        lines.append(f"{top.content[:500]}{'...' if len(top.content) > 500 else ''}\n")
+
+    lines.append("Sources:")
+
+    for i, result in enumerate(results, start=1):
+        lines.append(f"  {i}. [{result.source_path}] {format_locator(result)}")
+
+        if result.source_date:
+            date_str = result.source_date.strftime("%Y-%m-%d")
+            confidence = get_date_confidence(result.source_date)
+            lines.append(f"     Date: {date_str} | Confidence: {confidence.value}")
+        else:
+            lines.append("     Date: unknown | Confidence: UNKNOWN")
+
+        if is_outdated(result.source_date):
+            lines.append("     ⚠️  This may be outdated")
+
+    lines.append("")
+    lines.append("────────────────────────────────────────")
+    lines.append("All claims above are grounded in the cited sources.")
+
+    return "\n".join(lines)

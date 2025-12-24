@@ -1,0 +1,128 @@
+# B.O.B Configuration Example
+# Copy to bob.yaml and customize
+
+# Database configuration
+database:
+  # Path to SQLite database (relative to project root or absolute)
+  path: ./data/bob.db
+  
+  # Enable WAL mode for better concurrent read performance
+  wal_mode: true
+
+# Embedding configuration
+embedding:
+  # Model name (from sentence-transformers)
+  # Popular options:
+  #   - all-MiniLM-L6-v2 (fast, 384 dims)
+  #   - all-mpnet-base-v2 (better quality, 768 dims)
+  #   - multi-qa-MiniLM-L6-cos-v1 (optimized for Q&A)
+  model: all-MiniLM-L6-v2
+  
+  # Embedding dimension (must match model)
+  dimension: 384
+  
+  # Device for embedding computation
+  # Options: cpu, cuda, mps (Apple Silicon)
+  device: cpu
+  
+  # Batch size for embedding documents
+  batch_size: 32
+
+# Chunking configuration
+chunking:
+  # Target chunk size in tokens (approximate)
+  target_size: 512
+  
+  # Overlap between chunks in tokens
+  overlap: 50
+  
+  # Minimum chunk size (smaller chunks are merged)
+  min_size: 100
+  
+  # Maximum chunk size (larger chunks are split)
+  max_size: 1024
+
+# Default values
+defaults:
+  # Default project name when not specified
+  project: main
+  
+  # Default language for documents
+  language: en
+  
+  # Number of results to return
+  top_k: 5
+
+# Date confidence thresholds (in days)
+date_confidence:
+  # Documents older than this show "may be outdated" warning
+  outdated_threshold_days: 180
+  
+  # Confidence levels based on age
+  high_max_days: 30
+  medium_max_days: 90
+  # Beyond medium_max_days = LOW confidence
+
+# Paths configuration
+paths:
+  # Directories to ignore during indexing
+  ignore:
+    - node_modules
+    - .git
+    - __pycache__
+    - .venv
+    - venv
+    - .env
+    - "*.pyc"
+    - ".DS_Store"
+  
+  # File extensions to process
+  extensions:
+    markdown: [".md", ".markdown"]
+    pdf: [".pdf"]
+    word: [".docx"]
+    excel: [".xlsx", ".xls"]
+    recipe: [".recipe.yaml", ".recipe.json"]
+
+# Git documentation settings
+git_docs:
+  # Only index these paths from git repos
+  include_paths:
+    - README.md
+    - README
+    - docs/
+    - documentation/
+  
+  # Branch to use (null = default branch)
+  default_branch: null
+  
+  # Clone depth for performance
+  clone_depth: 1
+
+# Optional LLM configuration (requires [llm] extras)
+llm:
+  # Enable LLM-powered answer generation
+  enabled: false
+  
+  # Path to GGUF model file
+  model_path: null
+  
+  # Context window size
+  context_size: 4096
+  
+  # Temperature for generation
+  temperature: 0.7
+  
+  # Maximum tokens to generate
+  max_tokens: 512
+
+# Logging configuration
+logging:
+  # Log level: DEBUG, INFO, WARNING, ERROR
+  level: INFO
+  
+  # Log format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  # Log file (null = stderr only)
+  file: null
