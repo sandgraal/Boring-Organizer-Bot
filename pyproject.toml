@@ -52,6 +52,10 @@ dependencies = [
     
     # Utilities
     "python-dateutil>=2.8.0",
+    
+    # API Server
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
 ]
 
 [project.optional-dependencies]

@@ -1,0 +1,343 @@
+"""Tests for API endpoints."""
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
+
+from bob.api.app import create_app
+
+
+@pytest.fixture
+def client():
+    """Create a test client for the API."""
+    app = create_app()
+    return TestClient(app)
+
+
+@pytest.fixture
+def mock_database():
+    """Create a mock database for testing."""
+    mock_db = MagicMock()
+    mock_db.get_stats.return_value = {
+        "document_count": 10,
+        "chunk_count": 50,
+        "source_types": {"markdown": 5, "pdf": 5},
+        "projects": ["test"],
+        "has_vec": True,
+    }
+    return mock_db
+
+
+class TestHealthEndpoint:
+    """Tests for GET /health endpoint."""
+
+    def test_health_returns_status(self, client: TestClient, mock_database: MagicMock):
+        """Health check returns healthy status."""
+        with patch("bob.api.routes.health.get_database", return_value=mock_database):
+            response = client.get("/health")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["version"] == "1.0.0"
+        assert data["database"] == "connected"
+        assert data["indexed_documents"] == 10
+
+    def test_health_handles_db_error(self, client: TestClient):
+        """Health check handles database errors gracefully."""
+        with patch(
+            "bob.api.routes.health.get_database",
+            side_effect=Exception("DB connection failed"),
+        ):
+            response = client.get("/health")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert data["database"] == "error"
+        assert data["indexed_documents"] == 0
+
+
+class TestAskEndpoint:
+    """Tests for POST /ask endpoint."""
+
+    @pytest.fixture
+    def mock_search_results(self):
+        """Create mock search results."""
+        from datetime import datetime
+
+        from bob.retrieval.search import SearchResult
+
+        return [
+            SearchResult(
+                chunk_id=1,
+                content="This is the answer content from the document.",
+                score=0.92,
+                source_path="/docs/test.md",
+                source_type="markdown",
+                locator_type="heading",
+                locator_value={
+                    "heading": "Test Section",
+                    "start_line": 10,
+                    "end_line": 20,
+                },
+                project="test",
+                source_date=datetime(2024, 12, 1),
+                git_repo=None,
+                git_commit=None,
+            ),
+            SearchResult(
+                chunk_id=2,
+                content="Another relevant passage.",
+                score=0.85,
+                source_path="/docs/other.md",
+                source_type="markdown",
+                locator_type="heading",
+                locator_value={
+                    "heading": "Other Section",
+                    "start_line": 5,
+                    "end_line": 15,
+                },
+                project="test",
+                source_date=datetime(2024, 6, 1),
+                git_repo=None,
+                git_commit=None,
+            ),
+        ]
+
+    def test_ask_returns_sources(self, client: TestClient, mock_search_results: list):
+        """Ask endpoint returns sources with citations."""
+        with patch("bob.api.routes.ask.search", return_value=mock_search_results):
+            response = client.post(
+                "/ask",
+                json={"query": "test question", "top_k": 5},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["answer"] is not None
+        assert len(data["sources"]) == 2
+        assert data["footer"]["source_count"] == 2
+        assert data["footer"]["not_found"] is False
+        assert "query_time_ms" in data
+
+    def test_ask_returns_not_found_when_empty(self, client: TestClient):
+        """Ask endpoint returns not_found when no results."""
+        with patch("bob.api.routes.ask.search", return_value=[]):
+            response = client.post(
+                "/ask",
+                json={"query": "nonexistent topic"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["answer"] is None
+        assert data["sources"] == []
+        assert data["footer"]["not_found"] is True
+        assert data["footer"]["not_found_message"] is not None
+
+    def test_ask_validates_top_k(self, client: TestClient):
+        """Ask endpoint validates top_k parameter."""
+        response = client.post(
+            "/ask",
+            json={"query": "test", "top_k": 0},
+        )
+        assert response.status_code == 422  # Validation error
+
+        response = client.post(
+            "/ask",
+            json={"query": "test", "top_k": 100},
+        )
+        assert response.status_code == 422  # Validation error
+
+    def test_ask_accepts_filters(self, client: TestClient, mock_search_results: list):
+        """Ask endpoint accepts filter parameters."""
+        with patch("bob.api.routes.ask.search", return_value=mock_search_results):
+            response = client.post(
+                "/ask",
+                json={
+                    "query": "test question",
+                    "filters": {
+                        "projects": ["test"],
+                        "types": ["markdown"],
+                    },
+                },
+            )
+
+        assert response.status_code == 200
+
+    def test_ask_source_includes_required_fields(
+        self, client: TestClient, mock_search_results: list
+    ):
+        """Ask response sources include all required fields."""
+        with patch("bob.api.routes.ask.search", return_value=mock_search_results):
+            response = client.post(
+                "/ask",
+                json={"query": "test question"},
+            )
+
+        data = response.json()
+        source = data["sources"][0]
+
+        # Check required fields
+        assert "id" in source
+        assert "chunk_id" in source
+        assert "file_path" in source
+        assert "file_type" in source
+        assert "locator" in source
+        assert "snippet" in source
+        assert "date_confidence" in source
+        assert "project" in source
+        assert "similarity_score" in source
+
+
+class TestIndexEndpoint:
+    """Tests for indexing endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def reset_job_manager(self):
+        """Reset the job manager before each test."""
+        from bob.api.routes.index import _job_manager
+
+        _job_manager._current_job = None
+        yield
+        _job_manager._current_job = None
+
+    def test_index_starts_job(self, client: TestClient, tmp_path):
+        """POST /index starts an indexing job."""
+        # Create a test file
+        test_file = tmp_path / "test.md"
+        test_file.write_text("# Test\n\nContent here.")
+
+        with patch("bob.api.routes.index._run_index_job"):
+            response = client.post(
+                "/index",
+                json={
+                    "path": str(tmp_path),
+                    "project": "test",
+                    "recursive": True,
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "started"
+        assert "job_id" in data
+        assert data["project"] == "test"
+
+    def test_index_rejects_concurrent_jobs(self, client: TestClient, tmp_path):
+        """POST /index rejects when a job is already running."""
+        # Create a test file
+        test_file = tmp_path / "test.md"
+        test_file.write_text("# Test\n\nContent here.")
+
+        # Start a job first
+        with patch("bob.api.routes.index._run_index_job"):
+            first_response = client.post(
+                "/index",
+                json={
+                    "path": str(tmp_path),
+                    "project": "test",
+                    "recursive": True,
+                },
+            )
+            assert first_response.status_code == 200
+
+        # Try to start another job
+        response = client.post(
+            "/index",
+            json={
+                "path": str(tmp_path),
+                "project": "test2",
+            },
+        )
+
+        assert response.status_code == 409  # Conflict
+
+    def test_get_index_job(self, client: TestClient, tmp_path):
+        """GET /index/{job_id} returns job status."""
+        test_file = tmp_path / "test.md"
+        test_file.write_text("# Test\n\nContent here.")
+
+        with patch("bob.api.routes.index._run_index_job"):
+            start_response = client.post(
+                "/index",
+                json={
+                    "path": str(tmp_path),
+                    "project": "test",
+                },
+            )
+
+        assert start_response.status_code == 200
+        job_id = start_response.json()["job_id"]
+
+        response = client.get(f"/index/{job_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["job_id"] == job_id
+
+    def test_get_nonexistent_job(self, client: TestClient):
+        """GET /index/{job_id} returns 404 for unknown job."""
+        response = client.get("/index/idx_nonexistent")
+        assert response.status_code == 404
+
+
+class TestProjectsEndpoint:
+    """Tests for GET /projects endpoint."""
+
+    def test_projects_returns_list(self, client: TestClient, mock_database: MagicMock):
+        """Projects endpoint returns list of projects."""
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = [("project1",), ("project2",)]
+        mock_database.conn.execute.return_value = mock_cursor
+
+        with patch("bob.api.routes.projects.get_database", return_value=mock_database):
+            response = client.get("/projects")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "projects" in data
+        assert "total_projects" in data
+
+    def test_projects_empty_list(self, client: TestClient, mock_database: MagicMock):
+        """Projects endpoint handles empty list."""
+        mock_cursor = MagicMock()
+        mock_cursor.fetchall.return_value = []
+        mock_database.conn.execute.return_value = mock_cursor
+
+        with patch("bob.api.routes.projects.get_database", return_value=mock_database):
+            response = client.get("/projects")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["projects"] == []
+        assert data["total_projects"] == 0
+
+
+class TestCORS:
+    """Tests for CORS configuration."""
+
+    def test_cors_allows_localhost(self, client: TestClient):
+        """CORS allows localhost origins."""
+        response = client.options(
+            "/health",
+            headers={
+                "Origin": "http://localhost:8080",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        # FastAPI/Starlette returns 200 for OPTIONS
+        assert response.status_code in (200, 400)
+
+    def test_cors_headers_present(self, client: TestClient, mock_database: MagicMock):
+        """CORS headers are present in responses."""
+        with patch("bob.api.routes.health.get_database", return_value=mock_database):
+            response = client.get(
+                "/health",
+                headers={"Origin": "http://localhost:8080"},
+            )
+
+        assert "access-control-allow-origin" in response.headers

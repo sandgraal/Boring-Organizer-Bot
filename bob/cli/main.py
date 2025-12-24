@@ -480,5 +480,78 @@ def status(project: str | None) -> None:
         sys.exit(1)
 
 
+@cli.command()
+@click.option(
+    "--host",
+    default="127.0.0.1",
+    help="Host to bind to (default: 127.0.0.1 for local-only)",
+)
+@click.option(
+    "--port",
+    "-p",
+    default=8080,
+    type=int,
+    help="Port to listen on (default: 8080)",
+)
+@click.option(
+    "--reload",
+    is_flag=True,
+    help="Enable auto-reload for development",
+)
+def serve(host: str, port: int, reload: bool) -> None:
+    """Start the B.O.B API server.
+
+    Starts a local HTTP API server that the web interface uses.
+    The server binds to localhost by default for security.
+
+    WARNING: Binding to 0.0.0.0 exposes the server to your network.
+    Only do this if you understand the security implications.
+    """
+    import uvicorn
+
+    from bob.db import get_database
+
+    # Warn about non-localhost binding
+    if host != "127.0.0.1" and host != "localhost":
+        console.print(
+            f"[bold yellow]⚠️  Warning:[/] Binding to non-localhost address [cyan]{host}[/]"
+        )
+        console.print("   This exposes the server to your network. B.O.B has no authentication.")
+        console.print()
+
+    # Ensure database is initialized
+    try:
+        db = get_database()
+        db.migrate()
+    except Exception as e:
+        console.print(f"[red]Error initializing database:[/] {e}")
+        sys.exit(1)
+
+    console.print("[bold blue]Starting B.O.B API server...[/]")
+    console.print(f"  Host: [cyan]{host}[/]")
+    console.print(f"  Port: [cyan]{port}[/]")
+    console.print(f"  URL: [cyan]http://{host}:{port}[/]")
+    console.print(f"  API docs: [cyan]http://{host}:{port}/docs[/]")
+    console.print()
+
+    if reload:
+        console.print("[yellow]Auto-reload enabled (development mode)[/]")
+        console.print()
+
+    console.print("Press [bold]Ctrl+C[/] to stop the server.\n")
+
+    try:
+        uvicorn.run(
+            "bob.api.app:create_app",
+            host=host,
+            port=port,
+            reload=reload,
+            factory=True,
+            log_level="info",
+        )
+    except KeyboardInterrupt:
+        console.print("\n[bold green]Server stopped.[/]")
+
+
 if __name__ == "__main__":
     cli()
