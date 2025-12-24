@@ -136,18 +136,27 @@ def index(paths: tuple[str, ...], project: str | None, language: str | None) -> 
     type=int,
     help="Number of results to retrieve",
 )
-def ask(question: str, project: str | None, top_k: int | None) -> None:
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output results as JSON for machine consumption",
+)
+def ask(question: str, project: str | None, top_k: int | None, output_json: bool) -> None:
     """Ask a question and get answers with citations.
 
     QUESTION: The question to ask.
     """
+    import json
+
     from bob.answer import format_answer
     from bob.retrieval import search
 
     config = get_config()
     top_k = top_k or config.defaults.top_k
 
-    console.print("[bold blue]Searching...[/]\n")
+    if not output_json:
+        console.print("[bold blue]Searching...[/]\n")
 
     try:
         results = search(
@@ -156,20 +165,57 @@ def ask(question: str, project: str | None, top_k: int | None) -> None:
             top_k=top_k,
         )
 
-        if not results:
+        if output_json:
+            # Machine-readable JSON output
+            from bob.answer.formatter import get_date_confidence, is_outdated
+
+            json_results = {
+                "question": question,
+                "project": project,
+                "top_k": top_k,
+                "results_count": len(results),
+                "results": [
+                    {
+                        "chunk_id": r.chunk_id,
+                        "content": r.content,
+                        "score": r.score,
+                        "source": {
+                            "path": r.source_path,
+                            "type": r.source_type,
+                            "locator_type": r.locator_type,
+                            "locator_value": r.locator_value,
+                        },
+                        "metadata": {
+                            "project": r.project,
+                            "source_date": r.source_date.isoformat() if r.source_date else None,
+                            "date_confidence": get_date_confidence(r.source_date),
+                            "may_be_outdated": is_outdated(r.source_date),
+                            "git_repo": r.git_repo,
+                            "git_commit": r.git_commit,
+                        },
+                    }
+                    for r in results
+                ],
+            }
+            console.print(json.dumps(json_results, indent=2))
+        elif not results:
             console.print("[yellow]No relevant documents found.[/]")
             console.print("\nTry:")
             console.print("  • Using different keywords")
             console.print("  • Indexing more documents")
             if project:
                 console.print("  • Removing the --project filter")
-            return
-
-        # Format and display the answer
-        formatted = format_answer(question, results)
-        console.print(formatted)
+        else:
+            # Human-readable output with Rich formatting
+            formatted = format_answer(question, results)
+            console.print(formatted)
 
     except Exception as e:
+        if output_json:
+            import json
+
+            console.print(json.dumps({"error": str(e)}, indent=2))
+            sys.exit(1)
         console.print(f"[red]Error during search:[/] {e}")
         if get_config().logging.level == "DEBUG":
             console.print_exception()
