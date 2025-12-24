@@ -54,6 +54,9 @@ bob ask "What are the main ingredients for pasta?" --project "recipes"
 
 # Get more context
 bob ask "What decisions were made about the API?" --top-k 10
+
+# Machine-readable JSON output (for scripting/pipelines)
+bob ask "How do I configure logging?" --json
 ```
 
 ### Output Format
@@ -79,6 +82,19 @@ bob status
 
 # Show status for specific project
 bob status --project "personal-notes"
+```
+
+### Evaluate Retrieval Quality
+
+```bash
+# Run evaluation against a golden dataset
+bob eval run docs/eval/example_gold.jsonl
+
+# Run with different k and output JSON
+bob eval run docs/eval/example_gold.jsonl --k 10 --json
+
+# Compare two evaluation runs
+bob eval compare baseline.json current.json
 ```
 
 ### Web Interface (Coming Soon)
