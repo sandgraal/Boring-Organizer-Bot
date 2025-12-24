@@ -60,6 +60,22 @@ bob ask "What decisions were made about the API?" --top-k 10
 bob ask "How do I configure logging?" --json
 ```
 
+### Advanced Search Syntax
+
+```bash
+# Exact phrase match - results must contain this exact text
+bob ask '"API endpoint" configuration'
+
+# Exclude terms - filter out results containing unwanted words
+bob ask "python tutorial -beginner -introduction"
+
+# Inline project filter - same as --project flag
+bob ask "deployment guide project:devops"
+
+# Combine all syntax types
+bob ask '"error handling" best practices -deprecated project:docs'
+```
+
 ### Output Format
 
 Every answer includes:

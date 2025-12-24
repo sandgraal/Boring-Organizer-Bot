@@ -355,9 +355,9 @@ These are explicit non-goals to avoid scope creep:
    - [ ] Add `--max-age` filter to search
 
 5. **Search Improvements**
-   - [ ] Support quoted phrases for exact matching
-   - [ ] Support `-term` for exclusion
-   - [ ] Support `project:name` inline filter
+   - [x] Support quoted phrases for exact matching
+   - [x] Support `-term` for exclusion
+   - [x] Support `project:name` inline filter
    - [ ] `bob search` as alias for `bob ask` (retrieval only)
 
 ### Acceptance Criteria

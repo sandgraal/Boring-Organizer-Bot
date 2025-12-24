@@ -11,6 +11,7 @@ from typing import Any
 from bob.config import get_config
 from bob.db import get_database
 from bob.index.embedder import embed_text
+from bob.retrieval.query_parser import filter_results_by_query, parse_query
 from bob.retrieval.scoring import HybridScorer, ScoringConfig
 
 
@@ -44,9 +45,14 @@ def search(
 ) -> list[SearchResult]:
     """Search the knowledge base for relevant chunks.
 
+    Supports advanced query syntax:
+        - "phrase": Exact phrase match
+        - -term: Exclude results containing term
+        - project:name: Filter to specific project
+
     Args:
-        query: Natural language query.
-        project: Filter by project (optional).
+        query: Natural language query with optional syntax.
+        project: Filter by project (optional, overrides query syntax).
         top_k: Number of results to return.
         use_hybrid: Enable hybrid scoring (vector + keyword matching).
             If None, uses config.search.hybrid_enabled setting.
@@ -58,6 +64,12 @@ def search(
     """
     config = get_config()
     top_k = top_k or config.defaults.top_k
+
+    # Parse the query for advanced syntax
+    parsed = parse_query(query)
+
+    # Use parsed project filter if no explicit project given
+    effective_project = project or parsed.project_filter
 
     # Determine if hybrid scoring should be used
     if use_hybrid is None:
@@ -74,13 +86,22 @@ def search(
             recency_half_life_days=config.search.recency_half_life_days,
         )
 
-    # Embed the query
-    query_embedding = embed_text(query)
+    # Embed the query text (without syntax markers)
+    search_text = parsed.text or query
+    query_embedding = embed_text(search_text)
 
-    # Search the database - fetch more if using hybrid (for re-ranking)
+    # Search the database - fetch more if using filters or hybrid (for post-filtering)
     db = get_database()
-    fetch_limit = top_k * 3 if use_hybrid else top_k
-    raw_results = db.search_similar(query_embedding, limit=fetch_limit, project=project)
+    fetch_multiplier = 3 if use_hybrid else 1
+    if parsed.has_filters():
+        fetch_multiplier = max(fetch_multiplier, 5)  # Fetch more when filtering
+    fetch_limit = top_k * fetch_multiplier
+
+    raw_results = db.search_similar(query_embedding, limit=fetch_limit, project=effective_project)
+
+    # Apply phrase and exclusion filters
+    if parsed.has_filters():
+        raw_results = filter_results_by_query(raw_results, parsed, content_key="content")
 
     if use_hybrid and raw_results:
         # Apply hybrid scoring
