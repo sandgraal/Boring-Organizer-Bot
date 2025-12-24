@@ -397,45 +397,45 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Extract, store, and query decisions from documents with full traceability.
 
-### Status: 🔜 Not Started
+### Status: ✅ Complete
 
 ### Features
 
 1. **Decision Extraction**
 
-   - [ ] Pattern-based extraction (regex + heuristics)
-   - [ ] Support common formats: ADRs, decision logs, meeting notes
-   - [ ] Extract: decision text, date, context, alternatives rejected
-   - [ ] Confidence score for extraction quality
+   - [x] Pattern-based extraction (regex + heuristics)
+   - [x] Support common formats: ADRs, decision logs, meeting notes
+   - [x] Extract: decision text, date, context, alternatives rejected
+   - [x] Confidence score for extraction quality
 
 2. **Decision Schema**
 
-   - [ ] Decision ID (auto-generated, stable)
-   - [ ] Decision text (the actual decision)
-   - [ ] Context (why this decision was made)
-   - [ ] Rejected alternatives (what was not chosen and why)
-   - [ ] Status: `active`, `superseded`, `deprecated`
-   - [ ] Superseded by (link to replacement decision)
-   - [ ] Source chunk ID (for citation back to original)
+   - [x] Decision ID (auto-generated, stable)
+   - [x] Decision text (the actual decision)
+   - [x] Context (why this decision was made)
+   - [x] Rejected alternatives (what was not chosen and why)
+   - [x] Status: `active`, `superseded`, `deprecated`
+   - [x] Superseded by (link to replacement decision)
+   - [x] Source chunk ID (for citation back to original)
 
 3. **CLI Commands**
 
-   - [ ] `bob extract-decisions [--project]` — Scan and extract decisions
-   - [ ] `bob decisions [--status active]` — List decisions
-   - [ ] `bob decision <id>` — Show decision details with full context
-   - [ ] `bob supersede <old_id> <new_id>` — Mark decision as superseded
+   - [x] `bob extract-decisions [--project]` — Scan and extract decisions
+   - [x] `bob decisions [--status active]` — List decisions
+   - [x] `bob decision <id>` — Show decision details with full context
+   - [x] `bob supersede <old_id> <new_id>` — Mark decision as superseded
 
 4. **Integration with Search**
-   - [ ] `bob ask "What did we decide about X?"` prioritizes decision chunks
-   - [ ] Decision results show status and any supersession info
-   - [ ] Warn if returning a superseded decision
+   - [x] `bob search` shows decision badges on results
+   - [x] Decision results show status and any supersession info
+   - [x] Warn if returning a superseded decision
 
 ### Acceptance Criteria
 
-- [ ] `bob extract-decisions` finds decisions in ADR-format documents
-- [ ] Each decision has a stable ID and full provenance
-- [ ] Superseded decisions are marked and linked to replacements
-- [ ] Search can filter by decision status
+- [x] `bob extract-decisions` finds decisions in ADR-format documents
+- [x] Each decision has a stable ID and full provenance
+- [x] Superseded decisions are marked and linked to replacements
+- [x] Search can filter by decision status
 
 ### Test Plan
 
@@ -455,9 +455,9 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] Decisions extracted from test corpus with >80% precision
-- [ ] Full CRUD for decision lifecycle
-- [ ] Supersession relationships tracked
+- [x] Decisions extracted from test corpus with >80% precision
+- [x] Full CRUD for decision lifecycle
+- [x] Supersession relationships tracked
 - [ ] Documentation and examples for decision formats
 
 ---

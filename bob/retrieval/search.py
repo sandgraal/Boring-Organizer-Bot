@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -13,6 +13,17 @@ from bob.db import get_database
 from bob.index.embedder import embed_text
 from bob.retrieval.query_parser import filter_results_by_query, parse_query
 from bob.retrieval.scoring import HybridScorer, ScoringConfig
+
+
+@dataclass
+class DecisionInfo:
+    """Information about a decision associated with a chunk."""
+
+    decision_id: int
+    decision_text: str
+    status: str  # 'active', 'superseded', 'deprecated'
+    superseded_by: int | None = None
+    confidence: float = 0.0
 
 
 @dataclass
@@ -34,6 +45,9 @@ class SearchResult:
     source_date: datetime | None
     git_repo: str | None
     git_commit: str | None
+
+    # Decision info (if this chunk contains decisions)
+    decisions: list[DecisionInfo] = field(default_factory=list)
 
 
 def search(
@@ -215,3 +229,95 @@ def search_by_metadata(
     )
 
     return [dict(row) for row in cursor.fetchall()]
+
+
+def enrich_with_decisions(results: list[SearchResult]) -> list[SearchResult]:
+    """Enrich search results with decision information.
+
+    If a chunk has associated decisions stored in the database,
+    adds them to the result so they can be displayed.
+
+    Args:
+        results: List of search results.
+
+    Returns:
+        Same results with decisions field populated.
+    """
+    if not results:
+        return results
+
+    db = get_database()
+    chunk_ids = [r.chunk_id for r in results]
+
+    # Query decisions for all chunks at once
+    placeholders = ",".join("?" * len(chunk_ids))
+    cursor = db.conn.execute(
+        f"""
+        SELECT 
+            chunk_id,
+            id as decision_id,
+            decision_text,
+            status,
+            superseded_by,
+            confidence
+        FROM decisions
+        WHERE chunk_id IN ({placeholders})
+        """,
+        chunk_ids,
+    )
+
+    # Group decisions by chunk_id
+    decisions_by_chunk: dict[int, list[DecisionInfo]] = {}
+    for row in cursor.fetchall():
+        chunk_id = row["chunk_id"]
+        if chunk_id not in decisions_by_chunk:
+            decisions_by_chunk[chunk_id] = []
+        decisions_by_chunk[chunk_id].append(
+            DecisionInfo(
+                decision_id=row["decision_id"],
+                decision_text=row["decision_text"],
+                status=row["status"],
+                superseded_by=row["superseded_by"],
+                confidence=row["confidence"],
+            )
+        )
+
+    # Enrich results
+    for result in results:
+        if result.chunk_id in decisions_by_chunk:
+            result.decisions = decisions_by_chunk[result.chunk_id]
+
+    return results
+
+
+def has_superseded_decisions(results: list[SearchResult]) -> bool:
+    """Check if any results contain superseded decisions.
+
+    Args:
+        results: Search results.
+
+    Returns:
+        True if any result has a superseded decision.
+    """
+    for result in results:
+        for decision in result.decisions:
+            if decision.status == "superseded":
+                return True
+    return False
+
+
+def get_active_decisions(results: list[SearchResult]) -> list[DecisionInfo]:
+    """Get all active decisions from search results.
+
+    Args:
+        results: Search results.
+
+    Returns:
+        List of active decisions found in results.
+    """
+    active: list[DecisionInfo] = []
+    for result in results:
+        for decision in result.decisions:
+            if decision.status == "active":
+                active.append(decision)
+    return active

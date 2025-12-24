@@ -293,6 +293,7 @@ def search(
 
     from bob.answer.formatter import get_date_confidence, is_outdated
     from bob.retrieval import search as do_search
+    from bob.retrieval.search import enrich_with_decisions, has_superseded_decisions
 
     config = get_config()
     top_k = top_k or config.defaults.top_k
@@ -306,6 +307,9 @@ def search(
             project=project,
             top_k=top_k,
         )
+
+        # Enrich with decision info
+        results = enrich_with_decisions(results)
 
         # Apply max-age filter if specified
         if max_age is not None and results:
@@ -326,6 +330,7 @@ def search(
                 "top_k": top_k,
                 "max_age_days": max_age,
                 "results_count": len(results),
+                "has_superseded_decisions": has_superseded_decisions(results),
                 "results": [
                     {
                         "chunk_id": r.chunk_id,
@@ -345,6 +350,15 @@ def search(
                             "git_repo": r.git_repo,
                             "git_commit": r.git_commit,
                         },
+                        "decisions": [
+                            {
+                                "id": d.decision_id,
+                                "status": d.status,
+                                "superseded_by": d.superseded_by,
+                                "text": d.decision_text[:100],
+                            }
+                            for d in r.decisions
+                        ] if r.decisions else [],
                     }
                     for r in results
                 ],
@@ -362,9 +376,18 @@ def search(
                 console.print("  • Increasing or removing the --max-age filter")
         else:
             # Human-readable output - show raw search results
-            from bob.answer.formatter import highlight_terms
+            from bob.answer.formatter import (
+                format_decision_badge,
+                format_superseded_warning,
+                highlight_terms,
+            )
 
             console.print(f"Found [cyan]{len(results)}[/] results\n")
+
+            # Show superseded decision warning if applicable
+            warning = format_superseded_warning(results)
+            if warning:
+                console.print(warning)
 
             for i, r in enumerate(results, 1):
                 # Result header
@@ -372,7 +395,17 @@ def search(
                 confidence = get_date_confidence(r.source_date)
                 outdated = is_outdated(r.source_date)
 
-                console.print(f"[bold cyan]{i}.[/] [green]{r.source_path}[/]")
+                # Build header line with decision badge
+                header = f"[bold cyan]{i}.[/] [green]{r.source_path}[/]"
+                console.print(header, end="")
+
+                # Add decision badge if applicable
+                badge = format_decision_badge(r)
+                if badge:
+                    console.print(" ", end="")
+                    console.print(badge, end="")
+                console.print()  # Newline
+
                 console.print(f"   Score: {r.score:.3f} | Date: {date_str} | {confidence}")
                 if outdated:
                     console.print("   [yellow]⚠️  May be outdated[/]")

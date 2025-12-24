@@ -310,3 +310,73 @@ def highlight_terms(text: str, query: str, style: str = "bold yellow") -> Text:
         result.append(text[last_end:], style="dim")
 
     return result
+
+
+def format_decision_badge(result: SearchResult) -> Text | None:
+    """Format decision badges for a search result.
+
+    Shows if the result contains decisions and their status.
+
+    Args:
+        result: Search result with potential decisions.
+
+    Returns:
+        Rich Text with decision badges, or None if no decisions.
+    """
+    if not result.decisions:
+        return None
+
+    text = Text()
+    active_count = sum(1 for d in result.decisions if d.status == "active")
+    superseded_count = sum(1 for d in result.decisions if d.status == "superseded")
+
+    if active_count > 0:
+        text.append(" [", style="dim")
+        text.append(f"📋 {active_count} decision{'s' if active_count > 1 else ''}", style="green")
+        text.append("]", style="dim")
+
+    if superseded_count > 0:
+        text.append(" [", style="dim")
+        text.append(f"⚠️ {superseded_count} superseded", style="yellow")
+        text.append("]", style="dim")
+
+    return text if text.plain else None
+
+
+def format_superseded_warning(results: list[SearchResult]) -> Text | None:
+    """Format a warning if results contain superseded decisions.
+
+    Args:
+        results: Search results.
+
+    Returns:
+        Warning text or None if no superseded decisions.
+    """
+    superseded = []
+    for result in results:
+        for decision in result.decisions:
+            if decision.status == "superseded":
+                superseded.append(decision)
+
+    if not superseded:
+        return None
+
+    text = Text()
+    text.append("\n⚠️  Warning: ", style="bold yellow")
+    text.append(f"{len(superseded)} superseded decision{'s' if len(superseded) > 1 else ''} found in results.\n", style="yellow")
+    text.append("   These decisions may have been replaced by newer ones.\n", style="dim")
+
+    for d in superseded[:3]:  # Show up to 3
+        preview = d.decision_text[:50] + "..." if len(d.decision_text) > 50 else d.decision_text
+        preview = preview.replace("\n", " ")
+        text.append(f"   • ", style="dim")
+        text.append(f"#{d.decision_id}: ", style="yellow")
+        text.append(preview, style="dim")
+        if d.superseded_by:
+            text.append(f" → replaced by #{d.superseded_by}", style="cyan")
+        text.append("\n")
+
+    if len(superseded) > 3:
+        text.append(f"   ... and {len(superseded) - 3} more\n", style="dim")
+
+    return text

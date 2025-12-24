@@ -12,6 +12,13 @@ from bob.extract.decisions import (
     ExtractedDecision,
     extract_decisions_from_chunk,
 )
+from bob.retrieval.search import (
+    DecisionInfo,
+    SearchResult,
+    enrich_with_decisions,
+    has_superseded_decisions,
+    get_active_decisions,
+)
 
 
 class TestDecisionPatterns:
@@ -248,3 +255,100 @@ class TestExtractDecisionsFromChunk:
             metadata={},
         )
         assert decisions == []
+
+
+class TestDecisionSearchIntegration:
+    """Tests for decision-aware search features."""
+
+    def _make_result(self, chunk_id: int, decisions: list[DecisionInfo] | None = None) -> SearchResult:
+        """Helper to create a SearchResult for testing."""
+        from datetime import datetime
+
+        return SearchResult(
+            chunk_id=chunk_id,
+            content="Test content",
+            score=0.8,
+            source_path="/test/file.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Test"},
+            project="test",
+            source_date=datetime.now(),
+            git_repo=None,
+            git_commit=None,
+            decisions=decisions or [],
+        )
+
+    def test_has_superseded_decisions_true(self) -> None:
+        """Detects superseded decisions in results."""
+        results = [
+            self._make_result(1, [
+                DecisionInfo(
+                    decision_id=1,
+                    decision_text="Old decision",
+                    status="superseded",
+                    superseded_by=2,
+                    confidence=0.9,
+                )
+            ]),
+            self._make_result(2, []),
+        ]
+        assert has_superseded_decisions(results) is True
+
+    def test_has_superseded_decisions_false(self) -> None:
+        """Returns false when no superseded decisions."""
+        results = [
+            self._make_result(1, [
+                DecisionInfo(
+                    decision_id=1,
+                    decision_text="Active decision",
+                    status="active",
+                    superseded_by=None,
+                    confidence=0.9,
+                )
+            ]),
+        ]
+        assert has_superseded_decisions(results) is False
+
+    def test_has_superseded_decisions_empty(self) -> None:
+        """Handles empty results."""
+        assert has_superseded_decisions([]) is False
+
+    def test_get_active_decisions(self) -> None:
+        """Gets only active decisions from results."""
+        results = [
+            self._make_result(1, [
+                DecisionInfo(
+                    decision_id=1,
+                    decision_text="Active one",
+                    status="active",
+                    superseded_by=None,
+                    confidence=0.9,
+                ),
+                DecisionInfo(
+                    decision_id=2,
+                    decision_text="Superseded one",
+                    status="superseded",
+                    superseded_by=3,
+                    confidence=0.8,
+                ),
+            ]),
+            self._make_result(2, [
+                DecisionInfo(
+                    decision_id=3,
+                    decision_text="Another active",
+                    status="active",
+                    superseded_by=None,
+                    confidence=0.85,
+                ),
+            ]),
+        ]
+
+        active = get_active_decisions(results)
+        assert len(active) == 2
+        assert all(d.status == "active" for d in active)
+
+    def test_get_active_decisions_none(self) -> None:
+        """Returns empty list when no active decisions."""
+        results = [self._make_result(1, [])]
+        assert get_active_decisions(results) == []
