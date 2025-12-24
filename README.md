@@ -68,7 +68,7 @@ Answer: [synthesized response based on retrieved chunks]
 
 Sources:
   1. [docs/api.md] heading: "Logging Configuration" (lines 45-67)
-     Date: 2024-03-15 | Confidence: HIGH
+     Date: 2025-03-15 | Confidence: HIGH
   2. [notes/decisions.md] heading: "API Design" (lines 12-34)
      Date: 2023-11-20 | Confidence: MEDIUM
      ⚠️  This may be outdated (>6 months old)

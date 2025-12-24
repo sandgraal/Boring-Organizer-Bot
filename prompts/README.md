@@ -118,4 +118,4 @@ The document was last updated on {{source_date}}.
 - [AGENTS.md](../docs/AGENTS.md) — Agent contracts
 - [TASK_TEMPLATES.md](../docs/TASK_TEMPLATES.md) — Task formats
 
-**Date Confidence:** HIGH (document updated 2024-12-23)
+**Date Confidence:** HIGH (document updated 2025-12-23)

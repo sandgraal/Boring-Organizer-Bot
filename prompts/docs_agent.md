@@ -399,4 +399,4 @@ End every response with:
 
 ---
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)

@@ -324,22 +324,22 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Improve search quality with hybrid scoring, metadata boosts, and citation precision.
 
-### Status: 🔜 Not Started
+### Status: � In Progress
 
 ### Features
 
 1. **Hybrid Scoring**
 
-   - [ ] Combine vector similarity with BM25-style keyword matching
-   - [ ] Configurable weight between semantic and keyword scores
-   - [ ] Score normalization for consistent ranking
+   - [x] Combine vector similarity with BM25-style keyword matching
+   - [x] Configurable weight between semantic and keyword scores
+   - [x] Score normalization for consistent ranking
 
 2. **Metadata Boosts**
 
    - [ ] Boost recent documents (configurable decay)
    - [ ] Boost documents from same project as query context
    - [ ] Boost documents matching query language
-   - [ ] Configurable boost weights in `bob.yaml`
+   - [x] Configurable boost weights in `bob.yaml`
 
 3. **Citation Precision**
 

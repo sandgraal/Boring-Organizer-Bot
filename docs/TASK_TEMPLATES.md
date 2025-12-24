@@ -2,7 +2,7 @@
 
 > Standard task formats for agent work on B.O.B.
 
-**Last Updated:** 2024-12-23
+**Last Updated:** 2025-12-23
 
 ---
 
@@ -117,7 +117,7 @@ Enhance date confidence to parse dates from document content, not just file meta
 3. **Tests:** `tests/test_date_parser.py`
 
    - Test: ISO 8601 dates
-   - Test: Natural language dates ("January 15, 2024")
+   - Test: Natural language dates ("January 15, 2025")
    - Test: Relative dates ("updated last month") → skip
    - Test: "as of" pattern
    - Test: Returns None when ambiguous
@@ -431,5 +431,5 @@ HIGH | MEDIUM | LOW (reason)
 - [AGENTS.md](AGENTS.md) — Agent contracts
 - [conventions.md](conventions.md) — Code style
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)
 ```

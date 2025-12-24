@@ -255,7 +255,7 @@ Results:
   Precision@5:  0.62 (±0.20)
   MRR:          0.71 (±0.18)
 
-Comparison to baseline (2024-12-01):
+Comparison to baseline (2025-12-01):
   Recall@5:     +0.05 ✓
   Precision@5:  +0.02 ✓
   MRR:          -0.01 (within tolerance)
@@ -271,7 +271,7 @@ Failed queries (MRR < 0.5):
         Expected: [45, 46, 47]
         Retrieved: [12, 34, 56, 78, 90]
 
-Saved results to: docs/eval/results_2024-12-23.json
+Saved results to: docs/eval/results_2025-12-23.json
 ```
 
 ---
@@ -386,4 +386,4 @@ End every response with:
 
 ---
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)

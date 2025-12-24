@@ -155,14 +155,14 @@ Date Confidence: MEDIUM (oldest source is 4 months old)
         "start_line": 45,
         "end_line": 67
       },
-      "date": "2024-03-15",
+      "date": "2025-03-15",
       "confidence": "HIGH",
       "score": 0.89,
       "outdated": false
     }
   ],
   "metadata": {
-    "query_date": "2024-12-23",
+    "query_date": "2025-12-23",
     "date_confidence": "HIGH",
     "project": "bob",
     "warnings": []
@@ -308,4 +308,4 @@ End every response with:
 
 ---
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)

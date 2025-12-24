@@ -2,7 +2,7 @@
 
 > Rules and conventions for AI agents working in the B.O.B repository.
 
-**Last Updated:** 2024-12-23  
+**Last Updated:** 2025-12-23  
 **Applies to:** All coding agents, research agents, QA agents, documentation agents
 
 ---
@@ -213,7 +213,7 @@ Every answer must end with a Sources section:
 
 Sources:
   1. [docs/guide.md] heading: "Configuration" (lines 45-67)
-     Date: 2024-03-15 | Confidence: HIGH
+     Date: 2025-03-15 | Confidence: HIGH
 
   2. [notes/meeting.md] heading: "API Discussion" (lines 12-34)
      Date: 2023-06-20 | Confidence: LOW
@@ -264,7 +264,7 @@ When extracting decisions, capture:
 decision:
   id: DEC-001 # Stable identifier
   text: "Use SQLite for local storage" # The decision itself
-  date: 2024-01-15 # When decided
+  date: 2025-01-15 # When decided
   context: "Evaluated Postgres, MySQL" # Why this choice
 
   rejected_alternatives:
@@ -336,13 +336,13 @@ When generating JSON or structured data:
     {
       "file": "docs/guide.md",
       "locator": { "heading": "Config", "start_line": 45, "end_line": 67 },
-      "date": "2024-03-15",
+      "date": "2025-03-15",
       "confidence": "HIGH"
     }
   ],
   "metadata": {
     "project": "bob",
-    "query_date": "2024-12-23",
+    "query_date": "2025-12-23",
     "language": "en"
   },
   "warnings": ["Source 2 may be outdated"]
@@ -449,7 +449,7 @@ Before completing any task, verify:
 - [conventions.md](conventions.md) — Code style guide
 - [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) — Feature roadmap
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)
 
 ---
 

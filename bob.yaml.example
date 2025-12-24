@@ -63,6 +63,26 @@ date_confidence:
   medium_max_days: 90
   # Beyond medium_max_days = LOW confidence
 
+# Search and retrieval settings
+search:
+  # Enable hybrid scoring (combines vector similarity + keyword matching)
+  # When false, uses pure vector similarity (faster, but less precise)
+  hybrid_enabled: false
+  
+  # Weight for vector (semantic) similarity score (0-1)
+  vector_weight: 0.7
+  
+  # Weight for keyword (BM25) matching score (0-1)
+  keyword_weight: 0.3
+  
+  # BM25 parameters
+  bm25_k1: 1.2  # Term frequency saturation
+  bm25_b: 0.75  # Length normalization
+  
+  # Recency boost (boost recent documents)
+  recency_boost_enabled: false
+  recency_half_life_days: 180  # Score halves every N days old
+
 # Paths configuration
 paths:
   # Directories to ignore during indexing

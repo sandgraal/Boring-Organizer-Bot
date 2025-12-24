@@ -2,7 +2,7 @@
 
 > HTTP API specification for local-only B.O.B server.
 
-**Last Updated:** 2024-12-23  
+**Last Updated:** 2025-12-23  
 **Status:** Draft  
 **Version:** 1.0.0
 
@@ -135,7 +135,7 @@ Submit a question and receive an answer with structured citations.
   "filters": {
     "projects": ["docs", "notes"],
     "types": ["markdown", "pdf"],
-    "date_after": "2024-01-01",
+    "date_after": "2025-01-01",
     "date_before": null,
     "language": null
   },
@@ -161,7 +161,7 @@ Submit a question and receive an answer with structured citations.
         "end_line": 67
       },
       "snippet": "The logging configuration section allows you to...",
-      "date": "2024-12-15",
+      "date": "2025-12-15",
       "date_confidence": "HIGH",
       "project": "docs",
       "may_be_outdated": false,
@@ -179,7 +179,7 @@ Submit a question and receive an answer with structured citations.
         "end_line": 145
       },
       "snippet": "log_level: Sets the minimum log level. Options: DEBUG...",
-      "date": "2024-06-10",
+      "date": "2025-06-10",
       "date_confidence": "MEDIUM",
       "project": "docs",
       "may_be_outdated": true,
@@ -240,7 +240,7 @@ Start an indexing job for a path.
   "status": "started",
   "path": "/Users/me/Documents/notes",
   "project": "notes",
-  "started_at": "2024-12-23T10:30:00Z"
+  "started_at": "2025-12-23T10:30:00Z"
 }
 ```
 
@@ -270,7 +270,7 @@ Get status of an indexing job.
   "status": "running",
   "path": "/Users/me/Documents/notes",
   "project": "notes",
-  "started_at": "2024-12-23T10:30:00Z",
+  "started_at": "2025-12-23T10:30:00Z",
   "progress": {
     "total_files": 75,
     "processed_files": 34,
@@ -294,8 +294,8 @@ Get status of an indexing job.
   "status": "completed",
   "path": "/Users/me/Documents/notes",
   "project": "notes",
-  "started_at": "2024-12-23T10:30:00Z",
-  "completed_at": "2024-12-23T10:32:15Z",
+  "started_at": "2025-12-23T10:30:00Z",
+  "completed_at": "2025-12-23T10:32:15Z",
   "progress": {
     "total_files": 75,
     "processed_files": 75,
@@ -354,19 +354,19 @@ List all projects with document counts.
       "name": "docs",
       "document_count": 45,
       "chunk_count": 312,
-      "last_indexed": "2024-12-23T10:30:00Z"
+      "last_indexed": "2025-12-23T10:30:00Z"
     },
     {
       "name": "recipes",
       "document_count": 23,
       "chunk_count": 89,
-      "last_indexed": "2024-12-22T14:15:00Z"
+      "last_indexed": "2025-12-22T14:15:00Z"
     },
     {
       "name": "work",
       "document_count": 88,
       "chunk_count": 567,
-      "last_indexed": "2024-12-20T09:00:00Z"
+      "last_indexed": "2025-12-20T09:00:00Z"
     }
   ],
   "total_documents": 156,
@@ -403,9 +403,9 @@ List documents with optional filters.
       "source_type": "markdown",
       "project": "docs",
       "language": "en",
-      "source_date": "2024-12-15",
+      "source_date": "2025-12-15",
       "chunk_count": 8,
-      "indexed_at": "2024-12-23T10:30:00Z",
+      "indexed_at": "2025-12-23T10:30:00Z",
       "may_be_outdated": false
     },
     {
@@ -414,9 +414,9 @@ List documents with optional filters.
       "source_type": "markdown",
       "project": "docs",
       "language": "en",
-      "source_date": "2024-06-10",
+      "source_date": "2025-06-10",
       "chunk_count": 15,
-      "indexed_at": "2024-12-23T10:30:00Z",
+      "indexed_at": "2025-12-23T10:30:00Z",
       "may_be_outdated": true
     }
   ],
@@ -444,8 +444,8 @@ Get detailed information about a single document.
   "source_type": "markdown",
   "project": "docs",
   "language": "en",
-  "source_date": "2024-12-15",
-  "indexed_at": "2024-12-23T10:30:00Z",
+  "source_date": "2025-12-15",
+  "indexed_at": "2025-12-23T10:30:00Z",
   "content_hash": "sha256:a1b2c3d4...",
   "chunks": [
     {
@@ -501,7 +501,7 @@ List extracted decisions.
       "decision_text": "Use SQLite for all local storage",
       "context": "We evaluated PostgreSQL, SQLite, and file-based storage. SQLite was chosen for portability and zero-config operation.",
       "status": "active",
-      "decision_date": "2024-12-01",
+      "decision_date": "2025-12-01",
       "source": {
         "document_id": 42,
         "file_path": "docs/architecture.md",
@@ -613,7 +613,7 @@ Get full recipe details.
   "source": {
     "document_id": 101,
     "file_path": "recipes/carbonara.yaml",
-    "indexed_at": "2024-12-22T14:15:00Z"
+    "indexed_at": "2025-12-22T14:15:00Z"
   }
 }
 ```
@@ -833,7 +833,7 @@ curl -X POST http://localhost:8080/ask \
         "end_line": 102
       },
       "snippet": "We evaluated PostgreSQL, SQLite, and file-based storage. SQLite was chosen for portability...",
-      "date": "2024-12-15",
+      "date": "2025-12-15",
       "date_confidence": "HIGH",
       "project": "docs",
       "may_be_outdated": false,
@@ -851,7 +851,7 @@ curl -X POST http://localhost:8080/ask \
         "end_line": 20
       },
       "snippet": "B.O.B uses SQLite as its primary database, with optional sqlite-vec for vector similarity...",
-      "date": "2024-12-10",
+      "date": "2025-12-10",
       "date_confidence": "HIGH",
       "project": "docs",
       "may_be_outdated": false,
@@ -916,7 +916,7 @@ curl -X POST http://localhost:8080/open \
 - [architecture.md](architecture.md) — System design
 - [data-model.md](data-model.md) — Database schema
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)
 
 ---
 

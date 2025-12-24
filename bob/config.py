@@ -58,6 +58,23 @@ class DateConfidenceConfig(BaseModel):
     medium_max_days: int = 90
 
 
+class SearchConfig(BaseModel):
+    """Search and retrieval configuration."""
+
+    # Hybrid search settings
+    hybrid_enabled: bool = False
+    vector_weight: float = 0.7
+    keyword_weight: float = 0.3
+
+    # BM25 parameters
+    bm25_k1: float = 1.2
+    bm25_b: float = 0.75
+
+    # Metadata boosts
+    recency_boost_enabled: bool = False
+    recency_half_life_days: int = 180
+
+
 class PathsConfig(BaseModel):
     """Paths configuration."""
 
@@ -125,6 +142,7 @@ class Config(BaseSettings):
     chunking: ChunkingConfig = Field(default_factory=ChunkingConfig)
     defaults: DefaultsConfig = Field(default_factory=DefaultsConfig)
     date_confidence: DateConfidenceConfig = Field(default_factory=DateConfidenceConfig)
+    search: SearchConfig = Field(default_factory=SearchConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
     git_docs: GitDocsConfig = Field(default_factory=GitDocsConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
