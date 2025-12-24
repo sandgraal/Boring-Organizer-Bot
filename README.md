@@ -108,6 +108,30 @@ bob index ./docs ./recipes ./projects --project "everything"
 bob index https://github.com/user/repo --project "external-docs"
 ```
 
+### Watchlist & Automatic Indexing
+
+B.O.B lets you store a small watchlist of frequently indexed locations so you avoid retyping paths.
+
+1. **Add a target** (requires the path to exist):
+
+   ```bash
+   bob watchlist add ./my-notes --project personal-notes
+   ```
+
+2. **Inspect what’s saved**:
+
+   ```bash
+   bob watchlist list
+   ```
+
+3. **Start indexing everything in one command**:
+
+   ```bash
+   bob index --watchlist
+   ```
+
+Watchlist entries are stored in `.bob_watchlist.yaml` in your project root (override with `BOB_WATCHLIST_PATH`). Each entry can specify a project and language per target. Use `bob watchlist remove <path>` to tidy it up.
+
 ### Ask Questions
 
 ```bash

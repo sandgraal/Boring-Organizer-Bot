@@ -15,6 +15,13 @@ from rich.logging import RichHandler
 
 from bob import __version__
 from bob.config import get_config
+from bob.watchlist import (
+    WatchlistEntry,
+    add_watchlist_entry,
+    get_watchlist_path,
+    load_watchlist,
+    remove_watchlist_entry,
+)
 
 console = Console()
 
@@ -72,7 +79,13 @@ def init() -> None:
 
 
 @cli.command()
-@click.argument("paths", nargs=-1, required=True, type=click.Path(exists=True))
+@click.option(
+    "--watchlist",
+    "use_watchlist",
+    is_flag=True,
+    help="Index all paths saved in the watchlist (`bob watchlist list`).",
+)
+@click.argument("paths", nargs=-1, type=click.Path(exists=True))
 @click.option(
     "--project",
     "-p",
@@ -85,7 +98,12 @@ def init() -> None:
     default=None,
     help="Document language (default: from config)",
 )
-def index(paths: tuple[str, ...], project: str | None, language: str | None) -> None:
+def index(
+    paths: tuple[str, ...],
+    project: str | None,
+    language: str | None,
+    use_watchlist: bool,
+) -> None:
     """Index documents from the specified paths.
 
     PATHS: One or more file or directory paths to index.
@@ -96,18 +114,54 @@ def index(paths: tuple[str, ...], project: str | None, language: str | None) -> 
     project = project or config.defaults.project
     language = language or config.defaults.language
 
+    if use_watchlist and paths:
+        raise click.UsageError("Cannot specify paths when using --watchlist.")
+    if not use_watchlist and not paths:
+        raise click.UsageError("Provide at least one path to index or use --watchlist.")
+
     console.print("[bold blue]Indexing documents...[/]")
-    console.print(f"  Project: [cyan]{project}[/]")
-    console.print(f"  Language: [cyan]{language}[/]")
-    console.print(f"  Paths: {', '.join(paths)}")
+    if use_watchlist:
+        console.print("[dim]Using watchlist entries[/]")
+        console.print(f"  Watchlist: [cyan]{get_watchlist_path()}[/]")
+        console.print(f"  Default project: [cyan]{project}[/]")
+        console.print(f"  Default language: [cyan]{language}[/]")
+    else:
+        console.print(f"  Project: [cyan]{project}[/]")
+        console.print(f"  Language: [cyan]{language}[/]")
+        console.print(f"  Paths: {', '.join(paths)}")
     console.print()
 
     try:
-        stats = index_paths(
-            paths=[Path(p) for p in paths],
-            project=project,
-            language=language,
-        )
+        if use_watchlist:
+            entries = load_watchlist()
+            if not entries:
+                console.print("[yellow]Watchlist is empty. Add targets with `bob watchlist add`.[/]")
+                return
+
+            stats: dict[str, int] = {"documents": 0, "chunks": 0, "skipped": 0, "errors": 0}
+            for entry in entries:
+                target_path = Path(entry.path)
+                target_project = entry.project or project
+                target_language = entry.language or language
+
+                if not target_path.exists():
+                    console.print(f"[yellow]Skipping missing path:[/] {target_path}")
+                    stats["errors"] += 1
+                    continue
+
+                result = index_paths(
+                    paths=[target_path],
+                    project=target_project,
+                    language=target_language,
+                )
+                for key in stats:
+                    stats[key] = stats.get(key, 0) + result.get(key, 0)
+        else:
+            stats = index_paths(
+                paths=[Path(p) for p in paths],
+                project=project,
+                language=language,
+            )
 
         console.print("\n[bold green]Indexing complete![/]")
         console.print(f"  Documents processed: [cyan]{stats['documents']}[/]")
@@ -119,6 +173,73 @@ def index(paths: tuple[str, ...], project: str | None, language: str | None) -> 
         if get_config().logging.level == "DEBUG":
             console.print_exception()
         sys.exit(1)
+
+
+@cli.group("watchlist")
+def watchlist_group() -> None:
+    """Manage saved index targets for easy onboarding."""
+
+
+@watchlist_group.command("add")
+@click.argument("path", type=click.Path(exists=True))
+@click.option(
+    "--project",
+    "-p",
+    default=None,
+    help="Project name for the target (falls back to global default).",
+)
+@click.option(
+    "--language",
+    "-l",
+    default=None,
+    help="Language for the target (falls back to global default).",
+)
+def watchlist_add(path: str, project: str | None, language: str | None) -> None:
+    """Add a path to the watchlist."""
+    entry = WatchlistEntry(path=path, project=project, language=language)
+    if add_watchlist_entry(entry):
+        console.print(f"[green]✓[/] Added [cyan]{path}[/] to the watchlist.")
+    else:
+        console.print(f"[yellow]↺[/] {path} is already in the watchlist.")
+
+
+@watchlist_group.command("list")
+def watchlist_list() -> None:
+    """List all watchlist targets."""
+    entries = load_watchlist()
+    watchlist_path = get_watchlist_path()
+
+    if not entries:
+        console.print(
+            "[yellow]Watchlist is empty. Add targets with `bob watchlist add <path>`.[/]"
+        )
+        return
+
+    from rich.table import Table
+
+    table = Table(title=f"Watchlist ({watchlist_path})")
+    table.add_column("Path", style="cyan")
+    table.add_column("Project", style="green")
+    table.add_column("Language", style="green")
+
+    for entry in entries:
+        table.add_row(
+            entry.path,
+            entry.project or "-",
+            entry.language or "-",
+        )
+
+    console.print(table)
+
+
+@watchlist_group.command("remove")
+@click.argument("path", type=click.Path())
+def watchlist_remove(path: str) -> None:
+    """Remove a path from the watchlist."""
+    if remove_watchlist_entry(path):
+        console.print(f"[green]✓[/] Removed [cyan]{path}[/] from the watchlist.")
+    else:
+        console.print(f"[red]✗[/] Path [cyan]{path}[/] was not found in the watchlist.")
 
 
 @cli.command()
