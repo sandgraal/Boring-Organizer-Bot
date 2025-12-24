@@ -253,7 +253,7 @@ def enrich_with_decisions(results: list[SearchResult]) -> list[SearchResult]:
     placeholders = ",".join("?" * len(chunk_ids))
     cursor = db.conn.execute(
         f"""
-        SELECT 
+        SELECT
             chunk_id,
             id as decision_id,
             decision_text,

@@ -363,13 +363,16 @@ def format_superseded_warning(results: list[SearchResult]) -> Text | None:
 
     text = Text()
     text.append("\n⚠️  Warning: ", style="bold yellow")
-    text.append(f"{len(superseded)} superseded decision{'s' if len(superseded) > 1 else ''} found in results.\n", style="yellow")
+    text.append(
+        f"{len(superseded)} superseded decision{'s' if len(superseded) > 1 else ''} found in results.\n",
+        style="yellow",
+    )
     text.append("   These decisions may have been replaced by newer ones.\n", style="dim")
 
     for d in superseded[:3]:  # Show up to 3
         preview = d.decision_text[:50] + "..." if len(d.decision_text) > 50 else d.decision_text
         preview = preview.replace("\n", " ")
-        text.append(f"   • ", style="dim")
+        text.append("   • ", style="dim")
         text.append(f"#{d.decision_id}: ", style="yellow")
         text.append(preview, style="dim")
         if d.superseded_by:

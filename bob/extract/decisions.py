@@ -6,6 +6,7 @@ pattern matching and stores them in the decisions table.
 
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -77,10 +78,8 @@ def extract_decisions_from_chunk(
         # Try to parse date from metadata
         decision_date = None
         if metadata.get("source_date"):
-            try:
+            with contextlib.suppress(ValueError, TypeError):
                 decision_date = datetime.fromisoformat(metadata["source_date"])
-            except (ValueError, TypeError):
-                pass
 
         # Find any rejected alternatives
         rejected = find_rejected_alternatives(content)
@@ -117,7 +116,7 @@ def extract_decisions_from_project(
 
     # Query chunks with their document metadata
     query = """
-        SELECT 
+        SELECT
             c.id as chunk_id,
             c.content,
             d.source_path,
@@ -226,7 +225,7 @@ def get_decisions(
     db = get_database()
 
     query = """
-        SELECT 
+        SELECT
             dec.id,
             dec.chunk_id,
             dec.decision_text,
@@ -263,10 +262,8 @@ def get_decisions(
     for row in cursor.fetchall():
         decision_date = None
         if row["decision_date"]:
-            try:
+            with contextlib.suppress(ValueError):
                 decision_date = datetime.fromisoformat(row["decision_date"])
-            except ValueError:
-                pass
 
         extracted_at = datetime.fromisoformat(row["extracted_at"])
 
@@ -303,7 +300,7 @@ def get_decision(decision_id: int) -> StoredDecision | None:
 
     cursor = db.conn.execute(
         """
-        SELECT 
+        SELECT
             dec.id,
             dec.chunk_id,
             dec.decision_text,
@@ -330,10 +327,8 @@ def get_decision(decision_id: int) -> StoredDecision | None:
 
     decision_date = None
     if row["decision_date"]:
-        try:
+        with contextlib.suppress(ValueError):
             decision_date = datetime.fromisoformat(row["decision_date"])
-        except ValueError:
-            pass
 
     return StoredDecision(
         id=row["id"],
@@ -351,7 +346,7 @@ def get_decision(decision_id: int) -> StoredDecision | None:
     )
 
 
-def supersede_decision(old_id: int, new_id: int, reason: str | None = None) -> bool:
+def supersede_decision(old_id: int, new_id: int, reason: str | None = None) -> bool:  # noqa: ARG001
     """Mark a decision as superseded by another.
 
     Args:
@@ -373,7 +368,7 @@ def supersede_decision(old_id: int, new_id: int, reason: str | None = None) -> b
 
     db.conn.execute(
         """
-        UPDATE decisions 
+        UPDATE decisions
         SET status = 'superseded', superseded_by = ?
         WHERE id = ?
         """,

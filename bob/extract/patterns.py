@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Pattern
 
 
 @dataclass
@@ -16,7 +15,7 @@ class DecisionPattern:
     """A pattern for detecting decisions in text."""
 
     name: str
-    pattern: Pattern[str]
+    pattern: re.Pattern[str]
     confidence: float  # 0-1, how likely this is a real decision
     decision_type: str | None  # Suggested type if detected
 
@@ -311,10 +310,7 @@ def find_decisions(text: str, min_confidence: float = 0.5) -> list[PatternMatch]
     for pm in matches:
         overlaps = False
         for existing in filtered:
-            if (
-                pm.start_pos < existing.end_pos
-                and pm.end_pos > existing.start_pos
-            ):
+            if pm.start_pos < existing.end_pos and pm.end_pos > existing.start_pos:
                 overlaps = True
                 break
         if not overlaps:

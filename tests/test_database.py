@@ -148,8 +148,8 @@ class TestDecisionStorage:
         """Test saving and retrieving a decision."""
         from bob.extract.decisions import (
             ExtractedDecision,
-            save_decision,
             get_decision,
+            save_decision,
         )
 
         chunk_id = self._create_test_chunk(test_db)
@@ -178,8 +178,8 @@ class TestDecisionStorage:
         """Test filtering decisions by project and status."""
         from bob.extract.decisions import (
             ExtractedDecision,
-            save_decision,
             get_decisions,
+            save_decision,
         )
 
         chunk_id = self._create_test_chunk(test_db)
@@ -207,8 +207,8 @@ class TestDecisionStorage:
         """Test marking a decision as superseded."""
         from bob.extract.decisions import (
             ExtractedDecision,
-            save_decision,
             get_decision,
+            save_decision,
             supersede_decision,
         )
 
@@ -248,9 +248,9 @@ class TestDecisionStorage:
         """Test clearing decisions."""
         from bob.extract.decisions import (
             ExtractedDecision,
-            save_decision,
-            get_decisions,
             clear_decisions,
+            get_decisions,
+            save_decision,
         )
 
         chunk_id = self._create_test_chunk(test_db)

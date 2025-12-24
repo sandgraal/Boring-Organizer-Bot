@@ -82,12 +82,12 @@ def test_db(temp_dir):
     db_path = temp_dir / "test.db"
     db = Database(db_path)
     db.migrate()
-    
+
     # Set as the global singleton so get_database() returns this instance
     db_module._db = db
-    
+
     yield db
-    
+
     # Clean up
     db.close()
     db_module._db = None

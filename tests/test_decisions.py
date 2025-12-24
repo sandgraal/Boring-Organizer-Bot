@@ -1,23 +1,16 @@
 """Tests for decision extraction."""
 
-import pytest
-
+from bob.extract.decisions import extract_decisions_from_chunk
 from bob.extract.patterns import (
-    PatternMatch,
     detect_decision_type,
     find_decisions,
     find_rejected_alternatives,
 )
-from bob.extract.decisions import (
-    ExtractedDecision,
-    extract_decisions_from_chunk,
-)
 from bob.retrieval.search import (
     DecisionInfo,
     SearchResult,
-    enrich_with_decisions,
-    has_superseded_decisions,
     get_active_decisions,
+    has_superseded_decisions,
 )
 
 
@@ -127,7 +120,7 @@ class TestRejectedAlternatives:
         Alternatives Considered:
         - MySQL
         - SQLite
-        
+
         These were rejected because they don't support our scale.
         """
         rejected = find_rejected_alternatives(content)
@@ -168,11 +161,11 @@ class TestExtractDecisionsFromChunk:
         """Extracts decisions with context."""
         content = """
         # Meeting Notes 2024-01-15
-        
+
         ## Decisions
-        
+
         Decision: We will use FastAPI for the REST API.
-        
+
         This was chosen for its async support.
         """
         decisions = extract_decisions_from_chunk(
@@ -260,7 +253,9 @@ class TestExtractDecisionsFromChunk:
 class TestDecisionSearchIntegration:
     """Tests for decision-aware search features."""
 
-    def _make_result(self, chunk_id: int, decisions: list[DecisionInfo] | None = None) -> SearchResult:
+    def _make_result(
+        self, chunk_id: int, decisions: list[DecisionInfo] | None = None
+    ) -> SearchResult:
         """Helper to create a SearchResult for testing."""
         from datetime import datetime
 
@@ -282,15 +277,18 @@ class TestDecisionSearchIntegration:
     def test_has_superseded_decisions_true(self) -> None:
         """Detects superseded decisions in results."""
         results = [
-            self._make_result(1, [
-                DecisionInfo(
-                    decision_id=1,
-                    decision_text="Old decision",
-                    status="superseded",
-                    superseded_by=2,
-                    confidence=0.9,
-                )
-            ]),
+            self._make_result(
+                1,
+                [
+                    DecisionInfo(
+                        decision_id=1,
+                        decision_text="Old decision",
+                        status="superseded",
+                        superseded_by=2,
+                        confidence=0.9,
+                    )
+                ],
+            ),
             self._make_result(2, []),
         ]
         assert has_superseded_decisions(results) is True
@@ -298,15 +296,18 @@ class TestDecisionSearchIntegration:
     def test_has_superseded_decisions_false(self) -> None:
         """Returns false when no superseded decisions."""
         results = [
-            self._make_result(1, [
-                DecisionInfo(
-                    decision_id=1,
-                    decision_text="Active decision",
-                    status="active",
-                    superseded_by=None,
-                    confidence=0.9,
-                )
-            ]),
+            self._make_result(
+                1,
+                [
+                    DecisionInfo(
+                        decision_id=1,
+                        decision_text="Active decision",
+                        status="active",
+                        superseded_by=None,
+                        confidence=0.9,
+                    )
+                ],
+            ),
         ]
         assert has_superseded_decisions(results) is False
 
@@ -317,31 +318,37 @@ class TestDecisionSearchIntegration:
     def test_get_active_decisions(self) -> None:
         """Gets only active decisions from results."""
         results = [
-            self._make_result(1, [
-                DecisionInfo(
-                    decision_id=1,
-                    decision_text="Active one",
-                    status="active",
-                    superseded_by=None,
-                    confidence=0.9,
-                ),
-                DecisionInfo(
-                    decision_id=2,
-                    decision_text="Superseded one",
-                    status="superseded",
-                    superseded_by=3,
-                    confidence=0.8,
-                ),
-            ]),
-            self._make_result(2, [
-                DecisionInfo(
-                    decision_id=3,
-                    decision_text="Another active",
-                    status="active",
-                    superseded_by=None,
-                    confidence=0.85,
-                ),
-            ]),
+            self._make_result(
+                1,
+                [
+                    DecisionInfo(
+                        decision_id=1,
+                        decision_text="Active one",
+                        status="active",
+                        superseded_by=None,
+                        confidence=0.9,
+                    ),
+                    DecisionInfo(
+                        decision_id=2,
+                        decision_text="Superseded one",
+                        status="superseded",
+                        superseded_by=3,
+                        confidence=0.8,
+                    ),
+                ],
+            ),
+            self._make_result(
+                2,
+                [
+                    DecisionInfo(
+                        decision_id=3,
+                        decision_text="Another active",
+                        status="active",
+                        superseded_by=None,
+                        confidence=0.85,
+                    ),
+                ],
+            ),
         ]
 
         active = get_active_decisions(results)

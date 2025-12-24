@@ -358,7 +358,9 @@ def search(
                                 "text": d.decision_text[:100],
                             }
                             for d in r.decisions
-                        ] if r.decisions else [],
+                        ]
+                        if r.decisions
+                        else [],
                     }
                     for r in results
                 ],
@@ -525,16 +527,24 @@ def extract_decisions(
             else:
                 console.print(f"\n[green]Found {len(decisions)} decisions:[/]\n")
 
-                for i, d in enumerate(decisions[:20], 1):  # Show first 20
+                for _i, d in enumerate(decisions[:20], 1):  # Show first 20
                     confidence_color = (
-                        "green" if d.confidence >= 0.9 else "yellow" if d.confidence >= 0.7 else "dim"
+                        "green"
+                        if d.confidence >= 0.9
+                        else "yellow"
+                        if d.confidence >= 0.7
+                        else "dim"
                     )
                     console.print(
                         f"[{confidence_color}]●[/] [{confidence_color}]{d.confidence:.0%}[/] "
                         f"[dim]{d.decision_type or 'unknown'}[/]"
                     )
                     # Truncate long decisions
-                    text = d.decision_text[:200] + "..." if len(d.decision_text) > 200 else d.decision_text
+                    text = (
+                        d.decision_text[:200] + "..."
+                        if len(d.decision_text) > 200
+                        else d.decision_text
+                    )
                     console.print(f"  {text}\n")
 
                 if len(decisions) > 20:
@@ -621,7 +631,9 @@ def list_decisions(
         else:
             if not decisions:
                 console.print("[yellow]No decisions found.[/]")
-                console.print("\nRun [cyan]bob extract-decisions[/] to extract decisions from documents.")
+                console.print(
+                    "\nRun [cyan]bob extract-decisions[/] to extract decisions from documents."
+                )
             else:
                 console.print(f"[bold blue]Decisions ({len(decisions)})[/]\n")
 
@@ -635,7 +647,11 @@ def list_decisions(
 
                 for d in decisions:
                     # Truncate long decisions
-                    text = d.decision_text[:47] + "..." if len(d.decision_text) > 50 else d.decision_text
+                    text = (
+                        d.decision_text[:47] + "..."
+                        if len(d.decision_text) > 50
+                        else d.decision_text
+                    )
                     text = text.replace("\n", " ")
 
                     # Color based on status
@@ -646,7 +662,13 @@ def list_decisions(
                     }.get(d.status, "dim")
 
                     # Color based on confidence
-                    conf_color = "green" if d.confidence >= 0.9 else "yellow" if d.confidence >= 0.7 else "dim"
+                    conf_color = (
+                        "green"
+                        if d.confidence >= 0.9
+                        else "yellow"
+                        if d.confidence >= 0.7
+                        else "dim"
+                    )
 
                     source = d.source_path or ""
                     if len(source) > 25:
@@ -707,7 +729,9 @@ def show_decision(decision_id: int, output_json: bool) -> None:
                 "confidence": decision.confidence,
                 "source_path": decision.source_path,
                 "project": decision.project,
-                "decision_date": decision.decision_date.isoformat() if decision.decision_date else None,
+                "decision_date": decision.decision_date.isoformat()
+                if decision.decision_date
+                else None,
                 "extracted_at": decision.extracted_at.isoformat(),
             }
             console.print(json.dumps(output, indent=2))
@@ -734,7 +758,7 @@ def show_decision(decision_id: int, output_json: bool) -> None:
 
             # Context
             if decision.context:
-                console.print(f"\n[bold]Context:[/]")
+                console.print("\n[bold]Context:[/]")
                 console.print(Panel(decision.context, border_style="dim"))
 
             # Source info
@@ -789,8 +813,12 @@ def supersede_decision_cmd(old_id: int, new_id: int, reason: str | None) -> None
         # Show what we're doing
         console.print("[bold blue]Superseding decision...[/]\n")
 
-        old_text = old.decision_text[:60] + "..." if len(old.decision_text) > 60 else old.decision_text
-        new_text = new.decision_text[:60] + "..." if len(new.decision_text) > 60 else new.decision_text
+        old_text = (
+            old.decision_text[:60] + "..." if len(old.decision_text) > 60 else old.decision_text
+        )
+        new_text = (
+            new.decision_text[:60] + "..." if len(new.decision_text) > 60 else new.decision_text
+        )
 
         console.print(f"[yellow]Old:[/] #{old_id}: {old_text}")
         console.print(f"[green]New:[/] #{new_id}: {new_text}")
@@ -804,7 +832,7 @@ def supersede_decision_cmd(old_id: int, new_id: int, reason: str | None) -> None
             if result:
                 console.print(f"\n[green]✓[/] Decision #{old_id} is now superseded by #{new_id}")
             else:
-                console.print(f"[red]Failed to supersede decision.[/]")
+                console.print("[red]Failed to supersede decision.[/]")
                 sys.exit(1)
         else:
             console.print("[dim]Cancelled.[/]")
