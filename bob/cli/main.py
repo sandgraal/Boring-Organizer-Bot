@@ -137,17 +137,26 @@ def index(paths: tuple[str, ...], project: str | None, language: str | None) -> 
     help="Number of results to retrieve",
 )
 @click.option(
+    "--max-age",
+    default=None,
+    type=int,
+    help="Maximum document age in days (filters out older content)",
+)
+@click.option(
     "--json",
     "output_json",
     is_flag=True,
     help="Output results as JSON for machine consumption",
 )
-def ask(question: str, project: str | None, top_k: int | None, output_json: bool) -> None:
+def ask(
+    question: str, project: str | None, top_k: int | None, max_age: int | None, output_json: bool
+) -> None:
     """Ask a question and get answers with citations.
 
     QUESTION: The question to ask.
     """
     import json
+    from datetime import datetime, timedelta
 
     from bob.answer import format_answer
     from bob.retrieval import search
@@ -165,6 +174,17 @@ def ask(question: str, project: str | None, top_k: int | None, output_json: bool
             top_k=top_k,
         )
 
+        # Apply max-age filter if specified
+        if max_age is not None and results:
+            cutoff = datetime.now() - timedelta(days=max_age)
+            original_count = len(results)
+            results = [r for r in results if r.source_date is None or r.source_date >= cutoff]
+            filtered_count = original_count - len(results)
+            if not output_json and filtered_count > 0:
+                console.print(
+                    f"[dim]Filtered out {filtered_count} results older than {max_age} days[/]\n"
+                )
+
         if output_json:
             # Machine-readable JSON output
             from bob.answer.formatter import get_date_confidence, is_outdated
@@ -173,6 +193,7 @@ def ask(question: str, project: str | None, top_k: int | None, output_json: bool
                 "question": question,
                 "project": project,
                 "top_k": top_k,
+                "max_age_days": max_age,
                 "results_count": len(results),
                 "results": [
                     {
@@ -341,6 +362,8 @@ def search(
                 console.print("  • Increasing or removing the --max-age filter")
         else:
             # Human-readable output - show raw search results
+            from bob.answer.formatter import highlight_terms
+
             console.print(f"Found [cyan]{len(results)}[/] results\n")
 
             for i, r in enumerate(results, 1):
@@ -366,11 +389,13 @@ def search(
                 if locator_parts:
                     console.print(f"   [dim]{' | '.join(locator_parts)}[/]")
 
-                # Content snippet (truncated)
-                snippet = r.content[:200].replace("\n", " ")
-                if len(r.content) > 200:
+                # Content snippet with highlighted terms
+                snippet = r.content[:250].replace("\n", " ")
+                if len(r.content) > 250:
                     snippet += "..."
-                console.print(f"   [dim]{snippet}[/]")
+                highlighted = highlight_terms(snippet, query)
+                console.print("   ", end="")
+                console.print(highlighted)
                 console.print()
 
     except Exception as e:

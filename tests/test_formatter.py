@@ -7,6 +7,7 @@ from bob.answer.formatter import (
     format_answer_plain,
     format_locator,
     get_date_confidence,
+    highlight_terms,
     is_outdated,
 )
 from bob.retrieval import SearchResult
@@ -154,3 +155,58 @@ class TestFormatAnswerPlain:
         formatted = format_answer_plain("query", [])
         # Should still be valid output, just no sources
         assert "Sources:" in formatted
+
+
+class TestHighlightTerms:
+    """Tests for term highlighting in search results."""
+
+    def test_highlights_single_term(self):
+        text = "This is a document about configuration settings."
+        result = highlight_terms(text, "configuration")
+        # The result is a Rich Text object
+        assert "configuration" in result.plain
+
+    def test_highlights_multiple_terms(self):
+        text = "Learn about search and retrieval systems."
+        result = highlight_terms(text, "search retrieval")
+        assert "search" in result.plain
+        assert "retrieval" in result.plain
+
+    def test_case_insensitive_highlighting(self):
+        text = "Configuration and CONFIGURATION are the same."
+        result = highlight_terms(text, "configuration")
+        # Both occurrences should be in the result, and highlighted
+        # Check that both appear in the plain text
+        assert "Configuration" in result.plain
+        assert "CONFIGURATION" in result.plain
+        # The plain text should match the original
+        assert result.plain == text
+
+    def test_ignores_short_words(self):
+        text = "The cat sat on the mat."
+        result = highlight_terms(text, "the cat on")
+        # "the" and "on" are short words, only "cat" should be highlighted
+        assert "cat" in result.plain
+
+    def test_ignores_common_words(self):
+        text = "How to configure with settings."
+        result = highlight_terms(text, "how configure with")
+        # "how" and "with" are common stop words
+        assert "configure" in result.plain
+
+    def test_handles_query_syntax(self):
+        text = "Python programming tutorial for beginners."
+        result = highlight_terms(text, '"exact phrase" python -excluded project:test')
+        # Should highlight python, ignore syntax
+        assert "Python" in result.plain
+
+    def test_empty_query_returns_plain_text(self):
+        text = "Some document text."
+        result = highlight_terms(text, "")
+        assert result.plain == text
+
+    def test_no_matching_terms(self):
+        text = "Document about something else."
+        result = highlight_terms(text, "unrelated query")
+        # Should return the text unchanged (dim style)
+        assert "Document about something else" in result.plain

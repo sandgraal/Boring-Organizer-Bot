@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING
@@ -261,3 +262,51 @@ def format_answer_plain(query: str, results: list[SearchResult]) -> str:
     lines.append("All claims above are grounded in the cited sources.")
 
     return "\n".join(lines)
+
+
+def highlight_terms(text: str, query: str, style: str = "bold yellow") -> Text:
+    """Highlight query terms in a text snippet.
+
+    Args:
+        text: Text to highlight.
+        query: Original query (terms will be extracted).
+        style: Rich style for highlighted terms.
+
+    Returns:
+        Rich Text object with highlighted terms.
+    """
+    # Extract meaningful terms from query (skip syntax markers)
+    terms = []
+    # Remove quoted phrases and special syntax for term extraction
+    clean_query = re.sub(r'"[^"]*"', " ", query)  # Remove quoted phrases
+    clean_query = re.sub(r"project:\S+", " ", clean_query)  # Remove project filter
+    clean_query = re.sub(r"-\S+", " ", clean_query)  # Remove exclusions
+
+    for word in clean_query.lower().split():
+        # Skip short words and common terms
+        if len(word) >= 3 and word not in {"the", "and", "for", "with", "how", "what", "why"}:
+            terms.append(word)
+
+    if not terms:
+        return Text(text, style="dim")
+
+    # Build regex pattern for case-insensitive matching
+    pattern = re.compile(r"\b(" + "|".join(re.escape(t) for t in terms) + r")\b", re.IGNORECASE)
+
+    # Build Rich Text with highlights
+    result = Text()
+    last_end = 0
+
+    for match in pattern.finditer(text):
+        # Add text before match
+        if match.start() > last_end:
+            result.append(text[last_end : match.start()], style="dim")
+        # Add highlighted match
+        result.append(match.group(), style=style)
+        last_end = match.end()
+
+    # Add remaining text
+    if last_end < len(text):
+        result.append(text[last_end:], style="dim")
+
+    return result

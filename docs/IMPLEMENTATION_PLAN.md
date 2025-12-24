@@ -345,7 +345,7 @@ These are explicit non-goals to avoid scope creep:
 
    - [ ] Narrow locators to most relevant paragraph within chunk
    - [ ] Support line-level citations for code/markdown
-   - [ ] Highlight matching terms in output
+   - [x] Highlight matching terms in output
 
 4. **Date Confidence Logic**
 
