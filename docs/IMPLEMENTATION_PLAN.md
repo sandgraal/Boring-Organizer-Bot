@@ -73,7 +73,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Index documents, search with embeddings, return cited passages without generation.
 
-### Status: ✅ Scaffolding Complete
+### Status: ✅ Complete
 
 ### Features
 
@@ -85,7 +85,7 @@ These are explicit non-goals to avoid scope creep:
    - [x] Excel parser with sheet locators
    - [x] Recipe YAML/JSON parser
    - [x] Git repository docs parser
-   - [ ] Validate all parsers produce consistent locator format
+   - [x] Validate all parsers produce consistent locator format
 
 2. **Chunking**
 
@@ -140,7 +140,7 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] All parsers tested with real documents
+- [x] All parsers tested with real documents
 - [x] Search returns results for indexed content
 - [x] Citations are accurate and verifiable
 - [x] CLI commands documented in README
