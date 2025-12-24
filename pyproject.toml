@@ -121,6 +121,8 @@ module = [
     "pypdf",
     "docx",
     "git",
+    "openpyxl",
+    "openpyxl.*",
 ]
 ignore_missing_imports = true
 
