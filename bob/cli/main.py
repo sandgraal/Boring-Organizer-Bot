@@ -637,6 +637,152 @@ def list_decisions(
         sys.exit(1)
 
 
+@cli.command("decision")
+@click.argument("decision_id", type=int)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output as JSON",
+)
+def show_decision(decision_id: int, output_json: bool) -> None:
+    """Show details for a specific decision.
+
+    DECISION_ID: ID of the decision to show.
+    """
+    import json
+
+    from rich.panel import Panel
+
+    from bob.extract.decisions import get_decision
+
+    try:
+        decision = get_decision(decision_id)
+
+        if not decision:
+            console.print(f"[red]Decision {decision_id} not found.[/]")
+            sys.exit(1)
+
+        if output_json:
+            output = {
+                "id": decision.id,
+                "decision_text": decision.decision_text,
+                "context": decision.context,
+                "decision_type": decision.decision_type,
+                "status": decision.status,
+                "superseded_by": decision.superseded_by,
+                "confidence": decision.confidence,
+                "source_path": decision.source_path,
+                "project": decision.project,
+                "decision_date": decision.decision_date.isoformat() if decision.decision_date else None,
+                "extracted_at": decision.extracted_at.isoformat(),
+            }
+            console.print(json.dumps(output, indent=2))
+        else:
+            # Color based on status
+            status_color = {
+                "active": "green",
+                "superseded": "yellow",
+                "deprecated": "red",
+            }.get(decision.status, "dim")
+
+            console.print(f"[bold blue]Decision #{decision.id}[/]\n")
+
+            # Main decision text
+            console.print(Panel(decision.decision_text, title="Decision"))
+
+            # Metadata
+            console.print(f"\n[bold]Type:[/] {decision.decision_type or 'Not classified'}")
+            console.print(f"[bold]Status:[/] [{status_color}]{decision.status}[/]")
+            console.print(f"[bold]Confidence:[/] {decision.confidence:.0%}")
+
+            if decision.superseded_by:
+                console.print(f"[bold]Superseded by:[/] Decision #{decision.superseded_by}")
+
+            # Context
+            if decision.context:
+                console.print(f"\n[bold]Context:[/]")
+                console.print(Panel(decision.context, border_style="dim"))
+
+            # Source info
+            console.print(f"\n[bold]Source:[/] {decision.source_path or 'Unknown'}")
+            console.print(f"[bold]Project:[/] {decision.project or 'None'}")
+
+            if decision.decision_date:
+                console.print(f"[bold]Decision Date:[/] {decision.decision_date.date()}")
+
+            console.print(f"[bold]Extracted:[/] {decision.extracted_at.strftime('%Y-%m-%d %H:%M')}")
+
+    except Exception as e:
+        console.print(f"[red]Error showing decision:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
+
+
+@cli.command("supersede")
+@click.argument("old_id", type=int)
+@click.argument("new_id", type=int)
+@click.option(
+    "--reason",
+    "-r",
+    default=None,
+    help="Reason for supersession",
+)
+def supersede_decision_cmd(old_id: int, new_id: int, reason: str | None) -> None:
+    """Mark a decision as superseded by another.
+
+    OLD_ID: ID of the decision being superseded.
+    NEW_ID: ID of the newer decision that replaces it.
+    """
+    from bob.extract.decisions import get_decision, supersede_decision
+
+    try:
+        old = get_decision(old_id)
+        new = get_decision(new_id)
+
+        if not old:
+            console.print(f"[red]Decision {old_id} not found.[/]")
+            sys.exit(1)
+
+        if not new:
+            console.print(f"[red]Decision {new_id} not found.[/]")
+            sys.exit(1)
+
+        if old.status == "superseded":
+            console.print(f"[yellow]Decision {old_id} is already superseded.[/]")
+            sys.exit(1)
+
+        # Show what we're doing
+        console.print("[bold blue]Superseding decision...[/]\n")
+
+        old_text = old.decision_text[:60] + "..." if len(old.decision_text) > 60 else old.decision_text
+        new_text = new.decision_text[:60] + "..." if len(new.decision_text) > 60 else new.decision_text
+
+        console.print(f"[yellow]Old:[/] #{old_id}: {old_text}")
+        console.print(f"[green]New:[/] #{new_id}: {new_text}")
+
+        if reason:
+            console.print(f"[dim]Reason:[/] {reason}")
+
+        if click.confirm("\nProceed with supersession?", default=True):
+            result = supersede_decision(old_id, new_id, reason)
+
+            if result:
+                console.print(f"\n[green]✓[/] Decision #{old_id} is now superseded by #{new_id}")
+            else:
+                console.print(f"[red]Failed to supersede decision.[/]")
+                sys.exit(1)
+        else:
+            console.print("[dim]Cancelled.[/]")
+
+    except Exception as e:
+        console.print(f"[red]Error superseding decision:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
+
+
 @cli.group()
 def eval() -> None:
     """Evaluation commands for measuring retrieval quality."""
