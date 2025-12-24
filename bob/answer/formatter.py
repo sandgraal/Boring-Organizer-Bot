@@ -6,9 +6,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
 from rich.text import Text
 
 from bob.config import get_config
@@ -177,45 +174,44 @@ def format_answer(query: str, results: list["SearchResult"]) -> str:
         results: Search results.
 
     Returns:
-        Formatted answer string (for Rich console output).
+        Rich console group for display.
     """
-    console = Console(force_terminal=True, width=100)
+    from rich.console import Group
+    from rich.rule import Rule
 
-    # Build output
-    output_parts = []
+    config = get_config()
+    renderables = []
 
     # Header
-    output_parts.append("[bold]Answer based on retrieved documents:[/]\n")
+    header = Text("Answer based on retrieved documents:", style="bold")
+    renderables.append(header)
 
     # Note about generation
-    config = get_config()
     if not config.llm.enabled:
-        output_parts.append(
-            "[dim](LLM generation disabled - showing retrieved passages)[/]\n\n"
-        )
+        note = Text("(LLM generation disabled - showing retrieved passages)", style="dim")
+        renderables.append(note)
+        renderables.append(Text())
 
     # Top result as primary answer
     if results:
         top = results[0]
-        output_parts.append("[bold cyan]Most Relevant:[/]\n")
-        output_parts.append(f"[italic]{top.content[:500]}{'...' if len(top.content) > 500 else ''}[/]\n\n")
+        renderables.append(Text("Most Relevant:", style="bold cyan"))
+        content_preview = top.content[:500] + ('...' if len(top.content) > 500 else '')
+        renderables.append(Text(content_preview, style="italic"))
+        renderables.append(Text())
 
     # Sources section
-    output_parts.append("[bold]Sources:[/]\n")
+    renderables.append(Text("Sources:", style="bold"))
 
-    # Build source text
-    with console.capture() as capture:
-        for i, result in enumerate(results, start=1):
-            citation = format_citation(result, i)
-            console.print(citation, end="")
-
-    output_parts.append(capture.get())
+    for i, result in enumerate(results, start=1):
+        citation = format_citation(result, i)
+        renderables.append(citation)
 
     # Quality gate: remind about citation requirement
-    output_parts.append("\n[dim]────────────────────────────────────────[/]\n")
-    output_parts.append("[dim italic]All claims above are grounded in the cited sources.[/]")
+    renderables.append(Rule(style="dim"))
+    renderables.append(Text("All claims above are grounded in the cited sources.", style="dim italic"))
 
-    return "\n".join(output_parts)
+    return Group(*renderables)
 
 
 def format_answer_plain(query: str, results: list["SearchResult"]) -> str:

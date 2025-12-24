@@ -318,8 +318,9 @@ class Database:
                 token_count,
             ),
         )
+        chunk_id = cursor.fetchone()[0]
         self.conn.commit()
-        return cursor.fetchone()[0]
+        return chunk_id
 
     def insert_embedding(
         self, chunk_id: int, embedding: "npt.NDArray[np.float32]"
