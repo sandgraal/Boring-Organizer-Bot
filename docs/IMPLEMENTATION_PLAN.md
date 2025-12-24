@@ -458,7 +458,7 @@ These are explicit non-goals to avoid scope creep:
 - [x] Decisions extracted from test corpus with >80% precision
 - [x] Full CRUD for decision lifecycle
 - [x] Supersession relationships tracked
-- [ ] Documentation and examples for decision formats
+- [x] Documentation and examples for decision formats
 
 ---
 

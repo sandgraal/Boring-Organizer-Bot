@@ -131,3 +131,33 @@ See [bob.yaml.example](../bob.yaml.example) for all options.
 Decision extraction is implemented in `bob/extract/decisions.py` and
 `bob/extract/patterns.py`. To extend coverage, add or tune patterns and
 update `tests/test_decisions.py` to validate new formats.
+
+#### Supported decision formats (examples)
+
+The extractor looks for explicit markers and common decision language.
+
+```md
+# ADR-003: Use SQLite for local storage
+## Status
+Accepted
+## Context
+We need a local database with zero setup.
+## Decision
+We will use SQLite for local storage.
+```
+
+```md
+## Meeting Notes 2025-01-15
+Decision: We will deploy weekly on Tuesdays.
+Agreed: Rotate on-call weekly.
+```
+
+```md
+We decided to use PostgreSQL instead of MySQL for reliability.
+```
+
+Rejected alternatives are captured when phrases like "Rejected:", "considered X
+but decided against", "instead of", "rather than", or "not X" appear.
+
+Decision dates currently come from document metadata (`source_date`) and are not
+parsed from inline text.
