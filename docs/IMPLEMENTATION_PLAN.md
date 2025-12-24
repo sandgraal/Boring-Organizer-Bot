@@ -91,7 +91,7 @@ These are explicit non-goals to avoid scope creep:
 
    - [x] Token-based chunking with overlap
    - [x] Preserve locator information across chunks
-   - [ ] Add chunk quality validation (min content, no boilerplate)
+   - [x] Add chunk quality validation (min content, no boilerplate)
 
 3. **Storage**
 
@@ -104,13 +104,13 @@ These are explicit non-goals to avoid scope creep:
 
    - [x] Vector similarity search
    - [x] Project filtering
-   - [ ] Return "No results" gracefully when nothing matches
+   - [x] Return "No results" gracefully when nothing matches
 
 5. **Output**
    - [x] Citation formatting with locators
    - [x] Date confidence levels
    - [x] "May be outdated" warnings
-   - [ ] Machine-readable JSON output option
+   - [x] Machine-readable JSON output option
 
 ### Acceptance Criteria
 
@@ -141,10 +141,10 @@ These are explicit non-goals to avoid scope creep:
 ### Definition of Done
 
 - [ ] All parsers tested with real documents
-- [ ] Search returns results for indexed content
-- [ ] Citations are accurate and verifiable
-- [ ] CLI commands documented in README
-- [ ] No regressions in `make check`
+- [x] Search returns results for indexed content
+- [x] Citations are accurate and verifiable
+- [x] CLI commands documented in README
+- [x] No regressions in `make check`
 
 ---
 
