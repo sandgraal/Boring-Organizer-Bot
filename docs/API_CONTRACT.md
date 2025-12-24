@@ -139,15 +139,22 @@ Submit a question and receive an answer with structured citations.
     "date_before": null,
     "language": null
   },
-  "top_k": 5
+  "top_k": 5,
+  "coach_mode_enabled": false
 }
 ```
+
+**Coach Mode:**
+
+- `coach_mode_enabled` is optional; if omitted, server uses persisted settings.
 
 **Response:**
 
 ```json
 {
   "answer": "To configure logging, edit the `config.yaml` file [1] and set the `log_level` field to your desired level [2].",
+  "coach_mode_enabled": false,
+  "suggestions": [],
   "sources": [
     {
       "id": 1,
@@ -196,11 +203,26 @@ Submit a question and receive an answer with structured citations.
 }
 ```
 
+**Coach Mode fields:**
+
+- `coach_mode_enabled` reflects the effective mode used for the response.
+- `suggestions` is empty when Coach Mode is disabled or no suggestions pass gates.
+
 **Not Found Response:**
 
 ```json
 {
   "answer": null,
+  "coach_mode_enabled": true,
+  "suggestions": [
+    {
+      "id": "sug_coverage_gaps_8f2a",
+      "type": "coverage_gaps",
+      "text": "Index the project notes that cover logging configuration and tag them under the relevant project.",
+      "why": "No sources matched this query, so adding or indexing coverage will enable grounded answers.",
+      "hypothesis": true
+    }
+  ],
   "sources": [],
   "footer": {
     "source_count": 0,
@@ -476,6 +498,69 @@ Get detailed information about a single document.
 
 ---
 
+### Settings Endpoints
+
+#### `GET /settings`
+
+Return persisted user settings, including Coach Mode defaults.
+
+**Response:**
+
+```json
+{
+  "coach_mode_default": "boring",
+  "per_project_mode": {
+    "docs": "coach",
+    "work": "boring"
+  },
+  "coach_cooldown_days": 7
+}
+```
+
+---
+
+#### `PUT /settings`
+
+Update persisted user settings.
+
+**Request:**
+
+```json
+{
+  "coach_mode_default": "coach",
+  "per_project_mode": {
+    "docs": "coach",
+    "work": "boring"
+  },
+  "coach_cooldown_days": 7
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true
+}
+```
+
+---
+
+#### `POST /suggestions/{suggestion_id}/dismiss`
+
+Record a dismissal to enforce cooldown rules.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "cooldown_until": "2026-01-01T00:00:00Z"
+}
+```
+
+---
+
 ### Decision Endpoints
 
 #### `GET /decisions`
@@ -743,6 +828,46 @@ interface Source {
 }
 ```
 
+#### `CoachMode`
+
+```typescript
+type CoachMode = "boring" | "coach";
+```
+
+#### `SuggestionType`
+
+```typescript
+type SuggestionType =
+  | "capture_hygiene"
+  | "staleness"
+  | "coverage_gaps"
+  | "system_improvements"
+  | "workflow_nudges";
+```
+
+#### `CoachSuggestion`
+
+```typescript
+interface CoachSuggestion {
+  id: string; // suggestion_fingerprint
+  type: SuggestionType;
+  text: string;
+  why: string;
+  hypothesis: boolean;
+  citations?: Source[];
+}
+```
+
+#### `CoachSettings`
+
+```typescript
+interface CoachSettings {
+  coach_mode_default: CoachMode;
+  per_project_mode: Record<string, CoachMode>;
+  coach_cooldown_days: number;
+}
+```
+
 #### `AnswerFooter`
 
 ```typescript
@@ -811,7 +936,8 @@ curl -X POST http://localhost:8080/ask \
     "filters": {
       "projects": ["docs"]
     },
-    "top_k": 3
+    "top_k": 3,
+    "coach_mode_enabled": false
   }'
 ```
 
@@ -820,6 +946,8 @@ curl -X POST http://localhost:8080/ask \
 ```json
 {
   "answer": "Based on the architectural decisions [1], you should use SQLite for all local storage. It was chosen for its portability and zero-config operation [1]. The database schema is documented in the data model [2].",
+  "coach_mode_enabled": false,
+  "suggestions": [],
   "sources": [
     {
       "id": 1,

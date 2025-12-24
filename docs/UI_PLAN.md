@@ -145,6 +145,8 @@ The main interface for querying knowledge.
   - Large query input with submit button
   - Answer text with inline citation markers
   - Mandatory footer: Sources count, Date confidence, Outdated warning
+  - Coach Mode toggle (per-session) with current mode label
+  - Suggestions (Coach Mode) section appears only when enabled
 
 - **Sources Panel (Right)**
   - Numbered source cards
@@ -314,6 +316,16 @@ Monitor and trigger indexing jobs.
 - Error log for failed files
 - Job history
 
+### 6. Settings / Preferences
+
+Manage Coach Mode defaults and per-project preferences.
+
+**Elements:**
+
+- Global default mode: Boring B.O.B / Coach Mode
+- Per-project overrides (toggle per project)
+- Cooldown info and "Show anyway" override toggle
+
 ---
 
 ## Required UI Behaviors
@@ -397,6 +409,35 @@ During active indexing job:
 | `1-9`       | Open source 1-9           |
 | `Cmd+K`     | Quick navigation          |
 
+### 6. Coach Mode Toggle and Suggestions
+
+**Toggle placement (Ask screen):**
+
+- Visible toggle near the query input or header
+- Shows current mode: "Boring B.O.B" or "Coach Mode"
+- Default is Boring B.O.B (neutral)
+
+**Settings behavior:**
+
+- Persisted setting for global default
+- Per-project preference toggle
+- Changes take effect on next query
+
+**Suggestion rendering:**
+
+- Appears only when Coach Mode is enabled
+- Rendered in a distinct "Suggestions (Coach Mode)" section after the mandatory footer
+- Each suggestion shows:
+  - Short actionable text (1-3 sentences)
+  - "Why" line
+  - Citation markers if evidence-backed, otherwise "Hypothesis" label
+- Max 3 suggestions per response
+
+**Dismiss / feedback:**
+
+- "Dismiss" button logs cooldown for that suggestion type
+- Optional "Show anyway" link to override cooldown
+
 ---
 
 ## Component List
@@ -417,6 +458,8 @@ During active indexing job:
 | `QueryInput`    | Search input with submit                 | Ask       |
 | `AnswerDisplay` | Answer text with citation markers        | Ask       |
 | `AnswerFooter`  | Sources count, date confidence, warnings | Ask       |
+| `CoachToggle`   | Mode toggle (boring/coach)               | Ask       |
+| `CoachSuggestions` | Suggestions list + dismissal UI       | Ask       |
 | `SourceCard`    | Individual source with metadata + open   | Ask       |
 | `SourceList`    | Scrollable list of SourceCards           | Ask       |
 | `DocumentCard`  | Document summary in library              | Library   |
@@ -438,6 +481,7 @@ During active indexing job:
 | `Toast`      | Notification messages       | Multiple |
 | `Modal`      | Dialog overlay              | Details  |
 | `Tooltip`    | Hover information           | Multiple |
+| `SettingsPanel` | Preferences and per-project toggles | Settings |
 
 ---
 
@@ -452,6 +496,7 @@ During active indexing job:
 | `/recipes`     | `RecipesPage`   | Browse structured recipes |
 | `/recipes/:id` | `RecipePage`    | Single recipe details     |
 | `/indexing`    | `IndexingPage`  | Indexing dashboard        |
+| `/settings`    | `SettingsPage`  | Preferences and Coach Mode |
 
 **Note:** All routes are client-side. The server serves `index.html` for all paths and JS handles routing.
 
@@ -568,6 +613,8 @@ These criteria must pass for Phase 3 to be complete:
 | UI-08 | All pages load in <2 seconds on first visit                 | Performance test |
 | UI-09 | Keyboard shortcut `/` focuses query input                   | Unit test        |
 | UI-10 | Dark mode toggle works and persists                         | Manual test      |
+| UI-11 | Coach toggle only shows suggestions when enabled            | E2E test         |
+| UI-12 | Per-project Coach preference persists across sessions       | Integration test |
 
 ### Not Just a Skin
 
@@ -597,6 +644,8 @@ The UI is considered successful only if:
 | `test_ask_flow`    | Query → API call → Answer render → Source display |
 | `test_index_flow`  | Start job → Poll progress → Completion toast      |
 | `test_open_source` | Click source → `/open` call → Verify instruction  |
+| `test_coach_mode`  | Toggle Coach Mode → Suggestions render/dismiss    |
+| `test_settings`    | Persist Coach Mode defaults and per-project prefs |
 
 ### E2E Tests (Playwright or similar)
 

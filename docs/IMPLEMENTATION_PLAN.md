@@ -4,7 +4,7 @@
 
 **Last Updated:** 2025-12-23  
 **Status:** Active  
-**Version:** 2.0.0
+**Version:** 2.1.0
 
 ---
 
@@ -16,12 +16,13 @@
 4. [Phase 1: Core Retrieval](#phase-1-core-retrieval)
 5. [Phase 2: Local API Server](#phase-2-local-api-server)
 6. [Phase 3: Web Interface](#phase-3-web-interface)
-7. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
-8. [Phase 5: Decision Layer](#phase-5-decision-layer)
-9. [Phase 6: Optional Generation](#phase-6-optional-generation)
-10. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
-11. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
-12. [Timeline Overview](#timeline-overview)
+7. [Track: Coach Mode (Opt-in)](#track-coach-mode-opt-in)
+8. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
+9. [Phase 5: Decision Layer](#phase-5-decision-layer)
+10. [Phase 6: Optional Generation](#phase-6-optional-generation)
+11. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
+12. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
+13. [Timeline Overview](#timeline-overview)
 
 ---
 
@@ -46,6 +47,7 @@ These are intentionally simple choices that prioritize reliability over sophisti
 | Chunking   | 512 tokens, 50 overlap | Standard for retrieval, not too fragmented         |
 | Search     | Pure vector similarity | Simple, deterministic, debuggable                  |
 | Output     | Plain text + citations | Machine-readable, no formatting magic              |
+| Mode       | Boring B.O.B (neutral) | Trust-first default; Coach Mode is opt-in          |
 | LLM        | None (Phase 1-5)       | Retrieval is the hard part; generation is optional |
 | Interface  | Local web UI           | Browser-native, no build step, inspectable         |
 | API        | Local HTTP only        | FastAPI, single-process, manual start              |
@@ -317,6 +319,82 @@ These are explicit non-goals to avoid scope creep:
 - [x] Answer footer appears on every query result
 - [x] UI documented in UI_PLAN.md
 - [x] No external network requests (fully local)
+
+---
+
+## Track: Coach Mode (Opt-in)
+
+**Goal:** Add an optional, non-intrusive coaching layer that provides bounded suggestions without weakening grounded answers.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 3 complete (baseline Ask flow with citations-first footer) ✅
+
+### Features
+
+1. **Mode + UX Controls**
+
+   - [ ] Default mode is **Boring B.O.B** (neutral, no unsolicited suggestions)
+   - [ ] Coach Mode is opt-in per session (Ask screen toggle)
+   - [ ] Persisted setting with per-project overrides
+
+2. **Suggestion Engine (Deterministic)**
+
+   - [ ] Generate suggestions from retrieval metadata, indexing stats, and decision gaps
+   - [ ] No LLM required for Phase 1; deterministic rules only
+   - [ ] Optional LLM-assisted phrasing later, post-filtered
+
+3. **Output Constraints**
+
+   - [ ] Suggestions never alter the grounded answer
+   - [ ] Suggestions appear only in a separate "Suggestions (Coach Mode)" section
+   - [ ] Max 3 suggestions, each with a "Why" line
+
+4. **Gating + Cooldowns**
+
+   - [ ] Respect gating rules (low confidence, low source count, not-found)
+   - [ ] Cooldown per suggestion type per project (default 7 days)
+
+5. **Storage**
+
+   - [ ] Persist user settings (global + per-project)
+   - [ ] Log suggestion fingerprints to prevent repeats
+
+### Acceptance Criteria
+
+- [ ] Coach Mode off yields zero suggestions
+- [ ] Coach Mode on shows suggestions in a separate section (max 3)
+- [ ] Suggestions never violate citation rules or alter base answer
+- [ ] "Not found in sources" answers only get coverage/capture suggestions
+- [ ] Cooldown prevents repeated suggestions within the configured window
+- [ ] Default mode remains Boring B.O.B across sessions and projects
+
+### Test Plan
+
+| Test                      | Description                                               | File                         |
+| ------------------------- | --------------------------------------------------------- | ---------------------------- |
+| Unit: Gating rules        | Coach rules enforce limits by confidence/source count     | `tests/test_coach_rules.py`  |
+| Unit: Cooldown            | Repeated suggestions suppressed within cooldown window    | `tests/test_coach_rules.py`  |
+| Integration: Low confidence | LOW confidence answers return at most 1 suggestion       | `tests/test_api_ask.py`      |
+| Integration: No sources   | Not-found answers only return coverage suggestions        | `tests/test_api_ask.py`      |
+| UI: Toggle + settings     | Toggle controls per-session and per-project persistence   | Manual + E2E                 |
+
+### Risks
+
+| Risk                                 | Impact                         | Mitigation                                  |
+| ------------------------------------ | ------------------------------ | ------------------------------------------- |
+| Suggestions feel nagging or noisy    | User distrust                  | Cooldowns + max 3 + opt-in only             |
+| Suggestions drift into speculation   | Trustworthiness compromised    | Evidence-only or labeled hypothesis + gates |
+| UI clutter reduces readability       | Answer harder to verify        | Separate section after required footer      |
+
+### Definition of Done
+
+- [ ] Coach Mode is opt-in with persisted per-project settings
+- [ ] Suggestions are bounded, deterministic, and citation-safe
+- [ ] Cooldowns prevent repeated prompts within 7 days
+- [ ] Documentation in COACH_MODE_SPEC.md complete
 
 ---
 
@@ -614,6 +692,7 @@ These are explicit non-goals to avoid scope creep:
 | **Phase 1** | Core Retrieval          | —             | 2-3 weeks     |
 | **Phase 2** | Local API Server        | Phase 1       | 1-2 weeks     |
 | **Phase 3** | Web Interface           | Phase 2       | 2-3 weeks     |
+| **Track**   | Coach Mode (Opt-in)     | Phase 3       | 1-2 weeks     |
 | **Phase 4** | Better Retrieval        | Phase 1       | 2 weeks       |
 | **Phase 5** | Decision Layer          | Phase 1       | 2-3 weeks     |
 | **Phase 6** | Optional Generation     | Phase 4       | 2 weeks       |
@@ -622,7 +701,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Critical Path:** Phase 1 → Phase 2 → Phase 3 (delivers usable UI)
 
-Phases 4, 5, and 7 can proceed in parallel after Phase 1.
+Track: Coach Mode can proceed after Phase 3 and in parallel with Phases 4, 5, and 7.
 Phase 8 is optional and only triggered if desktop packaging is needed.
 
 ---
@@ -757,6 +836,7 @@ bob/
 - [conventions.md](conventions.md) — Code style and conventions
 - [UI_PLAN.md](UI_PLAN.md) — UI design and screens
 - [API_CONTRACT.md](API_CONTRACT.md) — API endpoint specifications
+- [COACH_MODE_SPEC.md](COACH_MODE_SPEC.md) — Coach Mode requirements
 
 **Date Confidence:** HIGH (document created 2025-12-23)
 
