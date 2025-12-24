@@ -37,6 +37,7 @@ def mock_coach_db():
     mock_db = MagicMock()
     mock_db.get_user_settings.return_value = {
         "global_mode_default": "boring",
+        "coach_mode_default": "boring",
         "per_project_mode": {},
         "coach_cooldown_days": 7,
     }

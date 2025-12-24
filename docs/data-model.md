@@ -193,6 +193,9 @@ Coach Mode preferences (single-row table).
 | coach_cooldown_days | INTEGER | Default cooldown window in days          |
 | updated_at          | TEXT    | Last update timestamp                    |
 
+> **Note:** The API exposes this setting as `coach_mode_default` (see `CoachSettings`)
+> while the database stores it as `global_mode_default`.
+
 ### coach_suggestion_log
 
 Suggestion log for cooldown enforcement.

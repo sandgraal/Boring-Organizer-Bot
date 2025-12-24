@@ -603,6 +603,7 @@ class Database:
         if row is None:
             return {
                 "global_mode_default": "boring",
+                "coach_mode_default": "boring",
                 "per_project_mode": {},
                 "coach_cooldown_days": 7,
             }
@@ -612,8 +613,10 @@ class Database:
         except (TypeError, json.JSONDecodeError):
             per_project = {}
 
+        global_default = row["global_mode_default"] or "boring"
         return {
-            "global_mode_default": row["global_mode_default"],
+            "global_mode_default": global_default,
+            "coach_mode_default": global_default,
             "per_project_mode": per_project,
             "coach_cooldown_days": int(row["coach_cooldown_days"]),
         }
@@ -653,6 +656,7 @@ class Database:
 
         return {
             "global_mode_default": new_global,
+            "coach_mode_default": new_global,
             "per_project_mode": new_per_project,
             "coach_cooldown_days": int(new_cooldown),
         }

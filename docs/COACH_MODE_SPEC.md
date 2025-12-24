@@ -145,6 +145,7 @@ Store Coach Mode preferences (table or config file).
 Required fields:
 
 - `global_mode_default`: `"boring"` | `"coach"`
+  - Exposed in the API as `coach_mode_default` for UI/state consistency.
 - `per_project_mode`: map of `project -> "boring" | "coach"`
 
 ### `coach_suggestion_log`
