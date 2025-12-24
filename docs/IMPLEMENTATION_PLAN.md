@@ -2,7 +2,7 @@
 
 > A phased roadmap for building a local-first, citation-grounded knowledge assistant with a beautiful interface.
 
-**Last Updated:** 2024-12-23  
+**Last Updated:** 2025-12-23  
 **Status:** Active  
 **Version:** 2.0.0
 
@@ -233,7 +233,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Ship a beautiful, citation-first local web UI that makes B.O.B accessible without CLI.
 
-### Status: � In Progress
+### Status: ✅ Complete
 
 ### Prerequisites
 
@@ -257,17 +257,12 @@ These are explicit non-goals to avoid scope creep:
    - [x] **Library/Browse**
      - Document list with filters (project, type, date)
      - Document preview with chunk breakdown
-   - [ ] **Decisions View** (Phase 5 dependency)
-     - List of extracted decisions
-     - Status badges (active/superseded)
-     - Click to view source context
-   - [ ] **Recipes View** (Phase 5 dependency)
-     - Structured recipe cards
-     - Ingredient and instruction display
    - [x] **Indexing Dashboard**
      - Current job progress
      - History of indexed paths
      - Error log display
+
+   > **Note:** Decisions View and Recipes View will be added when Phase 5 (Decision Layer) is implemented. These are enhancement features, not blockers for Phase 3 completion.
 
 3. **Citation Behaviors**
 
@@ -762,7 +757,7 @@ bob/
 - [UI_PLAN.md](UI_PLAN.md) — UI design and screens
 - [API_CONTRACT.md](API_CONTRACT.md) — API endpoint specifications
 
-**Date Confidence:** HIGH (document created 2024-12-23)
+**Date Confidence:** HIGH (document created 2025-12-23)
 
 ---
 
