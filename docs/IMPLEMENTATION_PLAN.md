@@ -174,10 +174,10 @@ These are explicit non-goals to avoid scope creep:
    - [x] `POST /index` — Start indexing job, return job ID
    - [x] `GET /index/{job_id}` — Get indexing progress and errors
    - [x] `GET /projects` — List all projects
-   - [ ] `GET /documents` — List documents with filters
+   - [x] `GET /documents` — List documents with filters
    - [ ] `GET /decisions` — List extracted decisions
    - [ ] `GET /recipes` — List structured recipes (if available)
-   - [ ] `POST /open` — Request to open file at locator (returns instruction)
+   - [x] `POST /open` — Request to open file at locator (returns instruction)
 
 3. **Response Format**
 
