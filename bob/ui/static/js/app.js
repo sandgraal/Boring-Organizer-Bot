@@ -15,6 +15,9 @@
     documentLimit: 20,
     currentJobId: null,
     jobPollInterval: null,
+    settings: null,
+    coachModeOverride: null,
+    lastAsk: null,
   };
 
   // DOM Elements
@@ -28,6 +31,7 @@
     setupEventListeners();
     setupNavigation();
     await loadProjects();
+    await loadSettings();
 
     // Check if we have a hash route
     const hash = window.location.hash.slice(1) || "ask";
@@ -55,6 +59,12 @@
     elements.dateConfidence = document.getElementById("date-confidence");
     elements.outdatedWarningContainer = document.getElementById(
       "outdated-warning-container"
+    );
+    elements.coachToggle = document.getElementById("coach-toggle");
+    elements.coachModeStatus = document.getElementById("coach-mode-status");
+    elements.coachSuggestions = document.getElementById("coach-suggestions");
+    elements.coachSuggestionsList = document.getElementById(
+      "coach-suggestions-list"
     );
     elements.notFoundState = document.getElementById("not-found-state");
     elements.notFoundQuery = document.getElementById("not-found-query");
@@ -87,6 +97,19 @@
     elements.resultFiles = document.getElementById("result-files");
     elements.resultChunks = document.getElementById("result-chunks");
     elements.jobErrors = document.getElementById("job-errors");
+
+    // Settings page
+    elements.settingsDefaultMode = document.getElementById(
+      "settings-coach-default"
+    );
+    elements.settingsCooldown = document.getElementById(
+      "settings-coach-cooldown"
+    );
+    elements.settingsProjectModes = document.getElementById(
+      "settings-project-modes"
+    );
+    elements.settingsSaveBtn = document.getElementById("settings-save-btn");
+    elements.settingsStatus = document.getElementById("settings-status");
   }
 
   /**
@@ -95,6 +118,8 @@
   function setupEventListeners() {
     // Ask form
     elements.askForm.addEventListener("submit", handleAskSubmit);
+    elements.projectFilters?.addEventListener("change", handleProjectFilterChange);
+    elements.coachToggle?.addEventListener("change", handleCoachToggle);
 
     // Library filters
     elements.libraryProjectFilter?.addEventListener(
@@ -110,6 +135,9 @@
 
     // Index form
     elements.indexForm?.addEventListener("submit", handleIndexSubmit);
+
+    // Settings save
+    elements.settingsSaveBtn?.addEventListener("click", handleSettingsSave);
   }
 
   /**
@@ -155,6 +183,9 @@
     // Page-specific initialization
     if (page === "library") {
       loadDocuments();
+    }
+    if (page === "settings") {
+      loadSettings();
     }
   }
 
@@ -214,6 +245,143 @@
   }
 
   /**
+   * Load Coach Mode settings.
+   */
+  async function loadSettings() {
+    if (!elements.settingsDefaultMode) return;
+
+    try {
+      const settings = await API.getSettings();
+      state.settings = settings;
+      renderSettings();
+      syncCoachToggle();
+    } catch (err) {
+      console.error("Failed to load settings:", err);
+      if (elements.settingsStatus) {
+        elements.settingsStatus.textContent = "Failed to load settings.";
+      }
+    }
+  }
+
+  /**
+   * Render settings form values.
+   */
+  function renderSettings() {
+    if (!state.settings || !elements.settingsDefaultMode) return;
+
+    elements.settingsDefaultMode.value = state.settings.coach_mode_default;
+    elements.settingsCooldown.value = state.settings.coach_cooldown_days;
+
+    if (!elements.settingsProjectModes) return;
+
+    const perProject = state.settings.per_project_mode || {};
+    elements.settingsProjectModes.innerHTML = state.projects
+      .map((project) => {
+        const enabled = perProject[project] === "coach";
+        return `
+          <label class="checkbox-item">
+            <input type="checkbox" data-project="${escapeHtml(project)}" ${
+          enabled ? "checked" : ""
+        }>
+            <span>${escapeHtml(project)}</span>
+          </label>
+        `;
+      })
+      .join("");
+  }
+
+  /**
+   * Handle saving settings.
+   */
+  async function handleSettingsSave(e) {
+    e.preventDefault();
+    if (!elements.settingsDefaultMode) return;
+
+    const perProject = {};
+    elements.settingsProjectModes
+      ?.querySelectorAll('input[type="checkbox"][data-project]')
+      .forEach((checkbox) => {
+        const project = checkbox.dataset.project;
+        perProject[project] = checkbox.checked ? "coach" : "boring";
+      });
+
+    const payload = {
+      coach_mode_default: elements.settingsDefaultMode.value,
+      per_project_mode: perProject,
+      coach_cooldown_days: parseInt(elements.settingsCooldown.value, 10) || 7,
+    };
+
+    try {
+      await API.updateSettings(payload);
+      state.settings = payload;
+      state.coachModeOverride = null;
+      syncCoachToggle();
+      if (elements.settingsStatus) {
+        elements.settingsStatus.textContent = "Settings saved.";
+      }
+    } catch (err) {
+      if (elements.settingsStatus) {
+        elements.settingsStatus.textContent = "Failed to save settings.";
+      }
+    }
+  }
+
+  /**
+   * Resolve Coach Mode for current selection.
+   */
+  function resolveCoachMode() {
+    if (state.coachModeOverride !== null) {
+      return state.coachModeOverride;
+    }
+
+    const selectedProject = getSelectedProject();
+    const perProject = state.settings?.per_project_mode || {};
+    if (selectedProject && perProject[selectedProject]) {
+      return perProject[selectedProject] === "coach";
+    }
+
+    return state.settings?.coach_mode_default === "coach";
+  }
+
+  /**
+   * Sync Coach toggle with current settings.
+   */
+  function syncCoachToggle() {
+    if (!elements.coachToggle) return;
+    const enabled = resolveCoachMode();
+    elements.coachToggle.checked = enabled;
+    updateCoachStatus(enabled);
+  }
+
+  /**
+   * Update Coach toggle status label.
+   */
+  function updateCoachStatus(enabled) {
+    if (!elements.coachModeStatus) return;
+    elements.coachModeStatus.textContent = enabled
+      ? "Coach Mode"
+      : "Boring B.O.B";
+  }
+
+  /**
+   * Handle project filter change.
+   */
+  function handleProjectFilterChange() {
+    if (state.coachModeOverride === null) {
+      syncCoachToggle();
+    }
+  }
+
+  /**
+   * Handle Coach toggle change.
+   */
+  function handleCoachToggle(e) {
+    const enabled = e.target.checked;
+    state.coachModeOverride = enabled;
+    updateCoachStatus(enabled);
+  }
+
+  /**
    * Handle ask form submission.
    */
   async function handleAskSubmit(e) {
@@ -224,19 +392,36 @@
 
     // Get filters
     const filters = getAskFilters();
+    state.lastAsk = { query, filters };
 
+    await submitAsk({ query, filters, showAnyway: false });
+  }
+
+  /**
+   * Submit an ask request with optional overrides.
+   */
+  async function submitAsk({ query, filters, showAnyway }) {
     // Show loading state
     setAskLoading(true);
     hideAllStates();
 
     try {
-      const response = await API.ask(query, filters);
+      const coachModeEnabled = elements.coachToggle?.checked ?? false;
+      const response = await API.ask(
+        query,
+        filters,
+        5,
+        coachModeEnabled,
+        showAnyway
+      );
 
-      if (response.sources && response.sources.length > 0) {
-        renderAnswer(response);
+      if (response.footer?.not_found) {
+        renderNotFoundResponse(response, query);
       } else {
-        renderNotFound(query);
+        renderAnswer(response);
       }
+
+      renderCoachSuggestions(response);
     } catch (err) {
       renderError(err.message);
     } finally {
@@ -291,6 +476,10 @@
     elements.answerContent.classList.add("hidden");
     elements.notFoundState.classList.add("hidden");
     elements.errorState.classList.add("hidden");
+    elements.coachSuggestions?.classList.add("hidden");
+    if (elements.coachSuggestionsList) {
+      elements.coachSuggestionsList.innerHTML = "";
+    }
   }
 
   /**
@@ -310,9 +499,10 @@
     // Render footer
     elements.sourceCount.textContent = response.footer.source_count;
 
-    const confidence = response.footer.date_confidence.toLowerCase();
-    elements.dateConfidence.textContent = response.footer.date_confidence;
-    elements.dateConfidence.className = `confidence-badge ${confidence}`;
+    const confidenceValue = response.footer.date_confidence || "UNKNOWN";
+    const confidenceClass = confidenceValue.toLowerCase();
+    elements.dateConfidence.textContent = confidenceValue;
+    elements.dateConfidence.className = `confidence-badge ${confidenceClass}`;
 
     // Outdated warning
     if (response.footer.may_be_outdated) {
@@ -343,6 +533,135 @@
 
     // Show answer
     elements.answerContent.classList.remove("hidden");
+  }
+
+  /**
+   * Render a not-found response using the standard footer.
+   */
+  function renderNotFoundResponse(response, query) {
+    const message =
+      response.footer?.not_found_message || "Not found in sources.";
+    elements.answerText.textContent = `${message} Query: "${query}"`;
+
+    elements.sourceCount.textContent = response.footer?.source_count || 0;
+    elements.dateConfidence.textContent = "UNKNOWN";
+    elements.dateConfidence.className = "confidence-badge unknown";
+    elements.outdatedWarningContainer.innerHTML = "";
+
+    renderSources([]);
+    elements.answerContent.classList.remove("hidden");
+  }
+
+  /**
+   * Render Coach Mode suggestions.
+   */
+  function renderCoachSuggestions(response) {
+    if (!elements.coachSuggestions || !elements.coachSuggestionsList) return;
+
+    if (!response.coach_mode_enabled) {
+      elements.coachSuggestions.classList.add("hidden");
+      return;
+    }
+
+    const suggestions = response.suggestions || [];
+    const selectedProject = getSelectedProject();
+
+    if (suggestions.length === 0) {
+      elements.coachSuggestionsList.innerHTML = `
+        <li class="coach-suggestion-empty">
+          No suggestions available.
+          <button class="btn btn-secondary btn-sm" id="coach-show-anyway">
+            Show anyway
+          </button>
+        </li>
+      `;
+      const showAnywayBtn = document.getElementById("coach-show-anyway");
+      showAnywayBtn?.addEventListener("click", handleCoachShowAnyway);
+      elements.coachSuggestions.classList.remove("hidden");
+      return;
+    }
+
+    elements.coachSuggestionsList.innerHTML = suggestions
+      .map((suggestion) => {
+        const citations = suggestion.citations || [];
+        const citationText =
+          citations.length > 0
+            ? `Citations: ${citations.map((c) => c.id).join(", ")}`
+            : "";
+        const hypothesis = suggestion.hypothesis
+          ? '<span class="coach-hypothesis">Hypothesis</span>'
+          : "";
+        return `
+          <li class="coach-suggestion-item">
+            <div class="coach-suggestion-text">${escapeHtml(
+              suggestion.text
+            )}</div>
+            <div class="coach-suggestion-why">Why: ${escapeHtml(
+              suggestion.why
+            )}</div>
+            <div class="coach-suggestion-meta">
+              ${hypothesis}
+              ${
+                citationText
+                  ? `<span class="coach-citations">${escapeHtml(
+                      citationText
+                    )}</span>`
+                  : ""
+              }
+            </div>
+            <button class="btn btn-secondary btn-sm coach-dismiss" data-id="${
+              suggestion.id
+            }" data-type="${suggestion.type}" data-project="${escapeHtml(
+              selectedProject || ""
+            )}">
+              Dismiss
+            </button>
+          </li>
+        `;
+      })
+      .join("");
+
+    elements.coachSuggestions
+      .querySelectorAll(".coach-dismiss")
+      .forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const suggestionId = btn.dataset.id;
+          const suggestionType = btn.dataset.type;
+          const project = btn.dataset.project || null;
+          try {
+            await API.dismissSuggestion(suggestionId, {
+              suggestion_type: suggestionType,
+              project,
+            });
+            btn.closest(".coach-suggestion-item")?.remove();
+          } catch (err) {
+            console.error("Failed to dismiss suggestion:", err);
+          }
+        });
+      });
+
+    elements.coachSuggestions.classList.remove("hidden");
+  }
+
+  /**
+   * Get the first selected project (if any).
+   */
+  function getSelectedProject() {
+    const checked = document.querySelectorAll('input[name="project"]:checked');
+    return checked.length > 0 ? checked[0].value : null;
+  }
+
+  /**
+   * Handle "Show anyway" for Coach Mode.
+   */
+  async function handleCoachShowAnyway(e) {
+    e.preventDefault();
+    if (!state.lastAsk) return;
+    await submitAsk({
+      query: state.lastAsk.query,
+      filters: state.lastAsk.filters,
+      showAnyway: true,
+    });
   }
 
   /**

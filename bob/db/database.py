@@ -573,6 +573,144 @@ class Database:
             "has_vec": self.has_vec,
         }
 
+    # Coach Mode settings and suggestion log
+
+    def _ensure_user_settings(self) -> None:
+        """Ensure a user_settings row exists."""
+        cursor = self.conn.execute("SELECT id FROM user_settings LIMIT 1")
+        if cursor.fetchone():
+            return
+
+        with self.transaction():
+            self.conn.execute(
+                """
+                INSERT INTO user_settings (global_mode_default, per_project_mode, coach_cooldown_days)
+                VALUES ('boring', '{}', 7)
+                """
+            )
+
+    def get_user_settings(self) -> dict[str, Any]:
+        """Get Coach Mode user settings."""
+        self._ensure_user_settings()
+        cursor = self.conn.execute(
+            """
+            SELECT global_mode_default, per_project_mode, coach_cooldown_days
+            FROM user_settings
+            LIMIT 1
+            """
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return {
+                "global_mode_default": "boring",
+                "per_project_mode": {},
+                "coach_cooldown_days": 7,
+            }
+
+        try:
+            per_project = json.loads(row["per_project_mode"]) or {}
+        except (TypeError, json.JSONDecodeError):
+            per_project = {}
+
+        return {
+            "global_mode_default": row["global_mode_default"],
+            "per_project_mode": per_project,
+            "coach_cooldown_days": int(row["coach_cooldown_days"]),
+        }
+
+    def update_user_settings(
+        self,
+        *,
+        global_mode_default: str | None = None,
+        per_project_mode: dict[str, str] | None = None,
+        coach_cooldown_days: int | None = None,
+    ) -> dict[str, Any]:
+        """Update Coach Mode user settings."""
+        self._ensure_user_settings()
+        current = self.get_user_settings()
+
+        new_global = global_mode_default or current["global_mode_default"]
+        new_per_project = (
+            per_project_mode if per_project_mode is not None else current["per_project_mode"]
+        )
+        new_cooldown = (
+            int(coach_cooldown_days)
+            if coach_cooldown_days is not None
+            else current["coach_cooldown_days"]
+        )
+
+        with self.transaction():
+            self.conn.execute(
+                """
+                UPDATE user_settings
+                SET global_mode_default = ?,
+                    per_project_mode = ?,
+                    coach_cooldown_days = ?,
+                    updated_at = datetime('now')
+                """,
+                (new_global, json.dumps(new_per_project), int(new_cooldown)),
+            )
+
+        return {
+            "global_mode_default": new_global,
+            "per_project_mode": new_per_project,
+            "coach_cooldown_days": int(new_cooldown),
+        }
+
+    def log_coach_suggestion(
+        self,
+        *,
+        project: str,
+        suggestion_type: str,
+        suggestion_fingerprint: str,
+        was_shown: bool = True,
+    ) -> None:
+        """Log a Coach Mode suggestion for cooldown enforcement."""
+        with self.transaction():
+            self.conn.execute(
+                """
+                INSERT INTO coach_suggestion_log (
+                    project, suggestion_type, suggestion_fingerprint, was_shown
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (project, suggestion_type, suggestion_fingerprint, 1 if was_shown else 0),
+            )
+
+    def is_suggestion_type_in_cooldown(
+        self, *, project: str, suggestion_type: str, cooldown_days: int
+    ) -> bool:
+        """Check if a suggestion type is within cooldown window."""
+        cursor = self.conn.execute(
+            """
+            SELECT 1
+            FROM coach_suggestion_log
+            WHERE project = ?
+              AND suggestion_type = ?
+              AND datetime >= datetime('now', ?)
+            LIMIT 1
+            """,
+            (project, suggestion_type, f"-{int(cooldown_days)} days"),
+        )
+        return cursor.fetchone() is not None
+
+    def get_suggestion_context(self, suggestion_fingerprint: str) -> dict[str, str] | None:
+        """Get the latest suggestion context for a fingerprint."""
+        cursor = self.conn.execute(
+            """
+            SELECT project, suggestion_type
+            FROM coach_suggestion_log
+            WHERE suggestion_fingerprint = ?
+            ORDER BY datetime DESC
+            LIMIT 1
+            """,
+            (suggestion_fingerprint,),
+        )
+        row = cursor.fetchone()
+        if row is None:
+            return None
+        return {"project": row["project"], "suggestion_type": row["suggestion_type"]}
+
 
 # Global database instance
 _db: Database | None = None

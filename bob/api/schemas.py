@@ -25,6 +25,12 @@ class AskRequest(BaseModel):
     query: str = Field(..., description="Natural language query")
     filters: AskFilters | None = None
     top_k: int = Field(default=5, ge=1, le=20, description="Number of results to return")
+    coach_mode_enabled: bool | None = Field(
+        default=None, description="Override Coach Mode for this request"
+    )
+    coach_show_anyway: bool = Field(
+        default=False, description="Bypass Coach Mode cooldown checks"
+    )
 
 
 class SourceLocator(BaseModel):
@@ -73,13 +79,54 @@ class AskFooter(BaseModel):
     not_found_message: str | None = None
 
 
+class CoachSuggestion(BaseModel):
+    """Coach Mode suggestion."""
+
+    id: str
+    type: str
+    text: str
+    why: str
+    hypothesis: bool = False
+    citations: list[Source] | None = None
+
+
 class AskResponse(BaseModel):
     """Response body for POST /ask."""
 
     answer: str | None = Field(None, description="Answer text, null if not found")
+    coach_mode_enabled: bool = Field(..., description="Effective Coach Mode for response")
+    suggestions: list[CoachSuggestion] = Field(default_factory=list)
     sources: list[Source]
     footer: AskFooter
     query_time_ms: int
+
+
+class CoachSettings(BaseModel):
+    """Persisted Coach Mode settings."""
+
+    coach_mode_default: str = Field(..., description="boring or coach")
+    per_project_mode: dict[str, str] = Field(default_factory=dict)
+    coach_cooldown_days: int = Field(default=7, ge=1, le=365)
+
+
+class SettingsUpdateResponse(BaseModel):
+    """Response body for settings updates."""
+
+    success: bool = True
+
+
+class SuggestionDismissRequest(BaseModel):
+    """Request body for dismissing a suggestion."""
+
+    suggestion_type: str | None = None
+    project: str | None = None
+
+
+class SuggestionDismissResponse(BaseModel):
+    """Response body for dismissing a suggestion."""
+
+    success: bool = True
+    cooldown_until: datetime
 
 
 # === Index Endpoint Models ===

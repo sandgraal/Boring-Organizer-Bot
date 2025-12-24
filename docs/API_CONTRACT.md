@@ -140,13 +140,15 @@ Submit a question and receive an answer with structured citations.
     "language": null
   },
   "top_k": 5,
-  "coach_mode_enabled": false
+  "coach_mode_enabled": false,
+  "coach_show_anyway": false
 }
 ```
 
 **Coach Mode:**
 
 - `coach_mode_enabled` is optional; if omitted, server uses persisted settings.
+- `coach_show_anyway` bypasses Coach Mode cooldown checks for this request.
 
 **Response:**
 
@@ -550,6 +552,15 @@ Update persisted user settings.
 
 Record a dismissal to enforce cooldown rules.
 
+**Request (optional):**
+
+```json
+{
+  "suggestion_type": "coverage_gaps",
+  "project": "docs"
+}
+```
+
 **Response:**
 
 ```json
@@ -937,7 +948,8 @@ curl -X POST http://localhost:8080/ask \
       "projects": ["docs"]
     },
     "top_k": 3,
-    "coach_mode_enabled": false
+    "coach_mode_enabled": false,
+    "coach_show_anyway": false
   }'
 ```
 

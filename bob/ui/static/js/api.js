@@ -52,8 +52,16 @@ const API = {
    * @param {string} query - The question to ask.
    * @param {Object} filters - Optional filters.
    * @param {number} topK - Number of results (default 5).
+   * @param {boolean|null} coachModeEnabled - Coach Mode override.
+   * @param {boolean} coachShowAnyway - Bypass cooldown.
    */
-  async ask(query, filters = {}, topK = 5) {
+  async ask(
+    query,
+    filters = {},
+    topK = 5,
+    coachModeEnabled = null,
+    coachShowAnyway = false
+  ) {
     return this.request("/ask", {
       method: "POST",
       body: JSON.stringify({
@@ -65,6 +73,8 @@ const API = {
           date_before: filters.dateBefore || null,
         },
         top_k: topK,
+        coach_mode_enabled: coachModeEnabled,
+        coach_show_anyway: coachShowAnyway,
       }),
     });
   },
@@ -125,6 +135,36 @@ const API = {
         line: locator?.start_line || null,
         editor: editor,
       }),
+    });
+  },
+
+  /**
+   * Get Coach Mode settings.
+   */
+  async getSettings() {
+    return this.request("/settings");
+  },
+
+  /**
+   * Update Coach Mode settings.
+   * @param {Object} settings - Coach settings payload.
+   */
+  async updateSettings(settings) {
+    return this.request("/settings", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
+  },
+
+  /**
+   * Dismiss a Coach Mode suggestion.
+   * @param {string} suggestionId - Suggestion fingerprint.
+   * @param {Object} payload - Optional dismiss payload.
+   */
+  async dismissSuggestion(suggestionId, payload = null) {
+    return this.request(`/suggestions/${suggestionId}/dismiss`, {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
     });
   },
 };

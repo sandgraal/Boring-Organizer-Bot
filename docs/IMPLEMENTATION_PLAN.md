@@ -2,7 +2,7 @@
 
 > A phased roadmap for building a local-first, citation-grounded knowledge assistant with a beautiful interface.
 
-**Last Updated:** 2025-12-23  
+**Last Updated:** 2025-12-24  
 **Status:** Active  
 **Version:** 2.1.0
 
@@ -16,13 +16,18 @@
 4. [Phase 1: Core Retrieval](#phase-1-core-retrieval)
 5. [Phase 2: Local API Server](#phase-2-local-api-server)
 6. [Phase 3: Web Interface](#phase-3-web-interface)
-7. [Track: Coach Mode (Opt-in)](#track-coach-mode-opt-in)
-8. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
-9. [Phase 5: Decision Layer](#phase-5-decision-layer)
-10. [Phase 6: Optional Generation](#phase-6-optional-generation)
-11. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
-12. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
-13. [Timeline Overview](#timeline-overview)
+7. [Track: Answer Audit Trail](#track-answer-audit-trail)
+8. [Track: Knowledge Health Dashboard](#track-knowledge-health-dashboard)
+9. [Track: Capture Helpers (Templates + Linter)](#track-capture-helpers-templates--linter)
+10. [Track: Connectors (Opt-in)](#track-connectors-opt-in)
+11. [Track: Agent Interoperability (MCP)](#track-agent-interoperability-mcp)
+12. [Track: Coach Mode (Opt-in)](#track-coach-mode-opt-in)
+13. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
+14. [Phase 5: Decision Layer](#phase-5-decision-layer)
+15. [Phase 6: Optional Generation](#phase-6-optional-generation)
+16. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
+17. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
+18. [Timeline Overview](#timeline-overview)
 
 ---
 
@@ -68,6 +73,7 @@ These are explicit non-goals to avoid scope creep:
 - ❌ **Always-on daemons** — Manual server start only
 - ❌ **Personal data in repo** — `/data` is gitignored; never commit content
 - ❌ **Desktop app (yet)** — Web UI first; Tauri/Electron later if needed
+- ❌ **Ambient surveillance** — No screen/audio memory, no passive capture
 
 ---
 

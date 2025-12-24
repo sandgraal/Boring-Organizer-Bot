@@ -22,6 +22,7 @@
           <a href="#ask" class="nav-link active" data-page="ask">Ask</a>
           <a href="#library" class="nav-link" data-page="library">Library</a>
           <a href="#indexing" class="nav-link" data-page="indexing">Indexing</a>
+          <a href="#settings" class="nav-link" data-page="settings">Settings</a>
         </nav>
       </header>
 
@@ -104,6 +105,15 @@
                   </button>
                 </div>
               </form>
+              <div class="coach-toggle">
+                <label class="coach-toggle-label">
+                  <input type="checkbox" id="coach-toggle" />
+                  <span>Coach Mode</span>
+                </label>
+                <span id="coach-mode-status" class="coach-mode-status"
+                  >Boring B.O.B</span
+                >
+              </div>
 
               <div id="answer-container" class="answer-container">
                 <!-- Welcome state -->
@@ -135,6 +145,13 @@
                     <div class="footer-item" id="outdated-warning-container">
                       <!-- Warning shown if any sources may be outdated -->
                     </div>
+                  </div>
+                  <div id="coach-suggestions" class="coach-suggestions hidden">
+                    <h4>Suggestions (Coach Mode)</h4>
+                    <ol
+                      id="coach-suggestions-list"
+                      class="coach-suggestions-list"
+                    ></ol>
                   </div>
                 </div>
 
@@ -296,6 +313,50 @@
                 </div>
                 <div id="job-errors" class="job-errors hidden"></div>
               </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Settings Page -->
+        <div id="page-settings" class="page">
+          <div class="settings-layout">
+            <section class="settings-section">
+              <div class="section-header">
+                <h2>Settings</h2>
+              </div>
+              <div class="settings-card">
+                <h3>Coach Mode Defaults</h3>
+                <div class="form-group">
+                  <label class="form-label" for="settings-coach-default"
+                    >Default Mode</label
+                  >
+                  <select id="settings-coach-default" class="select-input">
+                    <option value="boring">Boring B.O.B</option>
+                    <option value="coach">Coach Mode</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="settings-coach-cooldown"
+                    >Cooldown (days)</label
+                  >
+                  <input
+                    type="number"
+                    id="settings-coach-cooldown"
+                    class="text-input"
+                    min="1"
+                    max="365"
+                    value="7"
+                  />
+                </div>
+              </div>
+              <div class="settings-card">
+                <h3>Per-Project Coach Mode</h3>
+                <div id="settings-project-modes" class="checkbox-list"></div>
+              </div>
+              <button id="settings-save-btn" class="btn btn-primary">
+                Save Settings
+              </button>
+              <div id="settings-status" class="settings-status"></div>
             </section>
           </div>
         </div>

@@ -117,6 +117,31 @@ Optional analytics table.
 | results_count | INTEGER | Number of results |
 | searched_at   | TEXT    | Timestamp         |
 
+### user_settings
+
+Coach Mode preferences (single-row table).
+
+| Column              | Type    | Description                              |
+| ------------------- | ------- | ---------------------------------------- |
+| id                  | INTEGER | Primary key                              |
+| global_mode_default | TEXT    | "boring" or "coach"                      |
+| per_project_mode    | TEXT    | JSON map of project -> mode              |
+| coach_cooldown_days | INTEGER | Default cooldown window in days          |
+| updated_at          | TEXT    | Last update timestamp                    |
+
+### coach_suggestion_log
+
+Suggestion log for cooldown enforcement.
+
+| Column                | Type    | Description                          |
+| --------------------- | ------- | ------------------------------------ |
+| id                    | INTEGER | Primary key                          |
+| datetime              | TEXT    | When the suggestion was shown/logged |
+| project               | TEXT    | Project name or "all"                |
+| suggestion_type       | TEXT    | Allowed suggestion category          |
+| suggestion_fingerprint | TEXT   | Hash of type + normalized text       |
+| was_shown             | INTEGER | 1 if shown, 0 if dismissed/blocked   |
+
 ### schema_migrations
 
 Tracks applied migrations.
@@ -133,6 +158,7 @@ Migrations are stored in `bob/db/migrations/` as SQL files:
 
 - `001_initial_schema.sql` - Core tables
 - `002_vector_index.sql` - Vector search setup
+- `003_coach_mode.sql` - Coach Mode settings and cooldown log
 
 Run migrations with:
 

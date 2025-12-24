@@ -321,6 +321,99 @@ code {
   border-color: var(--color-primary);
 }
 
+/* Coach Mode Toggle */
+.coach-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: var(--color-bg-card);
+  margin-bottom: var(--space-lg);
+}
+
+.coach-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.coach-toggle-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary);
+}
+
+.coach-mode-status {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+/* Coach Suggestions */
+.coach-suggestions {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  background: var(--color-bg-sidebar);
+}
+
+.coach-suggestions h4 {
+  margin-bottom: var(--space-sm);
+}
+
+.coach-suggestions-list {
+  padding-left: var(--space-lg);
+}
+
+.coach-suggestion-item {
+  margin-bottom: var(--space-md);
+}
+
+.coach-suggestion-text {
+  font-weight: 500;
+}
+
+.coach-suggestion-why {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-xs);
+}
+
+.coach-suggestion-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.coach-hypothesis {
+  padding: 0.125rem 0.375rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--border-radius-sm);
+}
+
+.coach-citations {
+  color: var(--color-text-secondary);
+}
+
+.coach-suggestion-empty {
+  list-style: none;
+  padding-left: 0;
+  color: var(--color-text-muted);
+}
+
+.btn-sm {
+  padding: var(--space-xs) var(--space-md);
+  font-size: 0.75rem;
+}
+
 .query-input::placeholder {
   color: var(--color-text-muted);
 }
@@ -713,6 +806,32 @@ code {
   display: block;
   font-weight: 500;
   margin-bottom: var(--space-xs);
+}
+
+/* Settings Page */
+.settings-layout {
+  padding: var(--space-xl);
+  max-width: 700px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.settings-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: var(--space-lg);
+}
+
+.settings-status {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
 }
 
 /* Buttons */

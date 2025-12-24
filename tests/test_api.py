@@ -31,6 +31,21 @@ def mock_database():
     return mock_db
 
 
+@pytest.fixture
+def mock_coach_db():
+    """Create a mock database with Coach Mode helpers."""
+    mock_db = MagicMock()
+    mock_db.get_user_settings.return_value = {
+        "global_mode_default": "boring",
+        "per_project_mode": {},
+        "coach_cooldown_days": 7,
+    }
+    mock_db.is_suggestion_type_in_cooldown.return_value = False
+    mock_db.log_coach_suggestion = MagicMock()
+    mock_db.get_suggestion_context.return_value = None
+    return mock_db
+
+
 class TestHealthEndpoint:
     """Tests for GET /health endpoint."""
 
@@ -108,9 +123,13 @@ class TestAskEndpoint:
             ),
         ]
 
-    def test_ask_returns_sources(self, client: TestClient, mock_search_results: list):
+    def test_ask_returns_sources(
+        self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
+    ):
         """Ask endpoint returns sources with citations."""
-        with patch("bob.api.routes.ask.search", return_value=mock_search_results):
+        with patch("bob.api.routes.ask.search", return_value=mock_search_results), patch(
+            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        ):
             response = client.post(
                 "/ask",
                 json={"query": "test question", "top_k": 5},
@@ -119,14 +138,20 @@ class TestAskEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["answer"] is not None
+        assert data["coach_mode_enabled"] is False
+        assert data["suggestions"] == []
         assert len(data["sources"]) == 2
         assert data["footer"]["source_count"] == 2
         assert data["footer"]["not_found"] is False
         assert "query_time_ms" in data
 
-    def test_ask_returns_not_found_when_empty(self, client: TestClient):
+    def test_ask_returns_not_found_when_empty(
+        self, client: TestClient, mock_coach_db: MagicMock
+    ):
         """Ask endpoint returns not_found when no results."""
-        with patch("bob.api.routes.ask.search", return_value=[]):
+        with patch("bob.api.routes.ask.search", return_value=[]), patch(
+            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        ):
             response = client.post(
                 "/ask",
                 json={"query": "nonexistent topic"},
@@ -135,27 +160,34 @@ class TestAskEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["answer"] is None
+        assert data["coach_mode_enabled"] is False
         assert data["sources"] == []
         assert data["footer"]["not_found"] is True
         assert data["footer"]["not_found_message"] is not None
 
-    def test_ask_validates_top_k(self, client: TestClient):
+    def test_ask_validates_top_k(self, client: TestClient, mock_coach_db: MagicMock):
         """Ask endpoint validates top_k parameter."""
-        response = client.post(
-            "/ask",
-            json={"query": "test", "top_k": 0},
-        )
+        with patch("bob.api.routes.ask.get_database", return_value=mock_coach_db):
+            response = client.post(
+                "/ask",
+                json={"query": "test", "top_k": 0},
+            )
         assert response.status_code == 422  # Validation error
 
-        response = client.post(
-            "/ask",
-            json={"query": "test", "top_k": 100},
-        )
+        with patch("bob.api.routes.ask.get_database", return_value=mock_coach_db):
+            response = client.post(
+                "/ask",
+                json={"query": "test", "top_k": 100},
+            )
         assert response.status_code == 422  # Validation error
 
-    def test_ask_accepts_filters(self, client: TestClient, mock_search_results: list):
+    def test_ask_accepts_filters(
+        self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
+    ):
         """Ask endpoint accepts filter parameters."""
-        with patch("bob.api.routes.ask.search", return_value=mock_search_results):
+        with patch("bob.api.routes.ask.search", return_value=mock_search_results), patch(
+            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        ):
             response = client.post(
                 "/ask",
                 json={
@@ -170,10 +202,12 @@ class TestAskEndpoint:
         assert response.status_code == 200
 
     def test_ask_source_includes_required_fields(
-        self, client: TestClient, mock_search_results: list
+        self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
     ):
         """Ask response sources include all required fields."""
-        with patch("bob.api.routes.ask.search", return_value=mock_search_results):
+        with patch("bob.api.routes.ask.search", return_value=mock_search_results), patch(
+            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        ):
             response = client.post(
                 "/ask",
                 json={"query": "test question"},
@@ -227,6 +261,7 @@ class TestIndexEndpoint:
         assert data["status"] == "started"
         assert "job_id" in data
         assert data["project"] == "test"
+
 
     def test_index_rejects_concurrent_jobs(self, client: TestClient, tmp_path):
         """POST /index rejects when a job is already running."""
@@ -283,6 +318,50 @@ class TestIndexEndpoint:
         """GET /index/{job_id} returns 404 for unknown job."""
         response = client.get("/index/idx_nonexistent")
         assert response.status_code == 404
+
+
+class TestSettingsEndpoint:
+    """Tests for settings endpoints."""
+
+    def test_get_settings(self, client: TestClient, mock_coach_db: MagicMock):
+        """GET /settings returns persisted settings."""
+        with patch("bob.api.routes.settings.get_database", return_value=mock_coach_db):
+            response = client.get("/settings")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coach_mode_default"] == "boring"
+        assert data["coach_cooldown_days"] == 7
+
+    def test_put_settings(self, client: TestClient, mock_coach_db: MagicMock):
+        """PUT /settings updates settings."""
+        with patch("bob.api.routes.settings.get_database", return_value=mock_coach_db):
+            response = client.put(
+                "/settings",
+                json={
+                    "coach_mode_default": "coach",
+                    "per_project_mode": {"docs": "coach"},
+                    "coach_cooldown_days": 14,
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        mock_coach_db.update_user_settings.assert_called_once()
+
+    def test_dismiss_suggestion(self, client: TestClient, mock_coach_db: MagicMock):
+        """POST /suggestions/{id}/dismiss logs a dismissal."""
+        with patch("bob.api.routes.settings.get_database", return_value=mock_coach_db):
+            response = client.post(
+                "/suggestions/test_fingerprint/dismiss",
+                json={"suggestion_type": "coverage_gaps", "project": "docs"},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "cooldown_until" in data
 
 
 class TestProjectsEndpoint:
