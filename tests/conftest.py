@@ -75,11 +75,19 @@ def reset_globals():
 
 @pytest.fixture
 def test_db(temp_dir):
-    """Create a test database."""
+    """Create a test database and set it as the global singleton."""
+    import bob.db.database as db_module
     from bob.db.database import Database
 
     db_path = temp_dir / "test.db"
     db = Database(db_path)
     db.migrate()
+    
+    # Set as the global singleton so get_database() returns this instance
+    db_module._db = db
+    
     yield db
+    
+    # Clean up
     db.close()
+    db_module._db = None
