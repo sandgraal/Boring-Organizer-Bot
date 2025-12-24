@@ -20,7 +20,7 @@ class WordParser(Parser):
         """Parse a Word document into paragraph-based sections."""
         from docx import Document
 
-        doc = Document(path)
+        doc = Document(str(path))
         sections: list[DocumentSection] = []
         full_content: list[str] = []
         current_heading: str | None = None
@@ -33,7 +33,9 @@ class WordParser(Parser):
             full_content.append(text)
 
             # Check if this is a heading
-            is_heading = para.style.name.startswith("Heading")
+            style = para.style
+            style_name = style.name if style is not None else ""
+            is_heading = style_name.startswith("Heading")
 
             if is_heading:
                 current_heading = text
@@ -45,7 +47,7 @@ class WordParser(Parser):
                         locator_value={
                             "paragraph_index": para_idx,
                             "heading": current_heading,
-                            "style": para.style.name,
+                            "style": style_name,
                         },
                     )
                 )
@@ -57,7 +59,7 @@ class WordParser(Parser):
                         locator_value={
                             "paragraph_index": para_idx,
                             "parent_heading": current_heading,
-                            "style": para.style.name,
+                            "style": style_name,
                         },
                     )
                 )

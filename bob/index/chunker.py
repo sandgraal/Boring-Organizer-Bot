@@ -96,7 +96,7 @@ def chunk_text(
                 if sentence_size + len(sentence) > target_chars and sentence_chunk:
                     chunks.append(" ".join(sentence_chunk))
                     # Keep overlap
-                    overlap_sentences = []
+                    overlap_sentences: list[str] = []
                     overlap_size = 0
                     for s in reversed(sentence_chunk):
                         if overlap_size + len(s) > overlap_chars:
@@ -117,7 +117,7 @@ def chunk_text(
             if current_chunk:
                 chunks.append("\n\n".join(current_chunk))
                 # Keep overlap
-                overlap_paras = []
+                overlap_paras: list[str] = []
                 overlap_size = 0
                 for p in reversed(current_chunk):
                     if overlap_size + len(p) > overlap_chars:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
@@ -10,6 +10,7 @@ from bob.config import get_config
 
 if TYPE_CHECKING:
     import numpy.typing as npt
+    from sentence_transformers import SentenceTransformer
 
 
 class Embedder:
@@ -25,10 +26,10 @@ class Embedder:
         config = get_config().embedding
         self.model_name = model_name or config.model
         self.device = device or config.device
-        self._model = None
+        self._model: SentenceTransformer | None = None
 
     @property
-    def model(self):
+    def model(self) -> SentenceTransformer:
         """Lazy-load the embedding model."""
         if self._model is None:
             from sentence_transformers import SentenceTransformer
@@ -51,7 +52,7 @@ class Embedder:
             normalize_embeddings=True,
             show_progress_bar=False,
         )
-        return embeddings.astype(np.float32)
+        return cast("npt.NDArray[np.float32]", embeddings.astype(np.float32))
 
     def embed_single(self, text: str) -> npt.NDArray[np.float32]:
         """Embed a single text.
@@ -62,7 +63,7 @@ class Embedder:
         Returns:
             Embedding vector.
         """
-        return self.embed([text])[0]
+        return cast("npt.NDArray[np.float32]", self.embed([text])[0])
 
 
 # Global embedder instance

@@ -222,7 +222,10 @@ class Database:
                     git_branch,
                 ),
             )
-            return cursor.fetchone()[0]
+            row = cursor.fetchone()
+            if row is None:
+                raise RuntimeError("Failed to insert document")
+            return int(row[0])
 
     def get_document_by_path(self, source_path: str, project: str) -> dict[str, Any] | None:
         """Get a document by path and project.
@@ -311,7 +314,10 @@ class Database:
                 token_count,
             ),
         )
-        chunk_id = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        if row is None:
+            raise RuntimeError("Failed to insert chunk")
+        chunk_id = int(row[0])
         self.conn.commit()
         return chunk_id
 

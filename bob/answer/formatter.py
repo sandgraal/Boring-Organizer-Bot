@@ -11,6 +11,8 @@ from rich.text import Text
 from bob.config import get_config
 
 if TYPE_CHECKING:
+    from rich.console import RenderableType
+
     from bob.retrieval import SearchResult
 
 
@@ -163,7 +165,7 @@ def format_citation(result: SearchResult, index: int) -> Text:
     return text
 
 
-def format_answer(query: str, results: list[SearchResult]) -> str:
+def format_answer(query: str, results: list[SearchResult]) -> RenderableType:
     """Format an answer with citations.
 
     This function enforces the "no citation => no claim" rule by only
@@ -180,7 +182,7 @@ def format_answer(query: str, results: list[SearchResult]) -> str:
     from rich.rule import Rule
 
     config = get_config()
-    renderables = []
+    renderables: list[RenderableType] = []
 
     # Header
     header = Text("Answer based on retrieved documents:", style="bold")
