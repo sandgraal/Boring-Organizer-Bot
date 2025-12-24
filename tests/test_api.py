@@ -341,3 +341,125 @@ class TestCORS:
             )
 
         assert "access-control-allow-origin" in response.headers
+
+
+class TestDocumentsEndpoint:
+    """Tests for GET /documents endpoint."""
+
+    def test_documents_returns_list(self, client: TestClient, mock_database: MagicMock):
+        """Documents endpoint returns list of documents."""
+        mock_count_cursor = MagicMock()
+        mock_count_cursor.fetchone.return_value = (5,)
+
+        mock_docs_cursor = MagicMock()
+        mock_docs_cursor.fetchall.return_value = [
+            {
+                "id": 1,
+                "source_path": "/docs/test.md",
+                "source_type": "markdown",
+                "project": "test",
+                "source_date": "2024-12-01T00:00:00",
+                "created_at": "2024-12-01T00:00:00",
+                "updated_at": "2024-12-01T00:00:00",
+            }
+        ]
+
+        mock_database.conn.execute.side_effect = [mock_count_cursor, mock_docs_cursor]
+
+        with patch("bob.api.routes.documents.get_database", return_value=mock_database):
+            response = client.get("/documents")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "documents" in data
+        assert "total" in data
+        assert "page" in data
+        assert "page_size" in data
+
+    def test_documents_filters_by_project(self, client: TestClient, mock_database: MagicMock):
+        """Documents endpoint filters by project."""
+        mock_count_cursor = MagicMock()
+        mock_count_cursor.fetchone.return_value = (0,)
+
+        mock_docs_cursor = MagicMock()
+        mock_docs_cursor.fetchall.return_value = []
+
+        mock_database.conn.execute.side_effect = [mock_count_cursor, mock_docs_cursor]
+
+        with patch("bob.api.routes.documents.get_database", return_value=mock_database):
+            response = client.get("/documents?project=test")
+
+        assert response.status_code == 200
+
+    def test_documents_pagination(self, client: TestClient, mock_database: MagicMock):
+        """Documents endpoint supports pagination."""
+        mock_count_cursor = MagicMock()
+        mock_count_cursor.fetchone.return_value = (100,)
+
+        mock_docs_cursor = MagicMock()
+        mock_docs_cursor.fetchall.return_value = []
+
+        mock_database.conn.execute.side_effect = [mock_count_cursor, mock_docs_cursor]
+
+        with patch("bob.api.routes.documents.get_database", return_value=mock_database):
+            response = client.get("/documents?page=2&page_size=10")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["page"] == 2
+        assert data["page_size"] == 10
+
+
+class TestOpenEndpoint:
+    """Tests for POST /open endpoint."""
+
+    def test_open_nonexistent_file(self, client: TestClient):
+        """Open endpoint returns 404 for nonexistent file."""
+        response = client.post(
+            "/open",
+            json={"file_path": "/nonexistent/file.md"},
+        )
+        assert response.status_code == 404
+
+    def test_open_existing_file(self, client: TestClient, tmp_path):
+        """Open endpoint handles existing file."""
+        test_file = tmp_path / "test.md"
+        test_file.write_text("# Test")
+
+        with patch("bob.api.routes.open.subprocess.Popen"):
+            response = client.post(
+                "/open",
+                json={"file_path": str(test_file)},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Either succeeds or gives instructions
+        assert "success" in data
+        assert "message" in data
+
+    def test_open_with_line_number(self, client: TestClient, tmp_path):
+        """Open endpoint accepts line number."""
+        test_file = tmp_path / "test.md"
+        test_file.write_text("# Test\n\nLine 3")
+
+        with patch("bob.api.routes.open.subprocess.Popen"):
+            response = client.post(
+                "/open",
+                json={"file_path": str(test_file), "line": 3},
+            )
+
+        assert response.status_code == 200
+
+    def test_open_with_editor_preference(self, client: TestClient, tmp_path):
+        """Open endpoint accepts editor preference."""
+        test_file = tmp_path / "test.md"
+        test_file.write_text("# Test")
+
+        with patch("bob.api.routes.open.subprocess.Popen"):
+            response = client.post(
+                "/open",
+                json={"file_path": str(test_file), "editor": "vscode"},
+            )
+
+        assert response.status_code == 200

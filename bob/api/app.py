@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from bob.api.routes import ask, health, index, projects
-
-if TYPE_CHECKING:
-    pass
+from bob.api.routes import ask, documents, health, index, open, projects
 
 
 def create_app() -> FastAPI:
@@ -47,5 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(ask.router, tags=["Query"])
     app.include_router(index.router, tags=["Indexing"])
     app.include_router(projects.router, tags=["Projects"])
+    app.include_router(documents.router, tags=["Documents"])
+    app.include_router(open.router, tags=["Files"])
 
     return app
