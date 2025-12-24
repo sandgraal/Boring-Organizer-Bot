@@ -143,21 +143,21 @@ make check
 
 ---
 
-## Task 3: Add Decision Extraction
+## Task 3: Enhance Decision Extraction
 
 ### Description
 
-Implement the decision extraction feature to identify and store decisions from documents.
+Improve or extend decision extraction to identify and store decisions from documents.
 
 ### Inputs
 
-- [ ] Decision patterns to match (see `bob/extract/decisions.py` TODO)
+- [ ] Decision patterns to match (see `bob/extract/patterns.py`)
 - [ ] Sample documents with decisions (ADRs, meeting notes)
 - [ ] Decision schema from `docs/data-model.md`
 
 ### Expected Outputs
 
-1. **Pattern file:** `bob/extract/patterns.py`
+1. **Patterns:** Extend `bob/extract/patterns.py`
 
    ```python
    DECISION_PATTERNS = [
@@ -167,7 +167,7 @@ Implement the decision extraction feature to identify and store decisions from d
    ]
    ```
 
-2. **Extraction logic:** Complete `bob/extract/decisions.py`
+2. **Extraction logic:** Extend `bob/extract/decisions.py`
 
    ```python
    def extract_decisions_from_chunk(
@@ -176,11 +176,11 @@ Implement the decision extraction feature to identify and store decisions from d
        # Implementation
    ```
 
-3. **Database migration:** `bob/db/migrations/003_decisions.sql`
+3. **Database migration:** Only if schema changes (base table is in `bob/db/migrations/001_initial_schema.sql`)
 
 4. **CLI command:** Make `bob extract-decisions` work
 
-5. **Tests:** `tests/test_decision_extraction.py`
+5. **Tests:** `tests/test_decisions.py`
    - Test: ADR format extraction
    - Test: "We decided" pattern
    - Test: Rejected alternatives
@@ -189,7 +189,7 @@ Implement the decision extraction feature to identify and store decisions from d
 ### Tests to Run
 
 ```bash
-pytest tests/test_decision_extraction.py -v
+pytest tests/test_decisions.py -v
 bob extract-decisions ./tests/fixtures/decisions/
 make check
 ```

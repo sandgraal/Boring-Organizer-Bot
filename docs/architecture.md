@@ -87,7 +87,7 @@ See [data-model.md](data-model.md) for detailed schema documentation.
 - `documents`: Source file metadata (path, type, project, dates)
 - `chunks`: Text chunks with locator information
 - `chunk_embeddings`: Vector embeddings (sqlite-vec or fallback)
-- `decisions`: Extracted decisions (placeholder)
+- `decisions`: Extracted decisions with status and supersession
 
 ## Locator System
 
@@ -126,12 +126,8 @@ See [bob.yaml.example](../bob.yaml.example) for all options.
 2. Update `bob.yaml.example` with model options
 3. Update database dimension if needed
 
-### Adding Decision Extraction
+### Decision Extraction
 
-The `decisions` table is ready for:
-
-1. Pattern-based extraction from chunks
-2. Classification of decision types
-3. Tracking superseded decisions
-
-See `bob/extract/decisions.py` (TODO).
+Decision extraction is implemented in `bob/extract/decisions.py` and
+`bob/extract/patterns.py`. To extend coverage, add or tune patterns and
+update `tests/test_decisions.py` to validate new formats.

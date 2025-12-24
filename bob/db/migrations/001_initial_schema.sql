@@ -72,7 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_document ON chunks(document_id);
 --   chunk_id INTEGER PRIMARY KEY
 --   embedding FLOAT[384]  -- dimension matches embedding model
 
--- Decisions table: extracted decisions from documents (placeholder)
+-- Decisions table: extracted decisions from documents
 CREATE TABLE IF NOT EXISTS decisions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chunk_id INTEGER NOT NULL,

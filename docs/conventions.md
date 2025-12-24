@@ -84,7 +84,7 @@ bob/
 ├── answer/              # Output formatting
 ├── eval/                # Evaluation harness
 ├── agents/              # Agent tool interfaces
-└── extract/             # Decision extraction (TODO)
+└── extract/             # Decision extraction
 ```
 
 ## Dependencies

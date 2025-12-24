@@ -88,9 +88,9 @@ Fallback table when sqlite-vec is not available.
 | chunk_id  | INTEGER | Primary key, FK to chunks |
 | embedding | BLOB    | Serialized numpy array    |
 
-### decisions (placeholder)
+### decisions
 
-For future decision extraction feature.
+Extracted decisions stored for decision-aware search and CLI output.
 
 | Column        | Type    | Description                          |
 | ------------- | ------- | ------------------------------------ |
