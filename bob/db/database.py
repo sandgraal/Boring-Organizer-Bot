@@ -350,6 +350,10 @@ class Database:
         query_embedding: npt.NDArray[np.float32],
         limit: int = 5,
         project: str | None = None,
+        source_types: list[str] | None = None,
+        date_after: datetime | None = None,
+        date_before: datetime | None = None,
+        language: str | None = None,
     ) -> list[dict[str, Any]]:
         """Search for similar chunks.
 
@@ -357,55 +361,76 @@ class Database:
             query_embedding: Query embedding vector.
             limit: Maximum number of results.
             project: Filter by project (optional).
+            source_types: Filter by source types (optional).
+            date_after: Filter by documents after this date (optional).
+            date_before: Filter by documents before this date (optional).
+            language: Filter by language (optional).
 
         Returns:
             List of matching chunks with scores.
         """
         if self.has_vec:
-            return self._search_vec(query_embedding, limit, project)
+            return self._search_vec(
+                query_embedding, limit, project, source_types, date_after, date_before, language
+            )
         else:
-            return self._search_fallback(query_embedding, limit, project)
+            return self._search_fallback(
+                query_embedding, limit, project, source_types, date_after, date_before, language
+            )
 
     def _search_vec(
         self,
         query_embedding: npt.NDArray[np.float32],
         limit: int,
         project: str | None,
+        source_types: list[str] | None,
+        date_after: datetime | None,
+        date_before: datetime | None,
+        language: str | None,
     ) -> list[dict[str, Any]]:
         """Search using sqlite-vec."""
+        conditions = []
+        params: list[Any] = [query_embedding.tobytes()]
+
         if project:
-            cursor = self.conn.execute(
-                """
+            conditions.append("d.project = ?")
+            params.append(project)
+
+        if source_types:
+            placeholders = ",".join("?" * len(source_types))
+            conditions.append(f"d.source_type IN ({placeholders})")
+            params.extend(source_types)
+
+        if language:
+            conditions.append("d.language = ?")
+            params.append(language)
+
+        if date_after:
+            conditions.append("d.source_date >= ?")
+            params.append(date_after.isoformat())
+
+        if date_before:
+            conditions.append("d.source_date <= ?")
+            params.append(date_before.isoformat())
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        query = f"""
                 SELECT
                     c.id, c.content, c.locator_type, c.locator_value,
-                    d.source_path, d.source_type, d.project, d.source_date,
+                    d.source_path, d.source_type, d.project, d.language, d.source_date,
                     d.git_repo, d.git_commit,
                     vec_distance_cosine(e.embedding, ?) as distance
                 FROM chunk_embeddings e
                 JOIN chunks c ON c.id = e.chunk_id
                 JOIN documents d ON d.id = c.document_id
-                WHERE d.project = ?
+                {where_clause}
                 ORDER BY distance ASC
                 LIMIT ?
-                """,
-                (query_embedding.tobytes(), project, limit),
-            )
-        else:
-            cursor = self.conn.execute(
                 """
-                SELECT
-                    c.id, c.content, c.locator_type, c.locator_value,
-                    d.source_path, d.source_type, d.project, d.source_date,
-                    d.git_repo, d.git_commit,
-                    vec_distance_cosine(e.embedding, ?) as distance
-                FROM chunk_embeddings e
-                JOIN chunks c ON c.id = e.chunk_id
-                JOIN documents d ON d.id = c.document_id
-                ORDER BY distance ASC
-                LIMIT ?
-                """,
-                (query_embedding.tobytes(), limit),
-            )
+        params.append(limit)
+
+        cursor = self.conn.execute(query, params)
 
         return [dict(row) for row in cursor.fetchall()]
 
@@ -414,39 +439,53 @@ class Database:
         query_embedding: npt.NDArray[np.float32],
         limit: int,
         project: str | None,
+        source_types: list[str] | None,
+        date_after: datetime | None,
+        date_before: datetime | None,
+        language: str | None,
     ) -> list[dict[str, Any]]:
         """Fallback search using cosine similarity in Python."""
         import numpy as np
 
         # Get all embeddings (not efficient for large datasets)
+        conditions = []
+        params: list[Any] = []
+
         if project:
-            cursor = self.conn.execute(
-                """
+            conditions.append("d.project = ?")
+            params.append(project)
+
+        if source_types:
+            placeholders = ",".join("?" * len(source_types))
+            conditions.append(f"d.source_type IN ({placeholders})")
+            params.extend(source_types)
+
+        if language:
+            conditions.append("d.language = ?")
+            params.append(language)
+
+        if date_after:
+            conditions.append("d.source_date >= ?")
+            params.append(date_after.isoformat())
+
+        if date_before:
+            conditions.append("d.source_date <= ?")
+            params.append(date_before.isoformat())
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+        query = f"""
                 SELECT
                     e.chunk_id, e.embedding,
                     c.id, c.content, c.locator_type, c.locator_value,
-                    d.source_path, d.source_type, d.project, d.source_date,
+                    d.source_path, d.source_type, d.project, d.language, d.source_date,
                     d.git_repo, d.git_commit
                 FROM chunk_embeddings_fallback e
                 JOIN chunks c ON c.id = e.chunk_id
                 JOIN documents d ON d.id = c.document_id
-                WHERE d.project = ?
-                """,
-                (project,),
-            )
-        else:
-            cursor = self.conn.execute(
+                {where_clause}
                 """
-                SELECT
-                    e.chunk_id, e.embedding,
-                    c.id, c.content, c.locator_type, c.locator_value,
-                    d.source_path, d.source_type, d.project, d.source_date,
-                    d.git_repo, d.git_commit
-                FROM chunk_embeddings_fallback e
-                JOIN chunks c ON c.id = e.chunk_id
-                JOIN documents d ON d.id = c.document_id
-                """
-            )
+        cursor = self.conn.execute(query, params)
 
         results = []
         for row in cursor.fetchall():
@@ -466,6 +505,7 @@ class Database:
                     "source_path": row["source_path"],
                     "source_type": row["source_type"],
                     "project": row["project"],
+                    "language": row["language"],
                     "source_date": row["source_date"],
                     "git_repo": row["git_repo"],
                     "git_commit": row["git_commit"],

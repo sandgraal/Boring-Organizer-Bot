@@ -129,9 +129,22 @@ def ask_query(request: AskRequest) -> AskResponse:
 
     # Extract project filter from filters
     project = None
+    source_types = None
+    date_after = None
+    date_before = None
+    language = None
     if request.filters and request.filters.projects:
         # For now, use first project filter (multi-project TODO)
         project = request.filters.projects[0]
+        source_types = request.filters.types
+        date_after = request.filters.date_after
+        date_before = request.filters.date_before
+        language = request.filters.language
+    elif request.filters:
+        source_types = request.filters.types
+        date_after = request.filters.date_after
+        date_before = request.filters.date_before
+        language = request.filters.language
 
     try:
         # Perform search
@@ -139,6 +152,10 @@ def ask_query(request: AskRequest) -> AskResponse:
             query=request.query,
             project=project,
             top_k=request.top_k,
+            source_types=source_types,
+            date_after=date_after,
+            date_before=date_before,
+            language=language,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {e}") from e

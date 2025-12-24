@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from datetime import datetime
 from importlib import import_module
 from pathlib import Path
 
@@ -75,6 +77,13 @@ Test how components work together.
 
 Aim for high test coverage but focus on critical paths.
 """)
+
+    old_timestamp = datetime(2020, 1, 1).timestamp()
+    new_timestamp = datetime(2024, 1, 1).timestamp()
+
+    os.utime(docs / "python.md", (old_timestamp, old_timestamp))
+    os.utime(docs / "databases.md", (new_timestamp, new_timestamp))
+    os.utime(docs / "testing.md", (new_timestamp, new_timestamp))
 
     # Index the documents
     original_get_db = indexer_module.get_database
@@ -179,6 +188,87 @@ class TestSearch:
 
             assert len(results_1) <= 1
             assert len(results_3) <= 3
+        finally:
+            search_mod.get_database = original
+
+    def test_search_filters_by_source_type(self, indexed_docs: tuple[Path, Database]) -> None:
+        """Test that source type filter works."""
+        search_mod = get_search_module()
+
+        _, test_db = indexed_docs
+
+        original = search_mod.get_database
+        search_mod.get_database = lambda: test_db
+
+        try:
+            results = search_mod.search(
+                query="database design",
+                source_types=["markdown"],
+                top_k=5,
+            )
+            assert len(results) > 0
+
+            results_empty = search_mod.search(
+                query="database design",
+                source_types=["pdf"],
+                top_k=5,
+            )
+            assert len(results_empty) == 0
+        finally:
+            search_mod.get_database = original
+
+    def test_search_filters_by_language(self, indexed_docs: tuple[Path, Database]) -> None:
+        """Test that language filter works."""
+        search_mod = get_search_module()
+
+        _, test_db = indexed_docs
+
+        original = search_mod.get_database
+        search_mod.get_database = lambda: test_db
+
+        try:
+            results = search_mod.search(
+                query="database design",
+                language="en",
+                top_k=5,
+            )
+            assert len(results) > 0
+
+            results_empty = search_mod.search(
+                query="database design",
+                language="fr",
+                top_k=5,
+            )
+            assert len(results_empty) == 0
+        finally:
+            search_mod.get_database = original
+
+    def test_search_filters_by_date_range(self, indexed_docs: tuple[Path, Database]) -> None:
+        """Test that date range filters work."""
+        search_mod = get_search_module()
+
+        _, test_db = indexed_docs
+
+        original = search_mod.get_database
+        search_mod.get_database = lambda: test_db
+
+        cutoff_after = datetime(2023, 1, 1)
+        cutoff_before = datetime(2021, 1, 1)
+
+        try:
+            results_after = search_mod.search(
+                query="database design",
+                date_after=cutoff_after,
+                top_k=5,
+            )
+            assert all(r.source_date and r.source_date >= cutoff_after for r in results_after)
+
+            results_before = search_mod.search(
+                query="python programming",
+                date_before=cutoff_before,
+                top_k=5,
+            )
+            assert all(r.source_date and r.source_date <= cutoff_before for r in results_before)
         finally:
             search_mod.get_database = original
 

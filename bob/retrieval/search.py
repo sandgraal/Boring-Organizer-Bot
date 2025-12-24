@@ -50,12 +50,52 @@ class SearchResult:
     decisions: list[DecisionInfo] = field(default_factory=list)
 
 
+def normalize_source_types(source_types: list[str] | None) -> list[str] | None:
+    """Normalize source type filters to internal identifiers.
+
+    Args:
+        source_types: Raw source type filters.
+
+    Returns:
+        Normalized list of source types or None.
+    """
+    if not source_types:
+        return None
+
+    aliases = {
+        "md": "markdown",
+        "markdown": "markdown",
+        "pdf": "pdf",
+        "docx": "word",
+        "word": "word",
+        "xlsx": "excel",
+        "xls": "excel",
+        "excel": "excel",
+        "recipe": "recipe",
+        "git": "git",
+    }
+
+    normalized: list[str] = []
+    for source_type in source_types:
+        if not source_type:
+            continue
+        key = source_type.strip().lower()
+        normalized.append(aliases.get(key, key))
+
+    unique = sorted(set(normalized))
+    return unique or None
+
+
 def search(
     query: str,
     project: str | None = None,
     top_k: int | None = None,
     use_hybrid: bool | None = None,
     scoring_config: ScoringConfig | None = None,
+    source_types: list[str] | None = None,
+    date_after: datetime | None = None,
+    date_before: datetime | None = None,
+    language: str | None = None,
 ) -> list[SearchResult]:
     """Search the knowledge base for relevant chunks.
 
@@ -72,6 +112,10 @@ def search(
             If None, uses config.search.hybrid_enabled setting.
         scoring_config: Custom scoring configuration for hybrid mode.
             If None and hybrid is enabled, uses config.search settings.
+        source_types: Filter by source types (optional).
+        date_after: Filter by documents after this date (optional).
+        date_before: Filter by documents before this date (optional).
+        language: Filter by language (optional).
 
     Returns:
         List of search results ranked by relevance.
@@ -84,6 +128,7 @@ def search(
 
     # Use parsed project filter if no explicit project given
     effective_project = project or parsed.project_filter
+    normalized_types = normalize_source_types(source_types)
 
     # Determine if hybrid scoring should be used
     if use_hybrid is None:
@@ -107,11 +152,20 @@ def search(
     # Search the database - fetch more if using filters or hybrid (for post-filtering)
     db = get_database()
     fetch_multiplier = 3 if use_hybrid else 1
-    if parsed.has_filters():
+    has_metadata_filters = bool(normalized_types or date_after or date_before or language)
+    if parsed.has_filters() or has_metadata_filters:
         fetch_multiplier = max(fetch_multiplier, 5)  # Fetch more when filtering
     fetch_limit = top_k * fetch_multiplier
 
-    raw_results = db.search_similar(query_embedding, limit=fetch_limit, project=effective_project)
+    raw_results = db.search_similar(
+        query_embedding,
+        limit=fetch_limit,
+        project=effective_project,
+        source_types=normalized_types,
+        date_after=date_after,
+        date_before=date_before,
+        language=language,
+    )
 
     # Apply phrase and exclusion filters
     if parsed.has_filters():
