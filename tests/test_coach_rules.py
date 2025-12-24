@@ -20,14 +20,16 @@ class DummyDB:
         return suggestion_type in self.cooldown_types
 
 
-def _make_source(source_id: int, confidence: str, outdated: bool) -> Source:
+def _make_source(
+    source_id: int, confidence: str, outdated: bool, snippet: str = "Test content"
+) -> Source:
     return Source(
         id=source_id,
         chunk_id=source_id,
         file_path=f"docs/source_{source_id}.md",
         file_type="markdown",
         locator=SourceLocator(type="heading", heading="Test", start_line=1, end_line=2),
-        snippet="Test content",
+        snippet=snippet,
         date=datetime(2024, 1, 1),
         date_confidence=confidence,
         project="docs",
@@ -115,3 +117,22 @@ def test_cooldown_suppresses_suggestion():
         db=db,
     )
     assert suggestions == []
+
+
+def test_capture_hygiene_suggestion_when_decisions_missing_rationale():
+    db = DummyDB()
+    sources = [
+        _make_source(1, "HIGH", False, "Decision: Ship now"),
+        _make_source(2, "HIGH", False, "Decision: Pause rollout"),
+    ]
+    suggestions = generate_coach_suggestions(
+        sources=sources,
+        overall_confidence="HIGH",
+        not_found=False,
+        project="docs",
+        coach_enabled=True,
+        cooldown_days=7,
+        db=db,
+    )
+    assert len(suggestions) == 1
+    assert suggestions[0].type == "capture_hygiene"

@@ -2,7 +2,7 @@
 
 > Optional coaching layer that adds bounded suggestions without weakening grounded answers.
 
-**Last Updated:** 2025-12-23  
+**Last Updated:** 2025-12-24  
 **Status:** Draft  
 **Version:** 1.0.0
 
@@ -95,12 +95,14 @@ Only the following categories are permitted:
 
 1. **Capture hygiene**
    - Missing decision record, missing rationale, missing metadata, inconsistent templates.
+   - Lint-based alerts (e.g., Decision missing rejected options).
 2. **Staleness / revisit prompts**
    - Topic likely outdated based on date confidence thresholds.
 3. **Coverage gaps**
    - "No sources found" guidance: propose what to add/index, where to record, which project tag to use.
 4. **System improvements**
    - Indexing failures, parser issues, evaluation gaps, weak citation precision.
+   - Knowledge Health dashboard signals (coverage, staleness, hygiene).
 5. **Workflow nudges (jefe-oriented)**
    - Suggestions to use templates or run a command (index, extract-decisions, add tags), without judgment.
 
@@ -171,6 +173,8 @@ Inputs:
 - Retrieval metadata (source dates, date confidence, project, cited chunk count)
 - Indexing stats/errors
 - Presence/absence of decision records for the topic
+- Knowledge Health dashboard metrics (coverage, hygiene, staleness)
+- Template lint results (missing rationale, rejected options)
 
 Pipeline:
 
@@ -235,4 +239,3 @@ Allowed only if:
 - [API_CONTRACT.md](API_CONTRACT.md) — Ask response schema and endpoints
 
 **Date Confidence:** HIGH (document created 2025-12-23)
-

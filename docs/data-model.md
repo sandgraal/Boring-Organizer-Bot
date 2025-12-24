@@ -18,6 +18,8 @@ B.O.B uses SQLite as its primary database, with optional sqlite-vec for vector s
                       └─────────────┘
 ```
 
+Additional tables support health, evaluation, and Coach Mode (see below).
+
 ## Tables
 
 ### documents
@@ -99,11 +101,72 @@ Extracted decisions stored for decision-aware search and CLI output.
 | decision_text | TEXT    | The decision statement               |
 | context       | TEXT    | Surrounding context                  |
 | decision_type | TEXT    | Category                             |
-| status        | TEXT    | 'active', 'superseded', 'deprecated' |
+| status        | TEXT    | 'proposed', 'decided', 'superseded', 'obsolete' |
 | superseded_by | INTEGER | Reference to newer decision          |
+| superseded_at | TEXT    | When superseded (optional)           |
 | decision_date | TEXT    | When decision was made               |
 | confidence    | REAL    | Extraction confidence                |
 | extracted_at  | TEXT    | Extraction timestamp                 |
+
+### index_runs
+
+Stores indexing job metadata for health dashboards and audit.
+
+| Column        | Type    | Description                         |
+| ------------- | ------- | ----------------------------------- |
+| id            | INTEGER | Primary key                         |
+| path          | TEXT    | Indexed path                        |
+| project       | TEXT    | Project name                        |
+| status        | TEXT    | 'running', 'completed', 'failed'    |
+| started_at    | TEXT    | Start timestamp                     |
+| completed_at  | TEXT    | Completion timestamp (optional)     |
+| files_total   | INTEGER | Total files discovered              |
+| files_indexed | INTEGER | Successfully indexed files          |
+| files_failed  | INTEGER | Failed files                        |
+
+### ingestion_errors
+
+Stores per-file ingestion failures for health dashboards and fix queues.
+
+| Column        | Type    | Description                          |
+| ------------- | ------- | ------------------------------------ |
+| id            | INTEGER | Primary key                          |
+| index_run_id  | INTEGER | FK to index_runs                     |
+| file_path     | TEXT    | File path that failed                |
+| source_type   | TEXT    | Document type                        |
+| error_type    | TEXT    | 'parse_error', 'no_text', 'oversize' |
+| error_message | TEXT    | Error message                        |
+| created_at    | TEXT    | Error timestamp                      |
+| resolved_at   | TEXT    | Resolution timestamp (optional)      |
+
+### eval_runs
+
+Stores evaluation run metadata for regression tracking.
+
+| Column        | Type    | Description                          |
+| ------------- | ------- | ------------------------------------ |
+| id            | INTEGER | Primary key                          |
+| golden_set    | TEXT    | Path or identifier of golden set     |
+| started_at    | TEXT    | Run start time                       |
+| completed_at  | TEXT    | Run end time                         |
+| status        | TEXT    | 'running', 'completed', 'failed'     |
+| config_hash   | TEXT    | Hash of retrieval config             |
+| baseline      | INTEGER | 1 if baseline run                    |
+
+### eval_results
+
+Stores per-question metrics and drift data.
+
+| Column          | Type    | Description                           |
+| --------------- | ------- | ------------------------------------- |
+| id              | INTEGER | Primary key                           |
+| eval_run_id     | INTEGER | FK to eval_runs                       |
+| question_id     | TEXT    | Question identifier                   |
+| recall_at_k     | REAL    | Recall@k                              |
+| precision_at_k  | REAL    | Precision@k                           |
+| mrr             | REAL    | Mean reciprocal rank                  |
+| answer_hash     | TEXT    | Hash of answer for drift detection    |
+| changed_since   | TEXT    | Reference run id (optional)           |
 
 ### search_history
 
@@ -115,6 +178,7 @@ Optional analytics table.
 | query         | TEXT    | Search query      |
 | project       | TEXT    | Project filter    |
 | results_count | INTEGER | Number of results |
+| not_found     | INTEGER | 1 if no sources   |
 | searched_at   | TEXT    | Timestamp         |
 
 ### user_settings
@@ -159,6 +223,9 @@ Migrations are stored in `bob/db/migrations/` as SQL files:
 - `001_initial_schema.sql` - Core tables
 - `002_vector_index.sql` - Vector search setup
 - `003_coach_mode.sql` - Coach Mode settings and cooldown log
+- `004_decision_lifecycle.sql` - Decision status expansion and superseded_at
+- `005_health_dashboard.sql` - index_runs and ingestion_errors
+- `006_eval_runs.sql` - eval_runs and eval_results
 
 Run migrations with:
 

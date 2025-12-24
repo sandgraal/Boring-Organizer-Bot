@@ -2,7 +2,7 @@
 
 > Design specification for B.O.B's local-first web interface.
 
-**Last Updated:** 2025-12-23  
+**Last Updated:** 2025-12-24  
 **Status:** Implemented (Phase 3 Complete)  
 **Version:** 1.0.0
 
@@ -35,6 +35,7 @@ Provide a **beautiful, trustworthy interface** for asking questions and explorin
 3. **Full transparency**: Date confidence and freshness warnings always shown
 4. **Works offline**: No network requests to external services
 5. **Fast startup**: UI usable within 2 seconds of `bob serve`
+6. **Auditability**: Retrieved vs used evidence is visible on demand
 
 ### Non-Goals
 
@@ -97,6 +98,25 @@ Everything runs on the user's machine. No spinners waiting for cloud services.
 - No external CDN or font loading
 - Optimistic UI updates where possible
 
+### 6. Answer Audit Trail
+
+Trust is visible by showing retrieved evidence, used evidence, and gaps.
+
+**Implementation:**
+
+- Audit panel lists retrieved chunks (ranked)
+- Used chunks are highlighted and linked to citations
+- Unsupported claim spans are removed or marked
+
+### 7. Structured Capture
+
+Capture consistency improves retrieval quality over time.
+
+**Implementation:**
+
+- "New note" uses built-in templates
+- Lint warnings appear for missing rationale/rejected options
+
 ---
 
 ## Core Screens
@@ -105,7 +125,7 @@ Everything runs on the user's machine. No spinners waiting for cloud services.
 
 The main interface for querying knowledge.
 
-**Layout: 3-Pane**
+**Layout: 3-Pane + Audit Tab**
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -145,14 +165,20 @@ The main interface for querying knowledge.
   - Large query input with submit button
   - Answer text with inline citation markers
   - Mandatory footer: Sources count, Date confidence, Outdated warning
+  - "Copy as report" button for exporting answer + sources
   - Coach Mode toggle (per-session) with current mode label
   - Suggestions (Coach Mode) section appears only when enabled
 
-- **Sources Panel (Right)**
+- **Sources Panel (Right, tabbed)**
   - Numbered source cards
   - Each card shows: filename, locator (heading/page/line), date, confidence
   - "Open" button to jump to source
   - Outdated warning badge if applicable
+
+- **Audit Panel (Right, tabbed)**
+  - Retrieved chunks ranked with scores
+  - Used chunks highlighted (supports citations)
+  - Unsupported claims list (removed or marked spans)
 
 ### 2. Library / Browse
 
@@ -228,9 +254,10 @@ View extracted decisions with status and provenance.
 
 **Elements:**
 
-- Status badges: Active (green), Superseded (yellow), Deprecated (gray)
+- Status badges: Proposed, Decided, Superseded, Obsolete
 - Decision text and context
-- Link to superseding decision
+- Link to superseding decision + chronology
+- "Older than" filter for review cadence
 - Click to view original source
 
 ### 4. Recipes View
@@ -316,7 +343,79 @@ Monitor and trigger indexing jobs.
 - Error log for failed files
 - Job history
 
-### 6. Settings / Preferences
+### 6. Knowledge Health Dashboard
+
+Monitor coverage, metadata hygiene, staleness, and breakage.
+
+**Layout: Metrics + Fix Queue**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  B.O.B > Health                            [Ask] [Library]      │
+├─────────────────────────────────────────────────────────────────┤
+│  COVERAGE                     METADATA HYGIENE                  │
+│  ┌──────────────────────┐     ┌──────────────────────┐          │
+│  │ Low volume: 3        │     │ Missing dates: 12    │          │
+│  │ Low hits: 5          │     │ Missing project: 4   │          │
+│  └──────────────────────┘     └──────────────────────┘          │
+│                                                                 │
+│  STALENESS RADAR            INGESTION FAILURES                  │
+│  ┌──────────────────────┐   ┌──────────────────────┐           │
+│  │ >6 months: 18         │   │ PDFs no text: 3      │           │
+│  │ >12 months: 6         │   │ Parse errors: 2      │           │
+│  └──────────────────────┘   └──────────────────────┘           │
+│                                                                 │
+│  FIX QUEUE                                                      │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ 1) Re-index /notes/2022 (missing dates)   [Open] [Reindex]│  │
+│  │ 2) Fix metadata in decisions.md           [Open]          │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+
+- Coverage by project with low-volume/low-hit flags
+- Metadata hygiene counters with drill-down
+- Staleness buckets with filters
+- Ingestion failures list with file paths
+- Fix queue with open/reindex actions
+
+### 7. Evaluation / Drift
+
+Surface regression results and answer drift across golden questions.
+
+**Layout: Runs + Deltas**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  B.O.B > Eval                             [Ask] [Health]        │
+├─────────────────────────────────────────────────────────────────┤
+│  LAST RUN: 2025-12-24 09:00                [Run Eval]           │
+│  Domains: Food, Travel, CDC, Construction, Business             │
+│                                                                 │
+│  DELTAS (Since last week)                                       │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ CDC: -0.12 Recall@5     3 answers changed    [View]        │  │
+│  │ Travel: +0.05 MRR       1 answer changed     [View]        │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  QUESTION DIFF                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Q: "What did we decide about X?"                           │  │
+│  │ Old: ... [1]                                                │  │
+│  │ New: ... [2]                                                │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Elements:**
+
+- Run history list and baseline indicator
+- Per-domain delta cards
+- Answer diff view with citations
+
+### 8. Settings / Preferences
 
 Manage Coach Mode defaults and per-project preferences.
 
@@ -325,6 +424,8 @@ Manage Coach Mode defaults and per-project preferences.
 - Global default mode: Boring B.O.B / Coach Mode
 - Per-project overrides (toggle per project)
 - Cooldown info and "Show anyway" override toggle
+- Template management (list + preview)
+- Connector toggles (bookmarks import, highlights, PDF annotations)
 
 ---
 
@@ -366,7 +467,17 @@ Every answer display MUST include:
 - Date confidence: HIGH (all <3 months), MEDIUM (some 3-6 months), LOW (any >6 months)
 - Outdated warning: show if ANY source >6 months old
 
-### 3. "Not Found" Handling
+### 3. Answer Audit Panel
+
+When audit data is available, show a tabbed Audit panel next to Sources.
+
+**Rules:**
+
+- Retrieved chunks sorted by rank and score
+- Used chunks clearly marked
+- Unsupported claims listed (with context) if removed or marked
+
+### 4. "Not Found" Handling
 
 When query returns no relevant results:
 
@@ -390,7 +501,7 @@ When query returns no relevant results:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Indexing Progress
+### 5. Indexing Progress
 
 During active indexing job:
 
@@ -399,7 +510,7 @@ During active indexing job:
 - Show error count incrementally
 - On completion: toast notification + refresh library
 
-### 5. Keyboard Shortcuts
+### 6. Keyboard Shortcuts
 
 | Shortcut    | Action                    |
 | ----------- | ------------------------- |
@@ -409,7 +520,7 @@ During active indexing job:
 | `1-9`       | Open source 1-9           |
 | `Cmd+K`     | Quick navigation          |
 
-### 6. Coach Mode Toggle and Suggestions
+### 7. Coach Mode Toggle and Suggestions
 
 **Toggle placement (Ask screen):**
 
@@ -438,6 +549,18 @@ During active indexing job:
 - "Dismiss" button logs cooldown for that suggestion type
 - Optional "Show anyway" link to override cooldown
 
+### 8. "Copy as Report"
+
+- Button appears in Answer area once results are present
+- Output includes answer, sources, locators, and date confidence
+- Optional toggle to include retrieved/used lists
+
+### 9. New Note + Templates
+
+- Global "New note" action opens template picker
+- Template writes to configured vault path
+- Confirmation toast shows file path
+
 ---
 
 ## Component List
@@ -458,6 +581,8 @@ During active indexing job:
 | `QueryInput`    | Search input with submit                 | Ask       |
 | `AnswerDisplay` | Answer text with citation markers        | Ask       |
 | `AnswerFooter`  | Sources count, date confidence, warnings | Ask       |
+| `AuditPanel`    | Retrieved/used/unsupported list          | Ask       |
+| `ReportButton`  | Copy answer + sources export             | Ask       |
 | `CoachToggle`   | Mode toggle (boring/coach)               | Ask       |
 | `CoachSuggestions` | Suggestions list + dismissal UI       | Ask       |
 | `SourceCard`    | Individual source with metadata + open   | Ask       |
@@ -468,6 +593,11 @@ During active indexing job:
 | `ProgressBar`   | Job progress indicator                   | Indexing  |
 | `JobHistory`    | List of past indexing jobs               | Indexing  |
 | `ErrorLog`      | Expandable error details                 | Indexing  |
+| `HealthDashboard` | Coverage/hygiene/staleness/failures     | Health    |
+| `FixQueue`      | High-impact cleanup task list            | Health    |
+| `TemplatePicker` | Template selection modal                | Global    |
+| `LintWarningList` | Capture lint results                   | Ask/Library |
+| `EvalDashboard` | Regression and drift view                | Eval      |
 
 ### UI Components
 
@@ -482,6 +612,8 @@ During active indexing job:
 | `Modal`      | Dialog overlay              | Details  |
 | `Tooltip`    | Hover information           | Multiple |
 | `SettingsPanel` | Preferences and per-project toggles | Settings |
+| `TabGroup`   | Sources/Audit tab switcher  | Ask      |
+| `ToggleList` | Connector enable/disable UI | Settings |
 
 ---
 
@@ -497,6 +629,8 @@ During active indexing job:
 | `/recipes/:id` | `RecipePage`    | Single recipe details     |
 | `/indexing`    | `IndexingPage`  | Indexing dashboard        |
 | `/settings`    | `SettingsPage`  | Preferences and Coach Mode |
+| `/health`      | `HealthPage`    | Knowledge health dashboard |
+| `/eval`        | `EvalPage`      | Regression and drift view |
 
 **Note:** All routes are client-side. The server serves `index.html` for all paths and JS handles routing.
 

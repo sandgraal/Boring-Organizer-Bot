@@ -9,7 +9,8 @@ B.O.B (Boring Organizer Bot) is a local-first personal knowledge assistant. This
 1. **Local-first**: All data stays on your machine. No cloud dependencies for core functionality.
 2. **Boring technology**: SQLite, Python, simple file parsers. No exotic dependencies.
 3. **Citation-grounded**: Every claim must be backed by a source. No hallucinations.
-4. **Developer-friendly**: Clear code, good tests, easy to extend.
+4. **Auditability**: Provenance is visible; unsupported claims are blocked or marked.
+5. **Developer-friendly**: Clear code, good tests, easy to extend.
 
 ## System Components
 
@@ -23,6 +24,11 @@ B.O.B (Boring Organizer Bot) is a local-first personal knowledge assistant. This
 │                       API Layer                              │
 │       bob/api/ (FastAPI - localhost:8080)                   │
 │  POST /ask | POST /index | GET /projects | POST /open       │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│             Agent Tool Server (Optional MCP)                │
+│   bob/agents/ (MCP-compatible tool endpoints)               │
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
@@ -49,6 +55,14 @@ B.O.B (Boring Organizer Bot) is a local-first personal knowledge assistant. This
         │      Database     │
         │  (SQLite + vec)   │
         └───────────────────┘
+
+Additional components (local-only):
+
+- **Answer audit**: claim validation + retrieved/used audit payload
+- **Knowledge health**: coverage, metadata hygiene, staleness, failures
+- **Capture helpers**: templates, new-note writer, linter
+- **Connectors**: bookmarks import, manual highlights, PDF annotations
+- **Eval UI**: golden set regression and drift display
 ```
 
 ## Data Flow
@@ -56,7 +70,7 @@ B.O.B (Boring Organizer Bot) is a local-first personal knowledge assistant. This
 ### Indexing Pipeline
 
 ```
-File → Parser → ParsedDocument → Chunker → Chunks → Embedder → Database
+File/Connector → Parser → ParsedDocument → Chunker → Chunks → Embedder → Database
                      │                        │
                      └── Metadata ────────────┘
 ```
@@ -69,14 +83,15 @@ File → Parser → ParsedDocument → Chunker → Chunks → Embedder → Datab
 ### Query Pipeline
 
 ```
-Query → Embedder → Vector Search → Results → Formatter → Output
-                        │              │
-                        └── Metadata ──┘
+Query → Embedder → Vector Search → Results → Claim Validator → Formatter → Output
+                        │                      │
+                        └── Metadata + Audit ──┘
 ```
 
 1. **Embedder** converts query to vector
 2. **Vector Search** finds similar chunks
 3. **Formatter** adds citations, date confidence, and warnings
+4. **Claim Validator** removes or marks unsupported spans and emits audit data
 
 ## Database Schema
 
@@ -161,3 +176,14 @@ but decided against", "instead of", "rather than", or "not X" appear.
 
 Decision dates currently come from document metadata (`source_date`) and are not
 parsed from inline text.
+
+### Agent Interop (MCP)
+
+Optional MCP-compatible tool server exposes local-only tools:
+
+- search/ask with citations
+- read/write notes
+- list projects and index status
+- permissioning (paths, scopes, dry-run)
+
+This server is opt-in and never binds to non-localhost by default.

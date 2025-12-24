@@ -81,7 +81,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Index documents, search with embeddings, return cited passages without generation.
 
-### Status: ✅ Complete
+### Status: 🔄 In Progress
 
 ### Features
 
@@ -328,6 +328,272 @@ These are explicit non-goals to avoid scope creep:
 
 ---
 
+## Track: Answer Audit Trail
+
+**Goal:** Make trust visible by showing what was retrieved, what was used, and what was rejected.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 2 complete (API server) ✅
+- Phase 3 complete (Ask UI) ✅
+
+### Features
+
+1. **Audit Panel (Ask UI)**
+
+   - [ ] Show retrieved chunks ranked with scores
+   - [ ] Mark which chunks were used in the final answer
+   - [ ] Surface unused chunks for transparency
+
+2. **Unsupported Claim Detection**
+
+   - [ ] Detect answer spans without citations
+   - [ ] Remove or mark unsupported spans before rendering
+   - [ ] Expose unsupported spans in audit payload
+
+3. **Copy as Report**
+
+   - [ ] Export answer + sources in a clean, shareable format
+   - [ ] Optional inclusion of retrieved/used lists
+   - [ ] Preserve locators and date confidence
+
+### Acceptance Criteria
+
+- [ ] Audit panel shows top-k retrieved chunks and scores
+- [ ] Used chunks are clearly labeled and linked to citations
+- [ ] Unsupported claims never appear unmarked in the answer
+- [ ] "Copy as report" output is consistent and citation-complete
+
+### Test Plan
+
+| Test                         | Description                                       | File                    |
+| ---------------------------- | ------------------------------------------------- | ----------------------- |
+| Unit: Claim validator        | Unsupported spans detected and removed/marked     | `tests/test_audit.py`   |
+| Integration: /ask audit data | API returns retrieved + used + unsupported fields | `tests/test_api_ask.py` |
+| UI: Audit panel              | Panel renders and filters correctly               | Manual + E2E            |
+
+### Risks
+
+| Risk                          | Impact                | Mitigation                            |
+| ----------------------------- | --------------------- | ------------------------------------- |
+| Audit data is confusing       | Trust decreases       | Clear labeling + defaults hidden      |
+| Claim validation false alarms | Missing info          | Conservative matching and warnings    |
+| Report export drifts          | Inconsistent citations | Golden tests for report format        |
+
+### Definition of Done
+
+- [ ] Audit payload returned in /ask
+- [ ] UI panel shows retrieved vs used chunks
+- [ ] Unsupported claims are blocked or marked
+- [ ] Report export works offline
+
+---
+
+## Track: Knowledge Health Dashboard
+
+**Goal:** Provide a reliability dashboard for coverage, metadata hygiene, staleness, and ingestion breakage.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 1 complete (index + retrieval) ✅
+- Phase 2 complete (API server) ✅
+
+### Features
+
+1. **Coverage Metrics**
+
+   - [ ] Low indexed volume per project
+   - [ ] Low retrieval hit rate per project
+
+2. **Metadata Hygiene**
+
+   - [ ] Missing project/date/language/source counts
+   - [ ] Top offenders by file count
+
+3. **Staleness Radar**
+
+   - [ ] Decisions/notes older than thresholds
+   - [ ] Configurable age buckets (3/6/12 months)
+
+4. **Ingestion Failures**
+
+   - [ ] PDFs with no text
+   - [ ] Parse errors and oversized files
+   - [ ] Recent failures list with file paths
+
+5. **Fix Queue**
+   - [ ] One-click list of highest-impact cleanup tasks
+   - [ ] Links to open file or re-index path
+
+### Acceptance Criteria
+
+- [ ] Dashboard page shows coverage, hygiene, staleness, failures
+- [ ] Fix queue lists actionable items with open/reindex actions
+- [ ] Metrics update after indexing runs
+
+### Test Plan
+
+| Test                   | Description                          | File                        |
+| ---------------------- | ------------------------------------ | --------------------------- |
+| Unit: Metrics          | Coverage and hygiene computed        | `tests/test_health.py`      |
+| Integration: Dashboard | API returns dashboard payload        | `tests/test_api_health.py`  |
+| UI: Health view        | Dashboard renders and links work     | Manual + E2E                |
+
+### Risks
+
+| Risk                     | Impact            | Mitigation                       |
+| ------------------------ | ----------------- | -------------------------------- |
+| Metrics are noisy        | Confusion         | Clear thresholds + explanations |
+| Dashboard becomes heavy  | Slow UI           | Cache and incremental updates    |
+
+### Definition of Done
+
+- [ ] Dashboard metrics are available via API
+- [ ] UI shows health signals and fix queue
+- [ ] Coach Mode can read dashboard metrics
+
+---
+
+## Track: Capture Helpers (Templates + Linter)
+
+**Goal:** Improve capture consistency with structured templates and quality linting.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 2 complete (API server) ✅
+- Phase 3 complete (UI) ✅
+
+### Features
+
+1. **Built-in Templates**
+
+   - [ ] Decision
+   - [ ] Experiment / evaluation
+   - [ ] Trip plan + trip debrief
+   - [ ] Recipe (structured fields)
+   - [ ] Meeting / daily log
+
+2. **New Note Workflow**
+
+   - [ ] "New note" UI action writes template into vault
+   - [ ] Local-first file creation only (no cloud)
+   - [ ] Template variables (date, project) expanded on creation
+
+3. **Capture Linter**
+   - [ ] Flag "Decision without rationale"
+   - [ ] Flag "Decision missing rejected options"
+   - [ ] Surface lint warnings in UI and API
+
+### Acceptance Criteria
+
+- [ ] Templates ship in repo and are selectable in UI
+- [ ] New note writes file to configured vault path
+- [ ] Linter flags missing required sections with low false positives
+
+### Test Plan
+
+| Test                 | Description                             | File                       |
+| -------------------- | --------------------------------------- | -------------------------- |
+| Unit: Templates      | Template rendering and variable fill    | `tests/test_templates.py`  |
+| Unit: Linter         | Lint rules detect missing fields        | `tests/test_linter.py`     |
+| Integration: New note | API writes new note with template       | `tests/test_api_notes.py`  |
+
+---
+
+## Track: Connectors (Opt-in)
+
+**Goal:** Add safe, explicit capture connectors without ambient surveillance.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 1 complete (ingestion + indexing) ✅
+- Phase 2 complete (API server) ✅
+
+### Features
+
+1. **Bookmarks Import**
+
+   - [ ] Import browser HTML export
+   - [ ] Convert to local markdown files for indexing
+   - [ ] Preserve folder hierarchy as metadata
+
+2. **Manual Highlights**
+
+   - [ ] "Save highlight to vault" action from UI
+   - [ ] Prompt for project + source URL
+   - [ ] Store highlight as a local note
+
+3. **PDF Annotation Import (Optional)**
+   - [ ] Import highlights from local PDF reader exports
+   - [ ] Link annotations back to source PDF
+
+### Acceptance Criteria
+
+- [ ] Bookmarks import creates local notes without network calls
+- [ ] Manual highlights are stored as local files and indexed
+- [ ] PDF annotations import is opt-in and best-effort
+
+### Test Plan
+
+| Test                   | Description                               | File                           |
+| ---------------------- | ----------------------------------------- | ------------------------------ |
+| Unit: Bookmarks parser | Parses HTML export correctly              | `tests/test_bookmarks.py`      |
+| Integration: Import    | End-to-end import and indexing            | `tests/test_api_connectors.py` |
+
+---
+
+## Track: Agent Interoperability (MCP)
+
+**Goal:** Provide a minimal MCP-compatible local tool server for agent ecosystems.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 2 complete (API server) ✅
+
+### Features
+
+1. **MCP Server (Local)**
+
+   - [ ] Expose search/ask with citations
+   - [ ] Read/write note
+   - [ ] List projects
+   - [ ] Index status
+
+2. **Permissioning**
+
+   - [ ] Allowed paths list
+   - [ ] Read/write scopes
+   - [ ] Dry-run mode for writes
+
+3. **Compatibility**
+   - [ ] MCP JSON-RPC framing
+   - [ ] Explicit errors for denied actions
+
+### Acceptance Criteria
+
+- [ ] MCP server runs locally and is opt-in
+- [ ] Permissions enforced for all tools
+- [ ] Tool responses include citations where applicable
+
+### Test Plan
+
+| Test                 | Description                         | File                       |
+| -------------------- | ----------------------------------- | -------------------------- |
+| Unit: Permissions    | Deny/allow rules enforced           | `tests/test_mcp_auth.py`   |
+| Integration: MCP API | Tools work end-to-end               | `tests/test_mcp_server.py` |
+
+---
+
 ## Track: Coach Mode (Opt-in)
 
 **Goal:** Add an optional, non-intrusive coaching layer that provides bounded suggestions without weakening grounded answers.
@@ -348,7 +614,7 @@ These are explicit non-goals to avoid scope creep:
 
 2. **Suggestion Engine (Deterministic)**
 
-   - [ ] Generate suggestions from retrieval metadata, indexing stats, and decision gaps
+   - [ ] Generate suggestions from retrieval metadata, indexing stats, health signals, and decision gaps
    - [ ] No LLM required for Phase 1; deterministic rules only
    - [ ] Optional LLM-assisted phrasing later, post-filtered
 
@@ -492,34 +758,36 @@ These are explicit non-goals to avoid scope creep:
    - [x] Extract: decision text, date, context, alternatives rejected
    - [x] Confidence score for extraction quality
 
-2. **Decision Schema**
+2. **Decision Lifecycle**
 
    - [x] Decision ID (auto-generated, stable)
    - [x] Decision text (the actual decision)
    - [x] Context (why this decision was made)
    - [x] Rejected alternatives (what was not chosen and why)
-   - [x] Status: `active`, `superseded`, `deprecated`
-   - [x] Superseded by (link to replacement decision)
+   - [ ] Status: `proposed`, `decided`, `superseded`, `obsolete`
+   - [ ] Superseded by (link to replacement decision) + chronology
+   - [ ] Review cadence view (manual): filter by age + project
    - [x] Source chunk ID (for citation back to original)
 
 3. **CLI Commands**
 
    - [x] `bob extract-decisions [--project]` — Scan and extract decisions
-   - [x] `bob decisions [--status active]` — List decisions
+   - [ ] `bob decisions [--status decided]` — List decisions
    - [x] `bob decision <id>` — Show decision details with full context
    - [x] `bob supersede <old_id> <new_id>` — Mark decision as superseded
+   - [ ] `bob decisions --older-than 6m --project cdc` — Review cadence filter
 
 4. **Integration with Search**
    - [x] `bob search` shows decision badges on results
-   - [x] Decision results show status and any supersession info
-   - [x] Warn if returning a superseded decision
+   - [ ] Decision results show lifecycle status and supersession info
+   - [ ] Warn if returning a superseded/obsolete decision
 
 ### Acceptance Criteria
 
-- [x] `bob extract-decisions` finds decisions in ADR-format documents
-- [x] Each decision has a stable ID and full provenance
-- [x] Superseded decisions are marked and linked to replacements
-- [x] Search can filter by decision status
+- [ ] Decision states include proposed/decided/superseded/obsolete
+- [ ] Superseded decisions link to replacements with chronology
+- [ ] Review cadence view lists older decisions by project
+- [ ] Search can filter by decision lifecycle state
 
 ### Test Plan
 
@@ -539,10 +807,10 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [x] Decisions extracted from test corpus with >80% precision
-- [x] Full CRUD for decision lifecycle
-- [x] Supersession relationships tracked
-- [x] Documentation and examples for decision formats
+- [ ] Decision lifecycle implemented with new states
+- [ ] Supersession relationships tracked with chronology
+- [ ] Review cadence queries documented
+- [ ] Extraction precision remains >80%
 
 ---
 
@@ -581,6 +849,7 @@ These are explicit non-goals to avoid scope creep:
    - [ ] Refuse to answer if passages are all low-confidence
    - [ ] Log prompt and response for debugging
    - [ ] `--no-generate` flag to skip LLM (retrieval only)
+   - [ ] Claim-level validation to remove or mark unsupported spans
 
 5. **CLI Changes**
    - [ ] `bob ask "question" --generate` — Enable generation
@@ -631,7 +900,7 @@ These are explicit non-goals to avoid scope creep:
 
    - [ ] JSON Lines format for Q/A pairs
    - [ ] Fields: question, expected_chunks, expected_answer (optional)
-   - [ ] Example dataset in `docs/eval/`
+   - [ ] Small golden sets per domain (Food/Travel/CDC/Construction/Business)
    - [ ] Tool to create Q/A pairs from existing indexed content
 
 2. **Retrieval Metrics**
@@ -654,7 +923,13 @@ These are explicit non-goals to avoid scope creep:
    - [ ] Output: summary table + detailed JSON
    - [ ] CI integration (run on PR)
 
-5. **Artifacts**
+5. **Drift Detection UI**
+
+   - [ ] UI page showing regression status
+   - [ ] "Answers changed since last week" diff view
+   - [ ] Per-domain delta summary
+
+6. **Artifacts**
    - [ ] `docs/eval/example_gold.jsonl` — Example golden set
    - [ ] `tests/test_eval_runner.py` — Evaluation runner tests
    - [ ] `bob/eval/` — Evaluation module
@@ -662,9 +937,11 @@ These are explicit non-goals to avoid scope creep:
 ### Acceptance Criteria
 
 - [ ] Example golden set with at least 20 Q/A pairs
+- [ ] Golden sets exist for core domains
 - [ ] `bob eval run` produces metrics report
 - [ ] Metrics are reproducible (same input → same output)
 - [ ] Regressions detected on golden set changes
+- [ ] UI shows regressions and answer drift deltas
 
 ### Test Plan
 
@@ -698,7 +975,12 @@ These are explicit non-goals to avoid scope creep:
 | **Phase 1** | Core Retrieval          | —             | 2-3 weeks     |
 | **Phase 2** | Local API Server        | Phase 1       | 1-2 weeks     |
 | **Phase 3** | Web Interface           | Phase 2       | 2-3 weeks     |
-| **Track**   | Coach Mode (Opt-in)     | Phase 3       | 1-2 weeks     |
+| **Track**   | Answer Audit Trail      | Phase 3       | 1-2 weeks     |
+| **Track**   | Knowledge Health        | Phase 2       | 1-2 weeks     |
+| **Track**   | Capture Helpers         | Phase 3       | 1-2 weeks     |
+| **Track**   | Connectors              | Phase 2       | 1-2 weeks     |
+| **Track**   | Agent Interop (MCP)      | Phase 2       | 1-2 weeks     |
+| **Track**   | Coach Mode (Opt-in)      | Phase 3       | 1-2 weeks     |
 | **Phase 4** | Better Retrieval        | Phase 1       | 2 weeks       |
 | **Phase 5** | Decision Layer          | Phase 1       | 2-3 weeks     |
 | **Phase 6** | Optional Generation     | Phase 4       | 2 weeks       |
@@ -707,7 +989,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Critical Path:** Phase 1 → Phase 2 → Phase 3 (delivers usable UI)
 
-Track: Coach Mode can proceed after Phase 3 and in parallel with Phases 4, 5, and 7.
+Tracks can proceed after Phase 2/3 and in parallel with Phases 4, 5, and 7.
 Phase 8 is optional and only triggered if desktop packaging is needed.
 
 ---

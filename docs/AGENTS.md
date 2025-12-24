@@ -2,7 +2,7 @@
 
 > Rules and conventions for AI agents working in the B.O.B repository.
 
-**Last Updated:** 2025-12-23  
+**Last Updated:** 2025-12-24  
 **Applies to:** All coding agents, research agents, QA agents, documentation agents
 
 ---
@@ -134,8 +134,9 @@ CREATE TABLE IF NOT EXISTS decisions (
     chunk_id INTEGER NOT NULL REFERENCES chunks(id),
     decision_text TEXT NOT NULL,
     context TEXT,
-    status TEXT DEFAULT 'active',
+    status TEXT DEFAULT 'decided',
     superseded_by INTEGER REFERENCES decisions(id),
+    superseded_at TEXT,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -277,7 +278,7 @@ decision:
     - option: "MySQL"
       reason: "Heavier than needed"
 
-  status: active # active | superseded | deprecated
+  status: decided # proposed | decided | superseded | obsolete
   superseded_by: null # DEC-XXX if replaced
   source_chunk_id: 1234 # For citation
 ```
@@ -299,8 +300,8 @@ bob supersede DEC-001 DEC-042 --reason "Scaling requirements changed"
 ### Decision Queries
 
 ```bash
-# List all active decisions
-bob decisions --status active
+# List all decided decisions
+bob decisions --status decided
 
 # Show decision with full context
 bob decision DEC-001

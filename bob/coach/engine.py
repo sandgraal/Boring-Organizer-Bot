@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -72,6 +73,31 @@ def _staleness_suggestion(sources: list[Source]) -> SuggestionCandidate:
     )
 
 
+def _decision_without_rationale_sources(sources: list[Source]) -> list[Source]:
+    pattern_decision = re.compile(r"\bdecision\b\s*:", re.IGNORECASE)
+    pattern_rationale = re.compile(r"\brationale\b\s*:", re.IGNORECASE)
+    matches: list[Source] = []
+    for source in sources:
+        snippet = source.snippet or ""
+        if pattern_decision.search(snippet) and not pattern_rationale.search(snippet):
+            matches.append(source)
+    return matches
+
+
+def _capture_hygiene_suggestion(sources: list[Source]) -> SuggestionCandidate:
+    citations = sources[:2]
+    return SuggestionCandidate(
+        suggestion_type="capture_hygiene",
+        text=(
+            "Add a short Rationale block alongside Decision entries in the cited excerpts "
+            "to preserve why the choice was made."
+        ),
+        why="Multiple Decision sections appear without a Rationale line in the cited snippets.",
+        hypothesis=False,
+        citations=citations,
+    )
+
+
 def generate_coach_suggestions(
     *,
     sources: list[Source],
@@ -101,6 +127,9 @@ def generate_coach_suggestions(
             )
         if overall_confidence == "LOW":
             candidates.append(_staleness_suggestion(sources))
+        decision_without_rationale = _decision_without_rationale_sources(sources)
+        if len(decision_without_rationale) >= 2:
+            candidates.append(_capture_hygiene_suggestion(decision_without_rationale))
 
     # Gate: only coverage suggestions when evidence is thin or not found.
     if not_found or len(sources) < MIN_CITED_CHUNKS:

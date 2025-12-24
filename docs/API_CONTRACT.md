@@ -2,7 +2,7 @@
 
 > HTTP API specification for local-only B.O.B server.
 
-**Last Updated:** 2025-12-23  
+**Last Updated:** 2025-12-24  
 **Status:** Implemented (Phase 2 Complete)  
 **Version:** 1.0.0
 
@@ -141,7 +141,10 @@ Submit a question and receive an answer with structured citations.
   },
   "top_k": 5,
   "coach_mode_enabled": false,
-  "coach_show_anyway": false
+  "coach_show_anyway": false,
+  "include_audit": true,
+  "include_report": true,
+  "report_format": "markdown"
 }
 ```
 
@@ -157,6 +160,10 @@ Submit a question and receive an answer with structured citations.
   "answer": "To configure logging, edit the `config.yaml` file [1] and set the `log_level` field to your desired level [2].",
   "coach_mode_enabled": false,
   "suggestions": [],
+  "report": {
+    "format": "markdown",
+    "content": "..."
+  },
   "sources": [
     {
       "id": 1,
@@ -195,6 +202,24 @@ Submit a question and receive an answer with structured citations.
       "similarity_score": 0.87
     }
   ],
+  "audit": {
+    "retrieved": [
+      {
+        "chunk_id": 101,
+        "rank": 1,
+        "score": 0.92,
+        "used": true,
+        "locator": {
+          "type": "heading",
+          "heading": "Logging Configuration",
+          "start_line": 45,
+          "end_line": 67
+        }
+      }
+    ],
+    "used_chunk_ids": [101, 102],
+    "unsupported_claims": []
+  },
   "footer": {
     "source_count": 2,
     "date_confidence": "MEDIUM",
@@ -209,6 +234,8 @@ Submit a question and receive an answer with structured citations.
 
 - `coach_mode_enabled` reflects the effective mode used for the response.
 - `suggestions` is empty when Coach Mode is disabled or no suggestions pass gates.
+- `include_audit` returns an `audit` payload with retrieved/used/unsupported info.
+- `include_report` returns a formatted `report` payload for "copy as report".
 
 **Not Found Response:**
 
@@ -500,6 +527,230 @@ Get detailed information about a single document.
 
 ---
 
+### Health Dashboard
+
+#### `GET /health/dashboard`
+
+Return coverage, hygiene, staleness, and ingestion failure metrics.
+
+**Response:**
+
+```json
+{
+  "coverage": {
+    "low_volume_projects": ["cdc", "travel"],
+    "low_hit_projects": ["construction"]
+  },
+  "metadata_hygiene": {
+    "missing_project": 4,
+    "missing_date": 12,
+    "missing_language": 1,
+    "missing_source": 2
+  },
+  "staleness": {
+    "over_6_months": 18,
+    "over_12_months": 6
+  },
+  "ingestion_failures": [
+    { "file": "broken.pdf", "error_type": "no_text" }
+  ],
+  "fix_queue": [
+    {
+      "id": "fix_001",
+      "action": "reindex",
+      "file": "/notes/2022/decision.md",
+      "reason": "missing_date"
+    }
+  ]
+}
+```
+
+---
+
+### Templates and Notes
+
+#### `GET /templates`
+
+List built-in templates.
+
+**Response:**
+
+```json
+{
+  "templates": [
+    { "id": "decision", "title": "Decision", "description": "Decision record" },
+    { "id": "experiment", "title": "Experiment", "description": "Evaluation log" }
+  ]
+}
+```
+
+#### `POST /notes`
+
+Create a new note from a template.
+
+**Request:**
+
+```json
+{
+  "template_id": "decision",
+  "project": "cdc",
+  "title": "Data retention policy",
+  "target_path": "/vault/cdc/decisions/decision-2025-12-24.md"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "file_path": "/vault/cdc/decisions/decision-2025-12-24.md"
+}
+```
+
+#### `POST /lint`
+
+Lint a note for missing required sections.
+
+**Request:**
+
+```json
+{
+  "file_path": "/vault/cdc/decisions/decision-2025-12-24.md"
+}
+```
+
+**Response:**
+
+```json
+{
+  "issues": [
+    { "type": "missing_rationale", "message": "Decision has no rationale section." }
+  ]
+}
+```
+
+---
+
+### Connectors (Opt-in)
+
+#### `POST /connectors/bookmarks/import`
+
+Import browser HTML bookmarks into the vault.
+
+**Request:**
+
+```json
+{
+  "file_path": "/Downloads/bookmarks.html",
+  "project": "bookmarks"
+}
+```
+
+**Response:**
+
+```json
+{
+  "imported": 124,
+  "created_files": 18
+}
+```
+
+#### `POST /connectors/highlights`
+
+Save a manual highlight to the vault.
+
+**Request:**
+
+```json
+{
+  "text": "Key paragraph...",
+  "source_url": "https://example.com/article",
+  "project": "research"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "file_path": "/vault/research/highlights/2025-12-24.md"
+}
+```
+
+#### `POST /connectors/pdf-annotations/import`
+
+Import local PDF annotations (optional).
+
+**Request:**
+
+```json
+{
+  "file_path": "/vault/annotations/export.json",
+  "project": "research"
+}
+```
+
+**Response:**
+
+```json
+{
+  "imported": 42,
+  "linked_pdfs": 3
+}
+```
+
+---
+
+### Evaluation Endpoints
+
+#### `POST /eval/run`
+
+Run evaluation on golden sets.
+
+**Request:**
+
+```json
+{
+  "golden_sets": ["food", "travel", "cdc"],
+  "baseline": false
+}
+```
+
+**Response:**
+
+```json
+{
+  "run_id": "eval_2025_12_24_0900",
+  "status": "started"
+}
+```
+
+#### `GET /eval/runs`
+
+List evaluation runs.
+
+**Response:**
+
+```json
+{
+  "runs": [
+    { "id": "eval_2025_12_24_0900", "status": "completed", "baseline": false }
+  ]
+}
+```
+
+#### `GET /eval/runs/{id}`
+
+Get evaluation metrics and per-domain summaries.
+
+#### `GET /eval/diff`
+
+Compare two evaluation runs for drift.
+
+---
+
 ### Settings Endpoints
 
 #### `GET /settings`
@@ -515,7 +766,14 @@ Return persisted user settings, including Coach Mode defaults.
     "docs": "coach",
     "work": "boring"
   },
-  "coach_cooldown_days": 7
+  "coach_cooldown_days": 7,
+  "vault_path": "/vault",
+  "audit_mode_default": "summary",
+  "connectors": {
+    "bookmarks_import_enabled": true,
+    "highlights_enabled": true,
+    "pdf_annotations_enabled": false
+  }
 }
 ```
 
@@ -534,7 +792,14 @@ Update persisted user settings.
     "docs": "coach",
     "work": "boring"
   },
-  "coach_cooldown_days": 7
+  "coach_cooldown_days": 7,
+  "vault_path": "/vault",
+  "audit_mode_default": "summary",
+  "connectors": {
+    "bookmarks_import_enabled": true,
+    "highlights_enabled": true,
+    "pdf_annotations_enabled": false
+  }
 }
 ```
 
@@ -582,9 +847,10 @@ List extracted decisions.
 
 | Parameter | Type   | Description                           |
 | --------- | ------ | ------------------------------------- |
-| `status`  | string | Filter: `active`, `superseded`, `all` |
+| `status`  | string | Filter: `proposed`, `decided`, `superseded`, `obsolete`, `all` |
 | `project` | string | Filter by project                     |
 | `search`  | string | Search in decision text               |
+| `older_than` | string | Age filter like `6m`, `1y`         |
 | `page`    | int    | Page number                           |
 
 **Response:**
@@ -596,7 +862,7 @@ List extracted decisions.
       "id": "DEC-001",
       "decision_text": "Use SQLite for all local storage",
       "context": "We evaluated PostgreSQL, SQLite, and file-based storage. SQLite was chosen for portability and zero-config operation.",
-      "status": "active",
+      "status": "decided",
       "decision_date": "2025-12-01",
       "source": {
         "document_id": 42,
@@ -839,6 +1105,35 @@ interface Source {
 }
 ```
 
+#### `Report`
+
+```typescript
+interface Report {
+  format: "markdown" | "text";
+  content: string;
+}
+```
+
+#### `AnswerAudit`
+
+```typescript
+interface AnswerAudit {
+  retrieved: Array<{
+    chunk_id: number;
+    rank: number;
+    score: number;
+    used: boolean;
+    locator: Locator;
+  }>;
+  used_chunk_ids: number[];
+  unsupported_claims: Array<{
+    text: string;
+    reason: string;
+    matched_source_ids?: number[];
+  }>;
+}
+```
+
 #### `CoachMode`
 
 ```typescript
@@ -876,6 +1171,76 @@ interface CoachSettings {
   coach_mode_default: CoachMode;
   per_project_mode: Record<string, CoachMode>;
   coach_cooldown_days: number;
+  vault_path?: string;
+  audit_mode_default?: "off" | "summary" | "full";
+  connectors?: {
+    bookmarks_import_enabled: boolean;
+    highlights_enabled: boolean;
+    pdf_annotations_enabled: boolean;
+  };
+}
+```
+
+#### `HealthDashboard`
+
+```typescript
+interface HealthDashboard {
+  coverage: {
+    low_volume_projects: string[];
+    low_hit_projects: string[];
+  };
+  metadata_hygiene: {
+    missing_project: number;
+    missing_date: number;
+    missing_language: number;
+    missing_source: number;
+  };
+  staleness: {
+    over_6_months: number;
+    over_12_months: number;
+  };
+  ingestion_failures: Array<{
+    file: string;
+    error_type: string;
+  }>;
+  fix_queue: Array<{
+    id: string;
+    action: "open" | "reindex" | "fix_metadata";
+    file: string;
+    reason: string;
+  }>;
+}
+```
+
+#### `TemplateSummary`
+
+```typescript
+interface TemplateSummary {
+  id: string;
+  title: string;
+  description: string;
+}
+```
+
+#### `LintIssue`
+
+```typescript
+interface LintIssue {
+  type: string;
+  message: string;
+  line?: number;
+}
+```
+
+#### `EvalRunSummary`
+
+```typescript
+interface EvalRunSummary {
+  id: string;
+  status: "running" | "completed" | "failed";
+  baseline: boolean;
+  started_at?: string;
+  completed_at?: string;
 }
 ```
 
@@ -889,6 +1254,42 @@ interface AnswerFooter {
   outdated_source_count: number;
   not_found?: boolean;
   not_found_message?: string;
+}
+```
+
+#### `AskRequest`
+
+```typescript
+interface AskRequest {
+  query: string;
+  filters?: {
+    projects?: string[];
+    types?: string[];
+    date_after?: string | null;
+    date_before?: string | null;
+    language?: string | null;
+  };
+  top_k?: number;
+  coach_mode_enabled?: boolean;
+  coach_show_anyway?: boolean;
+  include_audit?: boolean;
+  include_report?: boolean;
+  report_format?: "markdown" | "text";
+}
+```
+
+#### `AskResponse`
+
+```typescript
+interface AskResponse {
+  answer: string | null;
+  coach_mode_enabled: boolean;
+  suggestions: CoachSuggestion[];
+  sources: Source[];
+  audit?: AnswerAudit;
+  report?: Report;
+  footer: AnswerFooter;
+  query_time_ms: number;
 }
 ```
 
@@ -930,6 +1331,17 @@ All errors follow RFC 7807 Problem Details:
 | Document by ID      | Return 404 with `NOT_FOUND` error               |
 | Job by ID           | Return 404 with `JOB_NOT_FOUND` error           |
 | File to open        | Return 200 with `success = false`, include path |
+
+---
+
+## Agent Tool Server (MCP)
+
+An optional MCP-compatible tool server exposes local-only tools for agents.
+
+- **Transport:** JSON-RPC over localhost (configurable port)
+- **Tools:** `search`, `ask` (with citations), `read_note`, `write_note`, `list_projects`, `index_status`
+- **Permissions:** allowed paths, read/write scopes, and dry-run enforcement
+- **Security:** local-only binding by default, explicit errors on denied actions
 
 ---
 

@@ -12,6 +12,12 @@ The evaluation harness measures how well B.O.B retrieves relevant documents for 
 docs/eval/
 ├── README.md              # This file
 ├── example_gold.jsonl     # Example golden dataset
+├── domains/               # Per-domain golden sets
+│   ├── food.jsonl
+│   ├── travel.jsonl
+│   ├── cdc.jsonl
+│   ├── construction.jsonl
+│   └── business.jsonl
 └── baseline.json          # Baseline metrics (after first run)
 ```
 
@@ -56,6 +62,18 @@ For questions that should NOT return results (testing "I don't know" behavior):
 }
 ```
 
+## Domain Golden Sets
+
+Maintain small golden sets per domain to catch regressions in specific areas.
+
+- Food
+- Travel
+- CDC
+- Construction
+- Business
+
+Each domain set should include at least 10 questions and 2-3 negative examples.
+
 ## Running Evaluation
 
 ### CLI Command
@@ -69,6 +87,9 @@ bob eval run --golden docs/eval/custom_gold.jsonl
 
 # Compare to baseline
 bob eval compare --baseline docs/eval/baseline.json
+
+# Run only a domain set
+bob eval run --golden docs/eval/domains/cdc.jsonl
 ```
 
 ### Programmatic API
@@ -206,6 +227,14 @@ Flag regressions:
 - Recall drop > 5%
 - MRR drop > 10%
 - Any individual query drops from pass to fail
+
+## Drift Detection (UI)
+
+When the server is running, the Eval page shows:
+
+- Per-domain deltas since the last baseline
+- Answer changes with before/after diffs
+- Links to the sources that caused drift
 
 ---
 

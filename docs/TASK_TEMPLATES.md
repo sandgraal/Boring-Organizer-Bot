@@ -2,7 +2,7 @@
 
 > Standard task formats for agent work on B.O.B.
 
-**Last Updated:** 2025-12-23
+**Last Updated:** 2025-12-24
 
 ---
 
@@ -372,6 +372,214 @@ make check
 - [ ] All fields from text output included
 - [ ] Backward compatible (text still default)
 - [ ] jq/parsing works correctly
+
+---
+
+## Task 7: Implement Answer Audit Trail
+
+### Description
+
+Expose retrieved vs used chunks and flag unsupported claims.
+
+### Inputs
+
+- [ ] /ask response schema changes
+- [ ] Claim validation rules for unsupported spans
+- [ ] UI location for audit panel + report export
+
+### Expected Outputs
+
+1. **Audit module:** `bob/answer/audit.py`
+2. **API response:** `audit` payload in `/ask`
+3. **UI panel:** Audit tab in Ask screen
+4. **Report export:** "Copy as report" output format
+5. **Tests:** `tests/test_audit.py`
+
+### Tests to Run
+
+```bash
+pytest tests/test_audit.py -v
+pytest tests/test_api_ask.py -v
+```
+
+### Review Checklist
+
+- [ ] Retrieved vs used chunks clearly distinguished
+- [ ] Unsupported claims removed or marked
+- [ ] Report format includes citations + date confidence
+- [ ] No changes to grounding rules
+
+---
+
+## Task 8: Build Knowledge Health Dashboard
+
+### Description
+
+Add coverage, metadata hygiene, staleness, and ingestion failure metrics.
+
+### Inputs
+
+- [ ] Indexing run data + ingestion errors
+- [ ] Coverage definitions (low volume, low hit rate)
+- [ ] Staleness thresholds
+
+### Expected Outputs
+
+1. **Metrics module:** `bob/health/metrics.py`
+2. **API endpoint:** `GET /health/dashboard`
+3. **UI page:** `/health`
+4. **Migrations:** `index_runs`, `ingestion_errors`
+5. **Tests:** `tests/test_health.py`, `tests/test_api_health.py`
+
+### Tests to Run
+
+```bash
+pytest tests/test_health.py -v
+pytest tests/test_api_health.py -v
+```
+
+### Review Checklist
+
+- [ ] Metrics are deterministic and explainable
+- [ ] Fix queue is actionable
+- [ ] No background jobs or watchers
+
+---
+
+## Task 9: Add Capture Templates + Linter
+
+### Description
+
+Provide built-in templates and linting for structured capture.
+
+### Inputs
+
+- [ ] Template list + required fields
+- [ ] Vault path configuration
+- [ ] Lint rules
+
+### Expected Outputs
+
+1. **Templates:** `bob/templates/*.md`
+2. **Note creation:** `POST /notes`
+3. **Linter:** `bob/capture/lint.py`
+4. **UI:** Template picker + lint warnings
+5. **Tests:** `tests/test_templates.py`, `tests/test_linter.py`
+
+### Tests to Run
+
+```bash
+pytest tests/test_templates.py -v
+pytest tests/test_linter.py -v
+```
+
+### Review Checklist
+
+- [ ] Templates are local-first and editable
+- [ ] Lint rules flag missing rationale/rejected options
+- [ ] New note writes to vault path only
+
+---
+
+## Task 10: Add Connectors (Bookmarks + Highlights)
+
+### Description
+
+Import bookmarks and store manual highlights as local notes.
+
+### Inputs
+
+- [ ] HTML bookmarks export format
+- [ ] Highlight data model (text + source URL)
+- [ ] Optional PDF annotation export format
+
+### Expected Outputs
+
+1. **Parser:** `bob/ingest/bookmarks.py`
+2. **API:** `/connectors/bookmarks/import`, `/connectors/highlights`
+3. **Optional:** `/connectors/pdf-annotations/import`
+4. **UI:** Connector toggles and import actions
+5. **Tests:** `tests/test_bookmarks.py`, `tests/test_api_connectors.py`
+
+### Tests to Run
+
+```bash
+pytest tests/test_bookmarks.py -v
+pytest tests/test_api_connectors.py -v
+```
+
+### Review Checklist
+
+- [ ] Import is opt-in and local-only
+- [ ] No network access required
+- [ ] Generated notes are indexed correctly
+
+---
+
+## Task 11: Add MCP-Compatible Agent Server
+
+### Description
+
+Expose a minimal MCP tool server for agent interoperability.
+
+### Inputs
+
+- [ ] Tool list and schemas
+- [ ] Permission model (paths, scopes, dry-run)
+- [ ] JSON-RPC framing requirements
+
+### Expected Outputs
+
+1. **Server:** `bob/agents/mcp_server.py`
+2. **Tools:** search/ask, read/write, list projects, index status
+3. **Config:** allowed paths + scopes in `bob.yaml`
+4. **Tests:** `tests/test_mcp_server.py`, `tests/test_mcp_auth.py`
+
+### Tests to Run
+
+```bash
+pytest tests/test_mcp_server.py -v
+pytest tests/test_mcp_auth.py -v
+```
+
+### Review Checklist
+
+- [ ] Localhost-only by default
+- [ ] Permissions enforced for every tool
+- [ ] Writes support dry-run
+
+---
+
+## Task 12: Evaluation Drift UI
+
+### Description
+
+Surface regression status and answer drift on a UI page.
+
+### Inputs
+
+- [ ] Eval runs + per-domain metrics
+- [ ] Answer hash/diff logic
+- [ ] UI layout for deltas
+
+### Expected Outputs
+
+1. **API:** `/eval/runs`, `/eval/diff`
+2. **UI:** `/eval` page with deltas + diffs
+3. **Storage:** `eval_runs`, `eval_results`
+4. **Tests:** `tests/test_api_eval.py`
+
+### Tests to Run
+
+```bash
+pytest tests/test_api_eval.py -v
+```
+
+### Review Checklist
+
+- [ ] Deltas computed per domain
+- [ ] Answer changes have citations
+- [ ] No eval data stored in repo
 
 ---
 
