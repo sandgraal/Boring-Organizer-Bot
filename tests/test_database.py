@@ -1,7 +1,5 @@
 """Tests for the database module."""
 
-import pytest
-
 from bob.db.database import compute_content_hash
 
 
@@ -31,9 +29,7 @@ class TestDatabaseOperations:
 
     def test_migrate_creates_tables(self, test_db):
         # After migration, tables should exist
-        cursor = test_db.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        )
+        cursor = test_db.conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
         tables = {row[0] for row in cursor.fetchall()}
 
         assert "documents" in tables

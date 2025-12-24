@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from bob.config import get_config
-from bob.ingest.base import DocumentSection, ParsedDocument
+from bob.ingest.base import ParsedDocument
 
 
 @dataclass

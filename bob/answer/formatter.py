@@ -66,7 +66,7 @@ def is_outdated(source_date: datetime | None) -> bool:
     return age > timedelta(days=config.outdated_threshold_days)
 
 
-def format_locator(result: "SearchResult") -> str:
+def format_locator(result: SearchResult) -> str:
     """Format a locator for display.
 
     Args:
@@ -105,13 +105,13 @@ def format_locator(result: "SearchResult") -> str:
         return f'sheet "{sheet}" ({rows} rows)'
 
     elif loc_type == "section":
-        return f'section: {locator.get("section", "")}'
+        return f"section: {locator.get('section', '')}"
 
     else:
         return str(locator)
 
 
-def format_citation(result: "SearchResult", index: int) -> Text:
+def format_citation(result: SearchResult, index: int) -> Text:
     """Format a single citation.
 
     Args:
@@ -163,7 +163,7 @@ def format_citation(result: "SearchResult", index: int) -> Text:
     return text
 
 
-def format_answer(query: str, results: list["SearchResult"]) -> str:
+def format_answer(query: str, results: list[SearchResult]) -> str:
     """Format an answer with citations.
 
     This function enforces the "no citation => no claim" rule by only
@@ -185,6 +185,8 @@ def format_answer(query: str, results: list["SearchResult"]) -> str:
     # Header
     header = Text("Answer based on retrieved documents:", style="bold")
     renderables.append(header)
+    if query:
+        renderables.append(Text(f"Query: {query}", style="dim"))
 
     # Note about generation
     if not config.llm.enabled:
@@ -196,7 +198,7 @@ def format_answer(query: str, results: list["SearchResult"]) -> str:
     if results:
         top = results[0]
         renderables.append(Text("Most Relevant:", style="bold cyan"))
-        content_preview = top.content[:500] + ('...' if len(top.content) > 500 else '')
+        content_preview = top.content[:500] + ("..." if len(top.content) > 500 else "")
         renderables.append(Text(content_preview, style="italic"))
         renderables.append(Text())
 
@@ -209,12 +211,14 @@ def format_answer(query: str, results: list["SearchResult"]) -> str:
 
     # Quality gate: remind about citation requirement
     renderables.append(Rule(style="dim"))
-    renderables.append(Text("All claims above are grounded in the cited sources.", style="dim italic"))
+    renderables.append(
+        Text("All claims above are grounded in the cited sources.", style="dim italic")
+    )
 
     return Group(*renderables)
 
 
-def format_answer_plain(query: str, results: list["SearchResult"]) -> str:
+def format_answer_plain(query: str, results: list[SearchResult]) -> str:
     """Format an answer without Rich markup (for testing/logging).
 
     Args:
@@ -226,6 +230,9 @@ def format_answer_plain(query: str, results: list["SearchResult"]) -> str:
     """
     lines = []
     lines.append("Answer based on retrieved documents:\n")
+    if query:
+        lines.append(f"Query: {query}")
+        lines.append("")
 
     if results:
         top = results[0]

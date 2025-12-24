@@ -63,9 +63,7 @@ def init() -> None:
         if db.has_vec:
             console.print("[green]✓[/] sqlite-vec extension loaded")
         else:
-            console.print(
-                "[yellow]![/] sqlite-vec not available, using fallback vector search"
-            )
+            console.print("[yellow]![/] sqlite-vec not available, using fallback vector search")
 
         console.print("\n[bold green]B.O.B is ready![/]")
     except Exception as e:
@@ -98,7 +96,7 @@ def index(paths: tuple[str, ...], project: str | None, language: str | None) -> 
     project = project or config.defaults.project
     language = language or config.defaults.language
 
-    console.print(f"[bold blue]Indexing documents...[/]")
+    console.print("[bold blue]Indexing documents...[/]")
     console.print(f"  Project: [cyan]{project}[/]")
     console.print(f"  Language: [cyan]{language}[/]")
     console.print(f"  Paths: {', '.join(paths)}")
@@ -111,7 +109,7 @@ def index(paths: tuple[str, ...], project: str | None, language: str | None) -> 
             language=language,
         )
 
-        console.print(f"\n[bold green]Indexing complete![/]")
+        console.print("\n[bold green]Indexing complete![/]")
         console.print(f"  Documents processed: [cyan]{stats['documents']}[/]")
         console.print(f"  Chunks created: [cyan]{stats['chunks']}[/]")
         console.print(f"  Skipped (unchanged): [cyan]{stats['skipped']}[/]")
@@ -149,7 +147,7 @@ def ask(question: str, project: str | None, top_k: int | None) -> None:
     config = get_config()
     top_k = top_k or config.defaults.top_k
 
-    console.print(f"[bold blue]Searching...[/]\n")
+    console.print("[bold blue]Searching...[/]\n")
 
     try:
         results = search(
@@ -164,7 +162,7 @@ def ask(question: str, project: str | None, top_k: int | None) -> None:
             console.print("  • Using different keywords")
             console.print("  • Indexing more documents")
             if project:
-                console.print(f"  • Removing the --project filter")
+                console.print("  • Removing the --project filter")
             return
 
         # Format and display the answer
@@ -193,6 +191,10 @@ def extract_decisions(paths: tuple[str, ...], project: str | None) -> None:
     """
     # TODO: Implement decision extraction
     # Next file to edit: bob/extract/decisions.py
+    if paths:
+        console.print(f"[dim]Paths:[/] {', '.join(paths)}")
+    if project:
+        console.print(f"[dim]Project filter:[/] {project}")
     console.print("[yellow]Decision extraction is not yet implemented.[/]")
     console.print("\nThis feature will:")
     console.print("  • Scan documents for decision-like statements")
@@ -225,8 +227,10 @@ def status(project: str | None) -> None:
             console.print(f"Project: [cyan]{project}[/]\n")
 
         console.print(f"Database: [cyan]{db.db_path}[/]")
-        console.print(f"Vector Search: [{'green' if stats['has_vec'] else 'yellow'}]"
-                      f"{'sqlite-vec' if stats['has_vec'] else 'fallback (slower)'}[/]")
+        console.print(
+            f"Vector Search: [{'green' if stats['has_vec'] else 'yellow'}]"
+            f"{'sqlite-vec' if stats['has_vec'] else 'fallback (slower)'}[/]"
+        )
         console.print()
 
         # Statistics table

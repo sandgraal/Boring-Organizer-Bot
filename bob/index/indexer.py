@@ -101,7 +101,7 @@ def index_file(
     embeddings = embed_chunks(chunk_texts)
 
     # Store chunks and embeddings
-    for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+    for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=True)):
         chunk_id = db.insert_chunk(
             document_id=doc_id,
             content=chunk.content,
@@ -187,7 +187,7 @@ def index_git_repo(
                 chunk_texts = [c.content for c in chunks]
                 embeddings = embed_chunks(chunk_texts)
 
-                for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+                for i, (chunk, embedding) in enumerate(zip(chunks, embeddings, strict=True)):
                     chunk_id = db.insert_chunk(
                         document_id=doc_id,
                         content=chunk.content,

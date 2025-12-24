@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -69,10 +70,8 @@ def search(
         # Parse date if present
         source_date = None
         if row.get("source_date"):
-            try:
+            with suppress(ValueError):
                 source_date = datetime.fromisoformat(row["source_date"])
-            except ValueError:
-                pass
 
         # Convert distance to score (lower distance = higher score)
         distance = row.get("distance", 0)

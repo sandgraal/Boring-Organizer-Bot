@@ -1,6 +1,6 @@
 # B.O.B – Boring Organizer Bot
 
-> A local-first personal knowledge assistant. No cloud required. Just your files, chunked, embedded, and searchable.
+> A local-first personal knowledge assistant with a beautiful web interface. No cloud required. Just your files, chunked, embedded, and searchable.
 
 ## Philosophy
 
@@ -8,6 +8,7 @@
 - **Local-first.** Your data stays on your machine. No API keys required for core functionality.
 - **Citations or nothing.** Every answer includes source file + locator. No hallucinated claims.
 - **Date-aware.** Answers include confidence about freshness and warn when content may be outdated.
+- **Beautiful & inspectable.** A local web UI that makes source verification one click away.
 
 ## Quick Start
 
@@ -80,6 +81,22 @@ bob status
 bob status --project "personal-notes"
 ```
 
+### Web Interface (Coming Soon)
+
+```bash
+# Start the local web server
+bob serve
+
+# Open http://localhost:8080 in your browser
+```
+
+The web UI provides:
+
+- **Ask view**: 3-pane layout with filters, answer, and clickable sources
+- **Library**: Browse and manage indexed documents
+- **Decisions**: View extracted decisions with status tracking
+- **Indexing dashboard**: Monitor indexing progress in real-time
+
 ## Configuration
 
 Configuration lives in `bob.yaml` (project root or `~/.config/bob/bob.yaml`):
@@ -119,6 +136,8 @@ Environment variables override config:
 
 ```
 /bob                 # Python package
+  /api               # HTTP API server (Phase 2)
+  /ui                # Web interface assets (Phase 3)
   /cli               # CLI commands
   /ingest            # File parsers
   /index             # Chunking and embedding
@@ -130,6 +149,14 @@ Environment variables override config:
 /docs                # Architecture documentation
 /data                # Local data (gitignored)
 ```
+
+## Documentation
+
+- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) – Phased roadmap
+- [UI Plan](docs/UI_PLAN.md) – Interface design specification
+- [API Contract](docs/API_CONTRACT.md) – HTTP API endpoints
+- [Architecture](docs/architecture.md) – System design
+- [Data Model](docs/data-model.md) – Database schema
 
 ## Development
 

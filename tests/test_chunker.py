@@ -1,6 +1,6 @@
 """Tests for the chunking module."""
 
-from bob.index.chunker import chunk_text, estimate_tokens, Chunk
+from bob.index.chunker import Chunk, chunk_text, estimate_tokens
 
 
 class TestEstimateTokens:

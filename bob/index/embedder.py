@@ -36,7 +36,7 @@ class Embedder:
             self._model = SentenceTransformer(self.model_name, device=self.device)
         return self._model
 
-    def embed(self, texts: list[str]) -> "npt.NDArray[np.float32]":
+    def embed(self, texts: list[str]) -> npt.NDArray[np.float32]:
         """Embed a list of texts.
 
         Args:
@@ -53,7 +53,7 @@ class Embedder:
         )
         return embeddings.astype(np.float32)
 
-    def embed_single(self, text: str) -> "npt.NDArray[np.float32]":
+    def embed_single(self, text: str) -> npt.NDArray[np.float32]:
         """Embed a single text.
 
         Args:
@@ -83,7 +83,7 @@ def reset_embedder() -> None:
     _embedder = None
 
 
-def embed_text(text: str) -> "npt.NDArray[np.float32]":
+def embed_text(text: str) -> npt.NDArray[np.float32]:
     """Embed a single text using the global embedder.
 
     Args:
@@ -95,7 +95,7 @@ def embed_text(text: str) -> "npt.NDArray[np.float32]":
     return get_embedder().embed_single(text)
 
 
-def embed_chunks(texts: list[str]) -> "npt.NDArray[np.float32]":
+def embed_chunks(texts: list[str]) -> npt.NDArray[np.float32]:
     """Embed multiple texts using the global embedder.
 
     Args:

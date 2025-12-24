@@ -62,8 +62,7 @@ def extract_decisions_from_chunk(
     # 4. Estimate confidence
 
     raise NotImplementedError(
-        "Decision extraction not yet implemented. "
-        "See bob/extract/patterns.py for next steps."
+        "Decision extraction not yet implemented. See bob/extract/patterns.py for next steps."
     )
 
 

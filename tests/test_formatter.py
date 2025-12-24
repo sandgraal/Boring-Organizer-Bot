@@ -2,14 +2,12 @@
 
 from datetime import datetime, timedelta
 
-import pytest
-
 from bob.answer.formatter import (
     DateConfidence,
+    format_answer_plain,
     format_locator,
     get_date_confidence,
     is_outdated,
-    format_answer_plain,
 )
 from bob.retrieval import SearchResult
 

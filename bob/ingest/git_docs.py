@@ -6,20 +6,18 @@ Only indexes README and /docs directory from git repositories.
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 from urllib.parse import urlparse
 
 from bob.config import get_config
-from bob.ingest.base import DocumentSection, ParsedDocument
+from bob.ingest.base import ParsedDocument
 from bob.ingest.registry import get_parser
 
 
 def is_git_url(path: str) -> bool:
     """Check if a path is a git URL."""
-    if path.startswith(("http://", "https://", "git@", "git://")):
-        return True
-    return False
+    return path.startswith(("http://", "https://", "git@", "git://"))
 
 
 def clone_repo(url: str, target_dir: Path) -> str:
@@ -102,6 +100,7 @@ def parse_git_repo(
                 relative_path = doc_path.relative_to(repo_dir)
                 parsed_doc.source_path = f"{url}#{relative_path}"
                 parsed_doc.source_type = "git"
+                parsed_doc.metadata["project"] = project
                 parsed_doc.metadata["git_repo"] = url
                 parsed_doc.metadata["git_commit"] = commit_sha
                 parsed_doc.metadata["git_file"] = str(relative_path)
@@ -116,5 +115,6 @@ def parse_git_repo(
             except Exception as e:
                 # Log error but continue with other files
                 import logging
+
                 logging.warning(f"Failed to parse {doc_path}: {e}")
                 continue

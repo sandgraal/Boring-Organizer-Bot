@@ -8,10 +8,11 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING, Any
 
 from bob.config import get_config
 
@@ -97,9 +98,7 @@ class Database:
         """Run database migrations."""
         # Get current version
         try:
-            cursor = self.conn.execute(
-                "SELECT MAX(version) FROM schema_migrations"
-            )
+            cursor = self.conn.execute("SELECT MAX(version) FROM schema_migrations")
             current_version = cursor.fetchone()[0] or 0
         except sqlite3.OperationalError:
             # Table doesn't exist yet
@@ -225,9 +224,7 @@ class Database:
             )
             return cursor.fetchone()[0]
 
-    def get_document_by_path(
-        self, source_path: str, project: str
-    ) -> dict[str, Any] | None:
+    def get_document_by_path(self, source_path: str, project: str) -> dict[str, Any] | None:
         """Get a document by path and project.
 
         Args:
@@ -251,9 +248,7 @@ class Database:
             document_id: Document ID.
         """
         # Get chunk IDs first for vector cleanup
-        cursor = self.conn.execute(
-            "SELECT id FROM chunks WHERE document_id = ?", (document_id,)
-        )
+        cursor = self.conn.execute("SELECT id FROM chunks WHERE document_id = ?", (document_id,))
         chunk_ids = [row[0] for row in cursor.fetchall()]
 
         with self.transaction():
@@ -272,9 +267,7 @@ class Database:
                     )
 
             # Delete chunks (cascades to decisions)
-            self.conn.execute(
-                "DELETE FROM chunks WHERE document_id = ?", (document_id,)
-            )
+            self.conn.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
 
     # Chunk operations
 
@@ -322,9 +315,7 @@ class Database:
         self.conn.commit()
         return chunk_id
 
-    def insert_embedding(
-        self, chunk_id: int, embedding: "npt.NDArray[np.float32]"
-    ) -> None:
+    def insert_embedding(self, chunk_id: int, embedding: npt.NDArray[np.float32]) -> None:
         """Insert an embedding for a chunk.
 
         Args:
@@ -350,7 +341,7 @@ class Database:
 
     def search_similar(
         self,
-        query_embedding: "npt.NDArray[np.float32]",
+        query_embedding: npt.NDArray[np.float32],
         limit: int = 5,
         project: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -371,7 +362,7 @@ class Database:
 
     def _search_vec(
         self,
-        query_embedding: "npt.NDArray[np.float32]",
+        query_embedding: npt.NDArray[np.float32],
         limit: int,
         project: str | None,
     ) -> list[dict[str, Any]]:
@@ -414,7 +405,7 @@ class Database:
 
     def _search_fallback(
         self,
-        query_embedding: "npt.NDArray[np.float32]",
+        query_embedding: npt.NDArray[np.float32],
         limit: int,
         project: str | None,
     ) -> list[dict[str, Any]]:
@@ -514,13 +505,9 @@ class Database:
                 (project,),
             ).fetchall()
         else:
-            doc_count = self.conn.execute(
-                "SELECT COUNT(*) FROM documents"
-            ).fetchone()[0]
+            doc_count = self.conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
 
-            chunk_count = self.conn.execute(
-                "SELECT COUNT(*) FROM chunks"
-            ).fetchone()[0]
+            chunk_count = self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0]
 
             source_types = self.conn.execute(
                 """
@@ -530,9 +517,7 @@ class Database:
                 """
             ).fetchall()
 
-        projects = self.conn.execute(
-            "SELECT DISTINCT project FROM documents"
-        ).fetchall()
+        projects = self.conn.execute("SELECT DISTINCT project FROM documents").fetchall()
 
         return {
             "document_count": doc_count,

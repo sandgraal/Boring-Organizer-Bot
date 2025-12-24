@@ -1,10 +1,10 @@
 # B.O.B Implementation Plan
 
-> A phased roadmap for building a local-first, citation-grounded knowledge assistant.
+> A phased roadmap for building a local-first, citation-grounded knowledge assistant with a beautiful interface.
 
 **Last Updated:** 2024-12-23  
 **Status:** Active  
-**Version:** 1.0.0
+**Version:** 2.0.0
 
 ---
 
@@ -14,11 +14,14 @@
 2. [Boring Defaults](#boring-defaults)
 3. [What We Are Not Doing](#what-we-are-not-doing)
 4. [Phase 1: Core Retrieval](#phase-1-core-retrieval)
-5. [Phase 2: Better Retrieval](#phase-2-better-retrieval)
-6. [Phase 3: Decision Layer](#phase-3-decision-layer)
-7. [Phase 4: Optional Generation](#phase-4-optional-generation)
-8. [Phase 5: Evaluation Harness](#phase-5-evaluation-harness)
-9. [Timeline Overview](#timeline-overview)
+5. [Phase 2: Local API Server](#phase-2-local-api-server)
+6. [Phase 3: Web Interface](#phase-3-web-interface)
+7. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
+8. [Phase 5: Decision Layer](#phase-5-decision-layer)
+9. [Phase 6: Optional Generation](#phase-6-optional-generation)
+10. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
+11. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
+12. [Timeline Overview](#timeline-overview)
 
 ---
 
@@ -43,7 +46,9 @@ These are intentionally simple choices that prioritize reliability over sophisti
 | Chunking   | 512 tokens, 50 overlap | Standard for retrieval, not too fragmented         |
 | Search     | Pure vector similarity | Simple, deterministic, debuggable                  |
 | Output     | Plain text + citations | Machine-readable, no formatting magic              |
-| LLM        | None (Phase 1-3)       | Retrieval is the hard part; generation is optional |
+| LLM        | None (Phase 1-5)       | Retrieval is the hard part; generation is optional |
+| Interface  | Local web UI           | Browser-native, no build step, inspectable         |
+| API        | Local HTTP only        | FastAPI, single-process, manual start              |
 
 ---
 
@@ -53,13 +58,14 @@ These are explicit non-goals to avoid scope creep:
 
 - ❌ **Cloud sync or collaboration** — This is a personal tool
 - ❌ **Real-time file watching** — Index manually when ready
-- ❌ **Web UI** — CLI is sufficient; build a UI later if needed
+- ❌ **Remote/cloud API** — Local-only; no remote exposure by default
 - ❌ **Multiple databases** — One SQLite file per user
 - ❌ **Complex ranking models** — Start simple, add complexity only with evidence
 - ❌ **Auto-summarization** — Return passages, let user read
 - ❌ **Internet search** — Local documents only
-- ❌ **Always-on daemons** — Manual commands only
+- ❌ **Always-on daemons** — Manual server start only
 - ❌ **Personal data in repo** — `/data` is gitignored; never commit content
+- ❌ **Desktop app (yet)** — Web UI first; Tauri/Electron later if needed
 
 ---
 
@@ -142,7 +148,182 @@ These are explicit non-goals to avoid scope creep:
 
 ---
 
-## Phase 2: Better Retrieval
+## Phase 2: Local API Server
+
+**Goal:** Expose core functionality via a local HTTP API that the web UI will consume.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 1 complete (core retrieval working via CLI)
+
+### Features
+
+1. **API Framework**
+
+   - [ ] FastAPI server in `bob/api/`
+   - [ ] Single-process, local-only binding (127.0.0.1)
+   - [ ] Manual start: `bob serve` command
+   - [ ] Graceful shutdown on Ctrl+C
+   - [ ] CORS configured for local development
+
+2. **Core Endpoints**
+
+   - [ ] `POST /ask` — Query with answer + citations + footer fields
+   - [ ] `POST /index` — Start indexing job, return job ID
+   - [ ] `GET /index/{job_id}` — Get indexing progress and errors
+   - [ ] `GET /projects` — List all projects
+   - [ ] `GET /documents` — List documents with filters
+   - [ ] `GET /decisions` — List extracted decisions
+   - [ ] `GET /recipes` — List structured recipes (if available)
+   - [ ] `POST /open` — Request to open file at locator (returns instruction)
+
+3. **Response Format**
+
+   - [ ] All responses include structured JSON with consistent schema
+   - [ ] Every `/ask` response includes: answer, sources[], date_confidence, may_be_outdated
+   - [ ] Error responses follow RFC 7807 Problem Details
+   - [ ] "Not found in sources" returned when grounding fails
+
+4. **Job Management**
+
+   - [ ] In-memory job queue (single-user, no persistence needed)
+   - [ ] Progress reporting via polling
+   - [ ] Job cancellation support
+
+### Acceptance Criteria
+
+- [ ] `bob serve` starts server on localhost:8080 (configurable)
+- [ ] `POST /ask` returns answer with sources in <500ms for 10k chunks
+- [ ] `POST /index` starts background job and returns immediately
+- [ ] API only binds to localhost by default
+- [ ] All endpoints documented with OpenAPI spec
+
+### Test Plan
+
+| Test               | Description                               | File                         |
+| ------------------ | ----------------------------------------- | ---------------------------- |
+| Unit: Endpoints    | Each endpoint returns correct schema      | `tests/test_api.py`          |
+| Integration: Ask   | Full query pipeline via API               | `tests/test_api_ask.py`      |
+| Integration: Index | Indexing job lifecycle via API            | `tests/test_api_index.py`    |
+| Security: Binding  | Server only accepts localhost connections | `tests/test_api_security.py` |
+
+### Risks
+
+| Risk                            | Impact             | Mitigation                            |
+| ------------------------------- | ------------------ | ------------------------------------- |
+| API adds latency vs direct call | Slower queries     | Keep serialization minimal            |
+| Port conflicts                  | Server won't start | Configurable port, clear error msg    |
+| Concurrent requests on indexing | Race conditions    | Single-threaded queue, reject if busy |
+
+### Definition of Done
+
+- [ ] API server starts and serves requests
+- [ ] OpenAPI spec generated and accurate
+- [ ] All endpoints tested with example requests
+- [ ] Documentation in API_CONTRACT.md complete
+- [ ] No security exposure beyond localhost
+
+---
+
+## Phase 3: Web Interface
+
+**Goal:** Ship a beautiful, citation-first local web UI that makes B.O.B accessible without CLI.
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 2 complete (API server working)
+
+### Features
+
+1. **Tech Stack**
+
+   - [ ] Static HTML/CSS/JS served by the API server
+   - [ ] No build step required (vanilla JS or lightweight bundled)
+   - [ ] Single `bob/ui/` directory with all assets
+   - [ ] Served at `http://localhost:8080/` when server runs
+
+2. **Core Screens**
+
+   - [ ] **Ask (3-pane layout)**
+     - Left: Project filter sidebar
+     - Center: Query input + Answer display
+     - Right: Sources panel with click-to-open
+   - [ ] **Library/Browse**
+     - Document list with filters (project, type, date)
+     - Document preview with chunk breakdown
+   - [ ] **Decisions View**
+     - List of extracted decisions
+     - Status badges (active/superseded)
+     - Click to view source context
+   - [ ] **Recipes View**
+     - Structured recipe cards
+     - Ingredient and instruction display
+   - [ ] **Indexing Dashboard**
+     - Current job progress
+     - History of indexed paths
+     - Error log display
+
+3. **Citation Behaviors**
+
+   - [ ] Every source is clickable
+   - [ ] Click opens file at exact locator (via `/open` endpoint)
+   - [ ] If file can't be opened, show path + locator for manual access
+   - [ ] Locator display: heading name, line range, or page number
+
+4. **Answer Footer (mandatory)**
+
+   - [ ] Sources section always visible
+   - [ ] Date confidence badge (HIGH/MEDIUM/LOW)
+   - [ ] "This may be outdated" warning when applicable
+   - [ ] "Not found in sources" message when grounding fails
+
+5. **Responsive Design**
+
+   - [ ] Works on desktop browsers (Chrome, Firefox, Safari)
+   - [ ] Minimum viable mobile support (single-column layout)
+   - [ ] Dark mode support
+
+### Acceptance Criteria
+
+- [ ] User can ask a question and see answer with clickable sources
+- [ ] User can click a source and open the file at the exact location
+- [ ] Indexing progress is visible during `POST /index` job
+- [ ] Every answer shows Sources + Date confidence + outdated warning
+- [ ] "Not found in sources" appears when no relevant chunks exist
+- [ ] UI works without internet connection (all assets local)
+
+### Test Plan
+
+| Test              | Description                                | File                     |
+| ----------------- | ------------------------------------------ | ------------------------ |
+| Smoke: Load       | All pages load without JS errors           | `tests/test_ui_smoke.py` |
+| E2E: Ask flow     | Query → Answer → Click source              | `tests/test_ui_ask.py`   |
+| E2E: Index flow   | Start indexing → See progress → Complete   | `tests/test_ui_index.py` |
+| Visual: Citations | Footer always present with required fields | Manual inspection        |
+
+### Risks
+
+| Risk                     | Impact                | Mitigation                         |
+| ------------------------ | --------------------- | ---------------------------------- |
+| JS complexity grows      | Maintenance burden    | Keep vanilla, add framework later  |
+| File opening fails on OS | Bad UX                | Fallback to showing path + locator |
+| Asset caching issues     | Stale UI after update | Version query params, cache-bust   |
+
+### Definition of Done
+
+- [ ] All core screens implemented and functional
+- [ ] Click-to-open works for markdown, PDF, and code files
+- [ ] Answer footer appears on every query result
+- [ ] UI documented in UI_PLAN.md
+- [ ] No external network requests (fully local)
+
+---
+
+## Phase 4: Better Retrieval
 
 **Goal:** Improve search quality with hybrid scoring, metadata boosts, and citation precision.
 
@@ -214,7 +395,7 @@ These are explicit non-goals to avoid scope creep:
 
 ---
 
-## Phase 3: Decision Layer
+## Phase 5: Decision Layer
 
 **Goal:** Extract, store, and query decisions from documents with full traceability.
 
@@ -283,7 +464,7 @@ These are explicit non-goals to avoid scope creep:
 
 ---
 
-## Phase 4: Optional Generation
+## Phase 6: Optional Generation
 
 **Goal:** Add optional LLM generation with strict grounding (no hallucinations).
 
@@ -356,7 +537,7 @@ These are explicit non-goals to avoid scope creep:
 
 ---
 
-## Phase 5: Evaluation Harness
+## Phase 7: Evaluation Harness
 
 **Goal:** Build a repeatable evaluation framework with golden Q/A sets and regression tests.
 
@@ -430,15 +611,84 @@ These are explicit non-goals to avoid scope creep:
 
 ## Timeline Overview
 
-| Phase       | Focus               | Prerequisites | Est. Duration |
-| ----------- | ------------------- | ------------- | ------------- |
-| **Phase 1** | Core Retrieval      | —             | 2-3 weeks     |
-| **Phase 2** | Better Retrieval    | Phase 1       | 2 weeks       |
-| **Phase 3** | Decision Layer      | Phase 1       | 2-3 weeks     |
-| **Phase 4** | Optional Generation | Phase 1, 2    | 2 weeks       |
-| **Phase 5** | Evaluation Harness  | Phase 1       | 1-2 weeks     |
+| Phase       | Focus                   | Prerequisites | Est. Duration |
+| ----------- | ----------------------- | ------------- | ------------- |
+| **Phase 1** | Core Retrieval          | —             | 2-3 weeks     |
+| **Phase 2** | Local API Server        | Phase 1       | 1-2 weeks     |
+| **Phase 3** | Web Interface           | Phase 2       | 2-3 weeks     |
+| **Phase 4** | Better Retrieval        | Phase 1       | 2 weeks       |
+| **Phase 5** | Decision Layer          | Phase 1       | 2-3 weeks     |
+| **Phase 6** | Optional Generation     | Phase 4       | 2 weeks       |
+| **Phase 7** | Evaluation Harness      | Phase 1       | 1-2 weeks     |
+| **Phase 8** | Desktop Packaging (opt) | Phase 3       | 2-3 weeks     |
 
-Phases 2, 3, and 5 can proceed in parallel after Phase 1 is complete.
+**Critical Path:** Phase 1 → Phase 2 → Phase 3 (delivers usable UI)
+
+Phases 4, 5, and 7 can proceed in parallel after Phase 1.
+Phase 8 is optional and only triggered if desktop packaging is needed.
+
+---
+
+## Phase 8: Desktop Packaging (Optional)
+
+**Goal:** Wrap the local web UI in a native desktop application for easier distribution.
+
+### Status: 🔜 Not Started (Conditional)
+
+### Prerequisites
+
+- Phase 3 complete and stable
+- User feedback indicates desktop app is needed
+
+### Why Optional
+
+The local web UI (Phase 3) already provides:
+
+- Full functionality via browser
+- No installation beyond Python
+- Cross-platform support
+
+A desktop wrapper adds:
+
+- Single-click launch
+- System tray integration
+- Native file associations
+- Offline-first distribution
+
+### Triggers for Phase 8
+
+Consider this phase if:
+
+- Users struggle with `bob serve` workflow
+- File opening via browser is unreliable
+- Distribution to non-technical users needed
+- System integration (tray, notifications) requested
+
+### Features (if triggered)
+
+1. **Tauri Wrapper (preferred)**
+
+   - [ ] Rust backend with existing Python server
+   - [ ] Small binary size (<10MB)
+   - [ ] Native file dialogs
+   - [ ] System tray with status
+
+2. **Alternative: Electron**
+
+   - [ ] Use if Tauri proves too complex
+   - [ ] Larger size (~100MB) but simpler setup
+
+3. **Distribution**
+   - [ ] macOS .dmg with code signing
+   - [ ] Windows .msi or portable .exe
+   - [ ] Linux AppImage
+
+### Definition of Done (if triggered)
+
+- [ ] Desktop app launches and embeds web UI
+- [ ] File opening works natively
+- [ ] Can be distributed without Python installed
+- [ ] Auto-start option available
 
 ---
 
@@ -450,6 +700,26 @@ bob/
 ├── config.py
 ├── cli/
 │   └── main.py
+├── api/                  # Phase 2
+│   ├── __init__.py
+│   ├── server.py
+│   ├── routes/
+│   │   ├── ask.py
+│   │   ├── index.py
+│   │   ├── documents.py
+│   │   └── open.py
+│   └── schemas.py
+├── ui/                   # Phase 3
+│   ├── index.html
+│   ├── css/
+│   │   └── styles.css
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── ask.js
+│   │   ├── library.js
+│   │   └── indexing.js
+│   └── components/
+│       └── *.html
 ├── db/
 │   ├── database.py
 │   └── migrations/
@@ -463,15 +733,15 @@ bob/
 │   └── indexer.py
 ├── retrieval/
 │   ├── search.py
-│   ├── hybrid.py        # Phase 2
-│   └── scoring.py       # Phase 2
+│   ├── hybrid.py        # Phase 4
+│   └── scoring.py       # Phase 4
 ├── answer/
 │   ├── formatter.py
-│   └── generator.py     # Phase 4
+│   └── generator.py     # Phase 6
 ├── extract/
-│   ├── decisions.py     # Phase 3
-│   └── patterns.py      # Phase 3
-├── eval/                 # Phase 5
+│   ├── decisions.py     # Phase 5
+│   └── patterns.py      # Phase 5
+├── eval/                 # Phase 7
 │   ├── metrics.py
 │   ├── runner.py
 │   └── golden.py
@@ -487,6 +757,8 @@ bob/
 - [architecture.md](architecture.md) — System architecture
 - [data-model.md](data-model.md) — Database schema
 - [conventions.md](conventions.md) — Code style and conventions
+- [UI_PLAN.md](UI_PLAN.md) — UI design and screens
+- [API_CONTRACT.md](API_CONTRACT.md) — API endpoint specifications
 
 **Date Confidence:** HIGH (document created 2024-12-23)
 

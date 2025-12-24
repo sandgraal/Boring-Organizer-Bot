@@ -9,10 +9,10 @@ if TYPE_CHECKING:
     from bob.ingest.base import Parser
 
 # Registry of parsers by extension
-_parsers: dict[str, "Parser"] = {}
+_parsers: dict[str, Parser] = {}
 
 
-def register_parser(parser: "Parser") -> None:
+def register_parser(parser: Parser) -> None:
     """Register a parser for its extensions.
 
     Args:
@@ -22,7 +22,7 @@ def register_parser(parser: "Parser") -> None:
         _parsers[ext.lower()] = parser
 
 
-def get_parser(path: Path) -> "Parser | None":
+def get_parser(path: Path) -> Parser | None:
     """Get a parser for the given file path.
 
     Args:
@@ -37,11 +37,11 @@ def get_parser(path: Path) -> "Parser | None":
 
 def init_parsers() -> None:
     """Initialize and register all built-in parsers."""
+    from bob.ingest.excel import ExcelParser
     from bob.ingest.markdown import MarkdownParser
     from bob.ingest.pdf import PDFParser
-    from bob.ingest.word import WordParser
-    from bob.ingest.excel import ExcelParser
     from bob.ingest.recipe import RecipeParser
+    from bob.ingest.word import WordParser
 
     register_parser(MarkdownParser())
     register_parser(PDFParser())
