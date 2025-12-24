@@ -183,9 +183,7 @@ class TestHybridScorer:
         """Sample vector scores (0-1)."""
         return [0.8, 0.6, 0.3]
 
-    def test_returns_scored_results(
-        self, default_scorer, sample_results, sample_vector_scores
-    ):
+    def test_returns_scored_results(self, default_scorer, sample_results, sample_vector_scores):
         """Scorer returns ScoredResult objects."""
         query = "python programming"
         results = default_scorer.score_results(query, sample_results, sample_vector_scores)
@@ -193,9 +191,7 @@ class TestHybridScorer:
         assert len(results) == 3
         assert all(isinstance(r, ScoredResult) for r in results)
 
-    def test_results_have_scores(
-        self, default_scorer, sample_results, sample_vector_scores
-    ):
+    def test_results_have_scores(self, default_scorer, sample_results, sample_vector_scores):
         """Results have all score components."""
         query = "python programming"
         results = default_scorer.score_results(query, sample_results, sample_vector_scores)
@@ -239,9 +235,7 @@ class TestHybridScorer:
         results = default_scorer.score_results("test", [], [])
         assert results == []
 
-    def test_preserves_metadata(
-        self, default_scorer, sample_results, sample_vector_scores
-    ):
+    def test_preserves_metadata(self, default_scorer, sample_results, sample_vector_scores):
         """Original metadata is preserved in results."""
         query = "python"
         results = default_scorer.score_results(query, sample_results, sample_vector_scores)

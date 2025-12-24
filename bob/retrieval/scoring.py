@@ -240,10 +240,7 @@ class HybridScorer:
             k_score = normalized_keyword[i]
 
             # Weighted combination
-            final_score = (
-                self.config.vector_weight * v_score
-                + self.config.keyword_weight * k_score
-            )
+            final_score = self.config.vector_weight * v_score + self.config.keyword_weight * k_score
 
             scored_results.append(
                 ScoredResult(
