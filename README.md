@@ -97,6 +97,31 @@ bob eval run docs/eval/example_gold.jsonl --k 10 --json
 bob eval compare baseline.json current.json
 ```
 
+### API Server
+
+Start a local HTTP API server for programmatic access:
+
+```bash
+# Start the server on default port (8080)
+bob serve
+
+# Start on a custom port
+bob serve --port 9000
+
+# Enable auto-reload for development
+bob serve --reload
+```
+
+The API provides:
+
+- `POST /ask` - Query with structured citations
+- `POST /index` - Start indexing jobs
+- `GET /index/{job_id}` - Check indexing progress
+- `GET /projects` - List all projects
+- `GET /health` - Health check
+
+OpenAPI docs available at `http://localhost:8080/docs`
+
 ### Web Interface (Coming Soon)
 
 ```bash

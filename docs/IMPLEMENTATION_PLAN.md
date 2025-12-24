@@ -152,28 +152,28 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Expose core functionality via a local HTTP API that the web UI will consume.
 
-### Status: 🔜 Not Started
+### Status: � In Progress
 
 ### Prerequisites
 
-- Phase 1 complete (core retrieval working via CLI)
+- Phase 1 complete (core retrieval working via CLI) ✅
 
 ### Features
 
 1. **API Framework**
 
-   - [ ] FastAPI server in `bob/api/`
-   - [ ] Single-process, local-only binding (127.0.0.1)
-   - [ ] Manual start: `bob serve` command
-   - [ ] Graceful shutdown on Ctrl+C
-   - [ ] CORS configured for local development
+   - [x] FastAPI server in `bob/api/`
+   - [x] Single-process, local-only binding (127.0.0.1)
+   - [x] Manual start: `bob serve` command
+   - [x] Graceful shutdown on Ctrl+C
+   - [x] CORS configured for local development
 
 2. **Core Endpoints**
 
-   - [ ] `POST /ask` — Query with answer + citations + footer fields
-   - [ ] `POST /index` — Start indexing job, return job ID
-   - [ ] `GET /index/{job_id}` — Get indexing progress and errors
-   - [ ] `GET /projects` — List all projects
+   - [x] `POST /ask` — Query with answer + citations + footer fields
+   - [x] `POST /index` — Start indexing job, return job ID
+   - [x] `GET /index/{job_id}` — Get indexing progress and errors
+   - [x] `GET /projects` — List all projects
    - [ ] `GET /documents` — List documents with filters
    - [ ] `GET /decisions` — List extracted decisions
    - [ ] `GET /recipes` — List structured recipes (if available)
@@ -181,30 +181,30 @@ These are explicit non-goals to avoid scope creep:
 
 3. **Response Format**
 
-   - [ ] All responses include structured JSON with consistent schema
-   - [ ] Every `/ask` response includes: answer, sources[], date_confidence, may_be_outdated
-   - [ ] Error responses follow RFC 7807 Problem Details
-   - [ ] "Not found in sources" returned when grounding fails
+   - [x] All responses include structured JSON with consistent schema
+   - [x] Every `/ask` response includes: answer, sources[], date_confidence, may_be_outdated
+   - [x] Error responses follow RFC 7807 Problem Details
+   - [x] "Not found in sources" returned when grounding fails
 
 4. **Job Management**
 
-   - [ ] In-memory job queue (single-user, no persistence needed)
-   - [ ] Progress reporting via polling
+   - [x] In-memory job queue (single-user, no persistence needed)
+   - [x] Progress reporting via polling
    - [ ] Job cancellation support
 
 ### Acceptance Criteria
 
-- [ ] `bob serve` starts server on localhost:8080 (configurable)
+- [x] `bob serve` starts server on localhost:8080 (configurable)
 - [ ] `POST /ask` returns answer with sources in <500ms for 10k chunks
-- [ ] `POST /index` starts background job and returns immediately
-- [ ] API only binds to localhost by default
-- [ ] All endpoints documented with OpenAPI spec
+- [x] `POST /index` starts background job and returns immediately
+- [x] API only binds to localhost by default
+- [x] All endpoints documented with OpenAPI spec
 
 ### Test Plan
 
 | Test               | Description                               | File                         |
 | ------------------ | ----------------------------------------- | ---------------------------- |
-| Unit: Endpoints    | Each endpoint returns correct schema      | `tests/test_api.py`          |
+| Unit: Endpoints    | Each endpoint returns correct schema      | `tests/test_api.py` ✅       |
 | Integration: Ask   | Full query pipeline via API               | `tests/test_api_ask.py`      |
 | Integration: Index | Indexing job lifecycle via API            | `tests/test_api_index.py`    |
 | Security: Binding  | Server only accepts localhost connections | `tests/test_api_security.py` |
