@@ -164,6 +164,87 @@ class TestAskEndpoint:
         assert data["sources"] == []
         assert data["footer"]["not_found"] is True
         assert data["footer"]["not_found_message"] is not None
+        assert data["suggestions"] == []
+
+    def test_ask_not_found_with_coach_enabled_returns_coverage_suggestion(
+        self, client: TestClient, mock_coach_db: MagicMock
+    ):
+        """Ask endpoint returns coverage suggestion when Coach Mode is enabled."""
+        with patch("bob.api.routes.ask.search", return_value=[]), patch(
+            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        ):
+            response = client.post(
+                "/ask",
+                json={"query": "nonexistent topic", "coach_mode_enabled": True},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coach_mode_enabled"] is True
+        assert data["footer"]["not_found"] is True
+        assert len(data["suggestions"]) == 1
+        assert data["suggestions"][0]["type"] == "coverage_gaps"
+
+    def test_ask_low_confidence_with_coach_enabled_returns_staleness_suggestion(
+        self, client: TestClient, mock_coach_db: MagicMock
+    ):
+        """Ask endpoint returns staleness suggestion when confidence is LOW."""
+        from datetime import datetime
+
+        from bob.retrieval.search import SearchResult
+
+        old_date = datetime(2000, 1, 1)
+        results = [
+            SearchResult(
+                chunk_id=1,
+                content="Decision: Use legacy system.",
+                score=0.92,
+                source_path="/docs/old.md",
+                source_type="markdown",
+                locator_type="heading",
+                locator_value={
+                    "heading": "Old Section",
+                    "start_line": 10,
+                    "end_line": 20,
+                },
+                project="test",
+                source_date=old_date,
+                git_repo=None,
+                git_commit=None,
+            ),
+            SearchResult(
+                chunk_id=2,
+                content="Some older passage.",
+                score=0.85,
+                source_path="/docs/older.md",
+                source_type="markdown",
+                locator_type="heading",
+                locator_value={
+                    "heading": "Older Section",
+                    "start_line": 5,
+                    "end_line": 15,
+                },
+                project="test",
+                source_date=old_date,
+                git_repo=None,
+                git_commit=None,
+            ),
+        ]
+
+        with patch("bob.api.routes.ask.search", return_value=results), patch(
+            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        ):
+            response = client.post(
+                "/ask",
+                json={"query": "test question", "coach_mode_enabled": True},
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["coach_mode_enabled"] is True
+        assert data["footer"]["not_found"] is False
+        assert len(data["suggestions"]) == 1
+        assert data["suggestions"][0]["type"] == "staleness"
 
     def test_ask_validates_top_k(self, client: TestClient, mock_coach_db: MagicMock):
         """Ask endpoint validates top_k parameter."""
