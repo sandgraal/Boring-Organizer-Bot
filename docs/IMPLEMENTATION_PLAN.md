@@ -16,18 +16,19 @@
 4. [Phase 1: Core Retrieval](#phase-1-core-retrieval)
 5. [Phase 2: Local API Server](#phase-2-local-api-server)
 6. [Phase 3: Web Interface](#phase-3-web-interface)
-7. [Track: Answer Audit Trail](#track-answer-audit-trail)
-8. [Track: Knowledge Health Dashboard](#track-knowledge-health-dashboard)
-9. [Track: Capture Helpers (Templates + Linter)](#track-capture-helpers-templates--linter)
-10. [Track: Connectors (Opt-in)](#track-connectors-opt-in)
-11. [Track: Agent Interoperability (MCP)](#track-agent-interoperability-mcp)
-12. [Track: Coach Mode (Opt-in)](#track-coach-mode-opt-in)
-13. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
-14. [Phase 5: Decision Layer](#phase-5-decision-layer)
-15. [Phase 6: Optional Generation](#phase-6-optional-generation)
-16. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
-17. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
-18. [Timeline Overview](#timeline-overview)
+7. [Track: Routines & Deep Integration](#track-routines--deep-integration)
+8. [Track: Answer Audit Trail](#track-answer-audit-trail)
+9. [Track: Knowledge Health Dashboard](#track-knowledge-health-dashboard)
+10. [Track: Capture Helpers (Templates + Linter)](#track-capture-helpers-templates--linter)
+11. [Track: Connectors (Opt-in)](#track-connectors-opt-in)
+12. [Track: Agent Interoperability (MCP)](#track-agent-interoperability-mcp)
+13. [Track: Coach Mode (Opt-in)](#track-coach-mode-opt-in)
+14. [Phase 4: Better Retrieval](#phase-4-better-retrieval)
+15. [Phase 5: Decision Layer](#phase-5-decision-layer)
+16. [Phase 6: Optional Generation](#phase-6-optional-generation)
+17. [Phase 7: Evaluation Harness](#phase-7-evaluation-harness)
+18. [Phase 8: Desktop Packaging (Optional)](#phase-8-desktop-packaging-optional)
+19. [Timeline Overview](#timeline-overview)
 
 ---
 
@@ -327,6 +328,78 @@ These are explicit non-goals to avoid scope creep:
 - [x] No external network requests (fully local)
 
 ---
+
+## Track: Routines & Deep Integration
+
+**Goal:** Turn B.O.B into a daily-use partner by shipping guided routine actions, canonical templates with linting, safe deep access, a metrics-powered Fix Queue, and Coach Mode guidance that keeps the experience grounded in the local chunk → embed → store pipeline (metadata always includes project, date, language, source).
+
+### Status: 🔜 Not Started
+
+### Prerequisites
+
+- Phase 3 “Ask + citations-first UI” is live so every routine can hook into the existing sources footer and Coach Mode toggle.
+- `docs/ROUTINES_SPEC.md` and `docs/PERMISSIONS.md` are written so implementation knows the vault paths, templates, scope rules, and failure cases for each action.
+- Retrieval pipeline chunk → embed → store is stable and metadata enforcement is in place.
+
+### Features
+
+1. **Routine entry points & templates**
+
+   - The eight actions (Daily Check-in, End-of-Day Debrief, Meeting Prep, Meeting Debrief, Weekly Review, New Decision, Trip Debrief, Fix Queue) are defined in `docs/ROUTINES_SPEC.md` with vault patterns (e.g., `vault/routines/daily/YYYY-MM-DD.md`, `vault/decisions/decision-<slug>.md`), template sections, retrieval queries that pull open loops/recent context/decision status, UI layout expectations, and failure behavior (no sources, low confidence, missing metadata).
+   - Each routine writes via the canonical templates stored under `docs/templates/` and adheres to the required metadata block; the APIs (including `POST /notes/create` and specific `/routines/<action>` endpoints) return the new file path plus the cited retrieval snippets that drove it.
+   - Routines appear as cards on a dedicated `/routines` screen, as coach-triggerable suggestions in the Ask footer, and as structured actions in a new Fix Queue entry for system health tasks.
+
+2. **Capture hygiene linting**
+
+   - Lint rules flag missing rationale, rejected options, metadata, and next actions (particularly for decision and meeting captures); warnings surface in Fix Queue cards and Coach Mode (with evidence citations) before a task is actionable.
+   - The lint runner also powers the Fix Queue by scoring missing metadata counts, stale decisions, and repeated questions that lack context.
+
+3. **Safe deep access via permissions**
+
+   - The Level 0-3 scope model in `docs/PERMISSIONS.md` constrains every write: Level 0 read-only search, Level 1 optional local calendar import (ICS/CalDAV), Level 2 optional manual browser saves, Level 3 template-only vault writes, and Level 4 (external accounts) is deferred.
+   - Calendar import and browser-save connectors are strictly opt-in toggles both in config and in the Routines screen, and their enablement is logged as part of the Fix Queue health metrics.
+
+4. **Feedback loop & Fix Queue**
+
+   - Every answer renders feedback controls (Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer) that call `POST /feedback` and log `{question, timestamp, project, retrieved_source_ids, answer_id, feedback_reason}` locally.
+   - Failure dashboards (Not found frequency, PDFs without text, ingestion errors, missing metadata counts, repeated question spikes) feed the Fix Queue so prioritized tasks (e.g., “add metadata to 3 decision notes”) are automatically surfaced before any optional generation improvements ship.
+
+5. **Coach Mode integration**
+
+   - Coach suggestions only recommend routines when Coach Mode is enabled, the routine is off cooldown, and the suggestion includes evidence citations; when evidence is sparse the UI labels the suggestion as a hypothesis.
+   - Coach Mode can also propose Fix Queue-driven actions (e.g., “Resolve the 5 outstanding lint warnings by running a new decision capture”), tying the routine workflows and health dashboards together.
+
+### Acceptance Criteria
+
+- Routine APIs (`POST /routines/daily-checkin`, `.../meeting-prep`, `.../meeting-debrief`, `.../weekly-review`, `.../new-decision`, `.../trip-debrief`, `.../fix-queue`) plus `POST /notes/create` are documented, return cited retrieval context, and respect required metadata and scope checks.
+- Templates in `docs/templates/` are selectable from the UI and the lint runner reports hygiene issues with enough detail to create Fix Queue entries and Coach Mode suggestions.
+- Permission levels prevent unauthorized writes while allowing calendar/browser import flows only when the user opts in; denials populate the Fix Queue analytics before Phase 6 (Optional Generation).
+- Feedback controls call `POST /feedback`, logging the local schema, and `GET /health`/`GET /health/fix-queue` expose Not found frequency, ingestion failures, metadata deficits, and repeated question metrics that feed the Fix Queue.
+- Coach Mode only proposes routines when enabled, cites the evidence (or labels hypotheses), and respects cooldowns.
+
+### Test Plan
+
+| Test | Description | File |
+| --- | --- | --- |
+| `tests/test_routines_end_to_end.py` | Runs each `/routines/<action>` endpoint, verifies template write path, retrieval citations, and failure fallback behavior. | `tests/test_routines_end_to_end.py` |
+| `tests/test_capture_lint.py` | Ensures lint rules flag missing rationale/rejected options/metadata/next actions and surface structured Fix Queue entries. | `tests/test_capture_lint.py` |
+| `tests/test_permissions.py` | Verifies Level 0-3 scopes, optional connectors, and rejection logging while templates remain writable. | `tests/test_permissions.py` |
+| `tests/test_feedback_and_fix_queue.py` | Posts feedback choices, checks local log schema, and confirms `GET /health`/`/health/fix-queue` return the prioritized metrics. | `tests/test_feedback_and_fix_queue.py` |
+
+### Risks
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Retrieval context insufficient for a routine action | Produces thin outputs and erodes trust | Surface chunk IDs and citations for every routine, allow manual overrides, and auto-log gaps via the Fix Queue. |
+| Optional connectors feel automatic | Users worry about hidden capture | Keep calendar/browser imports opt-in, documented in `docs/PERMISSIONS.md`, and present their toggle state on the Routines screen. |
+| Permission enforcement blocks valid flows | Routines break unexpectedly | Test scope enforcement thoroughly and log denied attempts so engineers can adjust allowed directories while keeping deep access explicit. |
+
+### Definition of Done
+
+- `docs/ROUTINES_SPEC.md`, `docs/PERMISSIONS.md`, and canonical templates under `docs/templates/` are authored and referenced by this plan, the UI plan, and the API contract.
+- New UI routes `/routines` and `/fix-queue`, the feedback controls, and the updated Coach Mode suggestion behavior are wired through the Ask screen.
+- All routine, template, feedback, and permission APIs listed above are implemented, tested, and documented before Phase 4, and the Fix Queue metrics land before Phase 6 (Optional Generation).
+- Feedback + Fix Queue metrics feed the health dashboards so the next optional generation improvements are informed by local log data.
 
 ## Track: Answer Audit Trail
 
@@ -975,6 +1048,7 @@ These are explicit non-goals to avoid scope creep:
 | **Phase 1** | Core Retrieval          | —             | 2-3 weeks     |
 | **Phase 2** | Local API Server        | Phase 1       | 1-2 weeks     |
 | **Phase 3** | Web Interface           | Phase 2       | 2-3 weeks     |
+| **Track**   | Routines & Deep Integration | Phase 3 (Ask + citations) | 1-2 weeks (top priority before Phase 4 & Phase 6) |
 | **Track**   | Answer Audit Trail      | Phase 3       | 1-2 weeks     |
 | **Track**   | Knowledge Health        | Phase 2       | 1-2 weeks     |
 | **Track**   | Capture Helpers         | Phase 3       | 1-2 weeks     |
@@ -987,9 +1061,9 @@ These are explicit non-goals to avoid scope creep:
 | **Phase 7** | Evaluation Harness      | Phase 1       | 1-2 weeks     |
 | **Phase 8** | Desktop Packaging (opt) | Phase 3       | 2-3 weeks     |
 
-**Critical Path:** Phase 1 → Phase 2 → Phase 3 (delivers usable UI)
+**Critical Path:** Phase 1 → Phase 2 → Phase 3 → Routines & Deep Integration (Fix Queue + feedback) to make the UI ready for daily workflows.
 
-Tracks can proceed after Phase 2/3 and in parallel with Phases 4, 5, and 7.
+Tracks can proceed after Phase 2/3 and in parallel with Phases 4, 5, and 7, but Routines must finish before Phase 4 starts and Fix Queue/feedback dashboards land before Phase 6.
 Phase 8 is optional and only triggered if desktop packaging is needed.
 
 ---

@@ -115,7 +115,6 @@ Returns:
   "database": "connected",
   "indexed_documents": 156
 }
-```
 
 ---
 
@@ -234,6 +233,7 @@ Submit a question and receive an answer with structured citations.
 
 - `coach_mode_enabled` reflects the effective mode used for the response.
 - `suggestions` is empty when Coach Mode is disabled or no suggestions pass gates.
+- `suggestions` entries may include `routine_action` so the UI can link to `/routines/<action>` when reporting evidence or hypotheses.
 - `include_audit` returns an `audit` payload with retrieved/used/unsupported info.
 - `include_report` returns a formatted `report` payload for "copy as report".
 
@@ -262,6 +262,77 @@ Submit a question and receive an answer with structured citations.
     "not_found_message": "No indexed documents contain information matching your query."
   },
   "query_time_ms": 45
+}
+
+
+### Routine Endpoints
+
+Routine endpoints run predefined workflows, surface the retrieval context that triggered them, and write with the templates described in `docs/ROUTINES_SPEC.md`. Each action accepts:
+
+```json
+{
+  "project": "docs",
+  "metadata": {
+    "date": "2025-12-24",
+    "language": "en",
+    "source": "routine/daily-checkin"
+  },
+  "context": {
+    "meeting_slug": "weekly-sync",
+    "trip_name": "weekend-trip"
+  },
+  "filters": {
+    "topics": ["open_loops"]
+  },
+  "coach_mode_enabled": false
+}
+```
+
+The response includes:
+
+- `written_file`: path written (null for Fix Queue refresh).
+- `retrieved_context`: citations (locator, snippet, similarity_score).
+- `lint_issues`: hygiene flags (`missing_rejected_options`, `missing_metadata`, `missing_next_actions`).
+- `suggestions`: optional Coach Mode follow-ups.
+
+Supported actions:
+
+- `POST /routines/daily-checkin`: writes `vault/routines/daily/YYYY-MM-DD.md`, queries `open_loops(status=proposed)` and `recent_context(days=3)`, and shows morning priorities plus open loops with citations; missing metadata or low-confidence sources keep the note in review.
+- `POST /routines/end-of-day-debrief`: captures lessons, open loops, and decisions modified today via `decisions(modified=today)` and the day’s context.
+- `POST /routines/meeting-prep`: builds agenda bullets from `last_decisions(project)` and `open_questions(project)`, saves to `vault/meetings/<project>/<meeting-slug>-prep.md`, and returns relevant notes.
+- `POST /routines/meeting-debrief`: creates or updates `vault/decisions/decision-<slug>.md`, records rejected options, next actions, and links to retrieved evidence; it returns the `decision_id` for downstream lookups.
+- `POST /routines/weekly-review`: writes `vault/routines/weekly/YYYY-WW.md`, highlights stale decisions (`decisions(older_than=6m)`), and points to metadata gaps.
+- `POST /routines/new-decision`: enforces Decision/Context/Evidence/Rejected Options/Next Actions sections, links retrieved sources, and optionally marks `supersedes`.
+- `POST /routines/trip-debrief`: writes `vault/trips/<trip>/debrief.md` with learnings and reusable checklist seeds derived from `trip_notes`.
+- `POST /routines/fix-queue`: refreshes the Fix Queue (`GET /health/fix-queue`) and returns prioritized tasks (metadata fixes, ingestion errors, repeated questions) without writing a new file.
+
+Every routine checks the caller’s permission level (`docs/PERMISSIONS.md`) before writing; failures surface as structured errors and feed the Fix Queue metrics.
+
+#### Example: Daily Check-in
+
+```bash
+curl -X POST http://localhost:8080/routines/daily-checkin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project": "docs",
+    "metadata": { "date": "2025-12-24", "language": "en", "source": "routine/daily-checkin" },
+    "filters": { "topics": ["open loops"] }
+  }'
+```
+
+```json
+{
+  "written_file": "vault/routines/daily/2025-12-24.md",
+  "retrieved_context": [
+    {
+      "file_path": "docs/decisions.md",
+      "locator": { "heading": "Open Loops", "start_line": 30 },
+      "snippet": "Decision DEC-010 requires follow-up on the migration plan.",
+      "similarity_score": 0.88
+    }
+  ],
+  "lint_issues": [],
+  "coach_mode_enabled": false
 }
 ```
 
@@ -529,9 +600,9 @@ Get detailed information about a single document.
 
 ### Health Dashboard
 
-#### `GET /health/dashboard`
+#### `GET /health`
 
-Return coverage, hygiene, staleness, and ingestion failure metrics.
+Return coverage, hygiene, staleness, ingestion, and failure metrics plus the Fix Queue task list. Failure signals include Not found frequency, PDF ingestion errors, missing metadata counts, and repeated questions; these signals seed the Fix Queue algorithm described in `docs/ROUTINES_SPEC.md`.
 
 **Response:**
 
@@ -554,16 +625,90 @@ Return coverage, hygiene, staleness, and ingestion failure metrics.
   "ingestion_failures": [
     { "file": "broken.pdf", "error_type": "no_text" }
   ],
+  "failure_signals": {
+    "not_found_frequency": [
+      { "project": "docs", "value": 0.12 }
+    ],
+    "pdf_no_text": [
+      { "file": "vault/reports/broken.pdf", "count": 2 }
+    ],
+    "missing_metadata_counts": {
+      "project": "docs",
+      "missing_date": 3,
+      "missing_language": 1,
+      "missing_source": 2
+    },
+    "repeated_questions": [
+      { "query": "how to configure logging", "count": 3 }
+    ]
+  },
   "fix_queue": [
     {
       "id": "fix_001",
-      "action": "reindex",
-      "file": "/notes/2022/decision.md",
-      "reason": "missing_date"
+      "action": "fix_metadata",
+      "target": "/notes/2022/decision.md",
+      "reason": "missing_date",
+      "priority": "high"
     }
   ]
 }
 ```
+
+#### `GET /health/fix-queue`
+
+Return only the prioritized Fix Queue tasks derived from lint issues, ingestion failures, repeated questions, and metadata gaps. Each task records `id`, `action`, `target`, `reason`, and `priority` so routines can act on the top problems before optional generation layers ship.
+
+**Response:**
+
+```json
+{
+  "fix_queue": [
+    {
+      "id": "fix_002",
+      "action": "run_routine",
+      "target": "traceable-decision",
+      "reason": "missing_rejected_options",
+      "priority": "medium"
+    }
+  ]
+}
+```
+
+---
+
+### Feedback Endpoint
+
+#### `POST /feedback`
+
+Log user feedback from the Ask UI buttons (Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer). The API stores the feedback locally and the Fix Queue/health dashboards surface aggregate counts.
+
+**Request:**
+
+```json
+{
+  "question": "How do I configure logging?",
+  "answer_id": "ans_123",
+  "project": "docs",
+  "feedback_reason": "wrong_or_missing_source",
+  "retrieved_sources": [
+    {
+      "file_path": "docs/configuration.md",
+      "locator": { "heading": "Logging Configuration", "start_line": 45 }
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "feedback_id": "fb_2025_12_24_0900"
+}
+```
+
+Aggregated feedback counts contribute to the `failure_signals.not_found_frequency` and repeated question metrics described above.
 
 ---
 
@@ -584,9 +729,9 @@ List built-in templates.
 }
 ```
 
-#### `POST /notes`
+#### `POST /notes/create`
 
-Create a new note from a template.
+Create a new note from a template. The API renders canonical templates under `docs/templates/`, fills metadata placeholders, enforces allowed vault paths, and requires a template-write scope (Level 3 or higher from `docs/PERMISSIONS.md`).
 
 **Request:**
 
@@ -595,7 +740,12 @@ Create a new note from a template.
   "template_id": "decision",
   "project": "cdc",
   "title": "Data retention policy",
-  "target_path": "/vault/cdc/decisions/decision-2025-12-24.md"
+  "target_path": "/vault/cdc/decisions/decision-2025-12-24.md",
+  "metadata": {
+    "date": "2025-12-24",
+    "language": "en",
+    "source": "template/decision"
+  }
 }
 ```
 
@@ -607,6 +757,8 @@ Create a new note from a template.
   "file_path": "/vault/cdc/decisions/decision-2025-12-24.md"
 }
 ```
+
+If the caller lacks Level 3 scope or requests a target outside the approved vault directories, the API returns `PERMISSION_DENIED` and logs the denied intent in the Fix Queue metrics.
 
 #### `POST /lint`
 
@@ -629,6 +781,8 @@ Lint a note for missing required sections.
   ]
 }
 ```
+
+Lint results are surfaced in the Fix Queue and Coach Mode suggestions so the user can act on capture hygiene issues (e.g., run a routine to fill missing rejected options).
 
 ---
 
@@ -1161,6 +1315,7 @@ interface CoachSuggestion {
   why: string;
   hypothesis: boolean;
   citations?: Source[];
+  routine_action?: "daily-checkin" | "end-of-day-debrief" | "meeting-prep" | "meeting-debrief" | "weekly-review" | "new-decision" | "trip-debrief" | "fix-queue";
 }
 ```
 

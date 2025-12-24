@@ -180,7 +180,28 @@ The main interface for querying knowledge.
   - Used chunks highlighted (supports citations)
   - Unsupported claims list (removed or marked spans)
 
-### 2. Library / Browse
+### 2. Routines Hub
+
+The Routines page sits directly after Ask in the nav so its one-click workflows are available before any optional generation features land. It surfaces the eight actions defined in `docs/ROUTINES_SPEC.md` (Daily Check-in, End-of-Day Debrief, Meeting Prep, Meeting Debrief, Weekly Review, New Decision, Trip Debrief, Fix Queue).
+
+**Layout:**  
+- **Left column:** action cards that show the routine name, cadence, last run, and a status badge (e.g., “Open loops waiting” or “No sources found”). Tapping a card loads the routine’s template preview.  
+- **Center column:** retrieval + template preview (queries go through the chunk → embed → store pipeline and surface chunk IDs, snippets, and citations). The template preview is rendered from `docs/templates/` so headings like `## Lessons`, `## Evidence`, and `## Checklist Seeds` match the actual file output.  
+- **Right column:** citations, failure notices (no sources, low confidence, missing metadata), and quick links to the associated Fix Queue task if assistance is required.
+
+**Actions:**  
+- **Daily Check-in:** Creates `vault/routines/daily/YYYY-MM-DD.md`, pulls open loops and recent context, and warns (with lint issues + Fix Queue tasks) when retrieval is empty or metadata is missing.  
+- **End-of-Day Debrief:** Logs lessons and follow-ups from the day, citing decisions touched that day.  
+- **Meeting Prep:** Builds agenda bullets from recent decisions/questions and saves `vault/meetings/<meeting-slug>-prep.md`.  
+- **Meeting Debrief:** Captures decisions, rejected options, next actions, and updates `vault/decisions/decision-<slug>.md`.  
+- **Weekly Review:** Writes `vault/routines/weekly/YYYY-WW.md`, flags stale decisions, and highlights metadata gaps.  
+- **New Decision:** Enforces Decision / Context / Evidence / Rejected Options / Next Actions sections and links evidence; supports `supersedes`.  
+- **Trip Debrief:** Saves lessons, checklist seeds, and reusable tips to `vault/trips/<trip>/debrief.md`.  
+- **Fix Queue:** Opens the Fix Queue panel sourced from `GET /health/fix-queue` without writing a file.
+
+Coach Mode suggestions can surface a “Run this routine” pill when the mode is enabled; the suggestion carries a `routine_action` identifier and shows whether the prompt is evidence-backed or marked as a hypothesis. Failure states drop lint findings directly into Fix Queue so the user knows how to unblock the routine.
+
+### 3. Library / Browse
 
 Browse and manage indexed documents.
 
@@ -222,7 +243,7 @@ Browse and manage indexed documents.
 - Re-index button per document
 - Delete from index option
 
-### 3. Decisions View
+### 4. Decisions View
 
 View extracted decisions with status and provenance.
 
@@ -260,7 +281,7 @@ View extracted decisions with status and provenance.
 - "Older than" filter for review cadence
 - Click to view original source
 
-### 4. Recipes View
+### 5. Recipes View
 
 Display structured recipe data (if present).
 
@@ -294,7 +315,7 @@ Display structured recipe data (if present).
 - Source citation and date
 - "Open Original" button
 
-### 5. Indexing Dashboard
+### 6. Indexing Dashboard
 
 Monitor and trigger indexing jobs.
 
@@ -343,7 +364,7 @@ Monitor and trigger indexing jobs.
 - Error log for failed files
 - Job history
 
-### 6. Knowledge Health Dashboard
+### 7. Knowledge Health Dashboard
 
 Monitor coverage, metadata hygiene, staleness, and breakage.
 
@@ -415,7 +436,18 @@ Surface regression results and answer drift across golden questions.
 - Per-domain delta cards
 - Answer diff view with citations
 
-### 8. Settings / Preferences
+### 8. Fix Queue
+
+The Fix Queue screen is the early health instrument that appears immediately after Routines (before any optional generation improvements). It lists prioritized tasks derived from the metrics described in `docs/ROUTINES_SPEC.md`: Not found frequency, PDFs without text, ingestion failures, missing metadata counts, repeated questions, and feedback spikes.
+
+**Layout:**  
+- **Left column:** filters for project, task type (reindex, fix metadata, run routine), priority, and time window.  
+- **Center column:** ordered task list with `id`, `reason`, `priority`, `target`, and linked evidence (locators or log entries). Tasks sourced from `GET /health/fix-queue` include actions such as “run New Decision routine”, “reindex /notes/…” or “apply metadata template.”  
+- **Right column:** task details (failure signal value, retrieval citations, coach_mode suggestion flag) and action buttons (`Run routine`, `Reindex`, `View source`).
+
+Successive tasks cascade into Routines (e.g., a missing rationale task opens the New Decision card). Feedback buttons and `POST /feedback` log entries influence Fix Queue priorities so the user can resolve the most frequent “Not found in sources” cases first.
+
+### 9. Settings / Preferences
 
 Manage Coach Mode defaults and per-project preferences.
 
@@ -542,6 +574,7 @@ During active indexing job:
   - Short actionable text (1-3 sentences)
   - "Why" line
   - Citation markers if evidence-backed, otherwise "Hypothesis" label
+  - Routine tasks (daily check-in, meeting prep, etc.) surface via the `routine_action` link when Coach Mode is on and an evidence-backed citation exists.
 - Max 3 suggestions per response
 
 **Dismiss / feedback:**
@@ -560,6 +593,14 @@ During active indexing job:
 - Global "New note" action opens template picker
 - Template writes to configured vault path
 - Confirmation toast shows file path
+
+### 10. Feedback Controls
+
+Every answer includes five inline buttons: **Helpful**, **Wrong or missing source**, **Outdated**, **Too long**, and **Didn’t answer**. Pressing any button marshals a `POST /feedback` call with `{question, answer_id, project, feedback_reason, retrieved_source_ids}` and local timestamp. Aggregate counts feed the `failure_signals` in `GET /health` (not found frequency, repeated question spikes) and reprioritize Fix Queue tasks.
+
+### 11. Fix Queue Failure Dashboard
+
+The Fix Queue dashboard surface the failure metrics that drive the Fix Queue screen: Not found frequency per project, PDFs with no text / ingestion errors, metadata deficits (missing project/date/language/source), and repeated questions suggesting discoverability gaps. Each metric links to the health endpoint (`GET /health/fix-queue`) and includes `action`, `target`, `reason`, and `priority`, so the user can re-index, fix metadata, or run a routine before optional generation features appear.
 
 ---
 
@@ -622,6 +663,7 @@ During active indexing job:
 | Route          | Component       | Description               |
 | -------------- | --------------- | ------------------------- |
 | `/`            | `AskPage`       | Main query interface      |
+| `/routines`     | `RoutinesPage` | Workflow hub for routines + template previews |
 | `/library`     | `LibraryPage`   | Browse indexed documents  |
 | `/library/:id` | `DocumentPage`  | Single document details   |
 | `/decisions`   | `DecisionsPage` | List extracted decisions  |
@@ -630,7 +672,10 @@ During active indexing job:
 | `/indexing`    | `IndexingPage`  | Indexing dashboard        |
 | `/settings`    | `SettingsPage`  | Preferences and Coach Mode |
 | `/health`      | `HealthPage`    | Knowledge health dashboard |
+| `/fix-queue`    | `FixQueuePage`  | Prioritized health tasks + routines linkage |
 | `/eval`        | `EvalPage`      | Regression and drift view |
+
+**Note:** Routines and the Fix Queue routes appear as soon as the Ask + citations UI is up and before any optional generation layers; they feed the early feedback loop.
 
 **Note:** All routes are client-side. The server serves `index.html` for all paths and JS handles routing.
 

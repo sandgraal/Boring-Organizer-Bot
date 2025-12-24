@@ -388,6 +388,12 @@ When generating JSON or structured data:
 - ❌ Never modify files outside `/data` and `/bob`
 - ✅ Respect project boundaries in queries
 
+### Scoped Writes & Permissions
+
+- Refer to `docs/PERMISSIONS.md` for the Level 0-3 scope definitions before any write action; the document describes the connectors, allowed vault paths, and API enforcement logic.
+- Any API call that writes (routine endpoints, `POST /notes/create`, connectors) must confirm the current scope level or return `PERMISSION_DENIED`, and denied intents should be surfaced in the Fix Queue metrics described in `docs/ROUTINES_SPEC.md`.
+- Optional connectors such as local calendar import or browser saves are opt-in, explicit, and logged; agents must never simulate or automatically enable them without user confirmation.
+
 ---
 
 ## Stop Conditions

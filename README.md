@@ -1,6 +1,18 @@
-# B.O.B – Boring Organizer Bot
+# B.O.B — Boring Organizer Bot
 
-> A local-first personal knowledge assistant with a beautiful web interface. No cloud required. Just your files, chunked, embedded, and searchable.
+A local-first personal knowledge assistant with a **beautiful local web UI**, **citations-first answers**, and (optionally) **Coach Mode**. No cloud required: B.O.B indexes _your_ files (Markdown/PDF/recipes/docs) and answers questions with sources you can click and verify.
+
+## What B.O.B is for
+
+B.O.B answers questions like:
+
+- “Where did I write about this idea?”
+- “What recipe used achiote + hibiscus?”
+- “What did I decide about CDC agent sizing?”
+- “What option did I reject and why?”
+- “What trips did I plan and what did I learn?”
+
+It’s designed to become a daily-use partner via **routines** (daily check-in, meeting prep/debrief, weekly review), not just terminal search.
 
 ## Philosophy
 
@@ -8,8 +20,60 @@
 - **Local-first.** Your data stays on your machine. No API keys required for core functionality.
 - **Citations or nothing.** Every answer includes source file + locator. No hallucinated claims.
 - **Date-aware.** Answers include confidence about freshness and warn when content may be outdated.
-- **Beautiful & inspectable.** A local web UI that makes source verification one click away.
+- **Beautiful & inspectable.** The UI makes source verification one click away.
 - **Smart retrieval.** Hybrid search combining semantic vectors with keyword matching.
+
+## Non-negotiables (answer contract)
+
+Every answer must:
+
+- Include **citations** for claims (file + locator: heading/lines or PDF pages).
+- End with:
+  - **Sources**
+  - **Date confidence**
+  - **“This may be outdated”** when applicable
+- Follow: **No citation => no claim**  
+  If B.O.B cannot support the answer from indexed sources, it returns: **“Not found in sources.”**
+
+## Daily use: routines (UI-first)
+
+B.O.B is not terminal-only. The primary experience is a **local web UI** with one-click entry points that create structured notes and/or run grounded queries.
+
+Planned routine actions (implemented incrementally):
+
+- **Daily Check-in** → creates `daily/YYYY-MM-DD.md` from a template + pulls open loops/recent context
+- **End-of-day Debrief** → adds lessons/open loops to today’s note
+- **Meeting Prep** → pulls last decisions, unresolved questions, relevant notes + produces agenda bullets
+- **Meeting Debrief** → captures decisions, rejected options + why, next actions; updates decision index
+- **Weekly Review** → creates a weekly note + flags stale decisions
+- **New Decision** → structured capture with lifecycle (decided/superseded)
+- **Trip Debrief** → “what I learned” + reusable checklist seeds
+- **Fix Queue** → prioritized cleanup tasks (metadata gaps, ingestion errors, staleness)
+
+## Modes
+
+### Boring B.O.B (default)
+
+Neutral tone. No unsolicited advice. Strictly grounded.
+
+### Coach Mode (opt-in)
+
+Coach Mode adds a separate **“Suggestions (Coach Mode)”** section while preserving the answer contract:
+
+- Max 3 suggestions per response
+- Evidence-backed where possible (with citations); otherwise labeled **Hypothesis**
+- Cooldown to prevent repeated nagging
+- Suggestions never override grounded answers
+
+## Knowledge Health + Fix Queue (keep it reliable over years)
+
+B.O.B tracks system health and turns it into a prioritized Fix Queue:
+
+- “Not found in sources” frequency by project
+- PDFs with no text / ingestion errors
+- missing metadata counts
+- repeated questions (discoverability issues)
+- stale decisions radar
 
 ## Quick Start
 
@@ -21,7 +85,7 @@ git clone https://github.com/sandgraal/Boring-Organizer-Bot.git
 cd Boring-Organizer-Bot
 
 # Create virtual environment
-python3.11 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 
 # Install in development mode
@@ -48,19 +112,19 @@ bob index https://github.com/user/repo --project "external-docs"
 
 ```bash
 # Simple query
-bob ask "How do I configure logging?"
+bob ask "What did I decide about CDC agent sizing?" --project cdc
 
 # Filter by project
-bob ask "What are the main ingredients for pasta?" --project "recipes"
+bob ask "Where did I write about the prefetch idea?" --project personal-notes
 
 # Get more context
-bob ask "What decisions were made about the API?" --top-k 10
+bob ask "How did I implement auth?" --top-k 10
 
-# Machine-readable JSON output (for scripting/pipelines)
-bob ask "How do I configure logging?" --json
+# JSON output (for scripts / tooling)
+bob ask "Summarize my decisions about logging" --json
 ```
 
-### Search (Retrieval Only)
+### Search (no synthesis)
 
 ```bash
 # Search without answer synthesis - shows raw search results
@@ -94,7 +158,7 @@ bob ask '"error handling" best practices -deprecated project:docs'
 
 ### Output Format
 
-Every answer includes:
+Every answer must end with Sources + Date confidence (+ outdated warning):
 
 ```
 Answer: [synthesized response based on retrieved chunks]
@@ -120,22 +184,17 @@ bob status --project "personal-notes"
 ### Evaluate Retrieval Quality
 
 ```bash
-# Run evaluation against a golden dataset
-bob eval run docs/eval/example_gold.jsonl
+# Run evaluation suite (golden questions + regressions)
+bob eval
 
-# Run with different k and output JSON
-bob eval run docs/eval/example_gold.jsonl --k 10 --json
-
-# Compare two evaluation runs
-bob eval compare baseline.json current.json
+# Run evaluation for a single project
+bob eval --project "cdc"
 ```
 
-### API Server
-
-Start a local HTTP API server for programmatic access:
+## API Server (local-only)
 
 ```bash
-# Start the server on default port (8080)
+# Start the server
 bob serve
 
 # Start on a custom port
@@ -145,39 +204,48 @@ bob serve --port 9000
 bob serve --reload
 ```
 
-The API provides:
+The API provides (core today; expands as routines/health ship):
 
-- `POST /ask` - Query with structured citations
-- `POST /index` - Start indexing jobs
-- `GET /index/{job_id}` - Check indexing progress
-- `GET /projects` - List all projects
-- `GET /documents` - List indexed documents with filters
-- `POST /open` - Open files at specific locations
-- `GET /health` - Health check
+- `POST /ask` — Query with structured citations
+- `POST /index` — Start indexing jobs
+- `GET /index/{job_id}` — Check indexing progress
+- `GET /projects` — List all projects
+- `GET /documents` — List indexed documents with filters
+- `POST /open` — Open files at specific locations
 
-OpenAPI docs available at `http://localhost:8080/docs`
+Planned additions:
 
-### Web Interface
+- `GET /health` — Metrics + Fix Queue
+- `POST /feedback` — Helpful / wrong / outdated / too long / didn’t answer
+- `GET/PUT /settings` — Mode preferences (boring/coach), thresholds, per-project defaults
+- `/routines/*` — Daily check-in, meeting prep/debrief, weekly review, new decision
 
-B.O.B includes a beautiful local web interface for browsing and querying your knowledge base:
+OpenAPI docs: `http://localhost:8080/docs`
 
-```bash
-# Start the server
-bob serve
+## Web Interface
 
-# Open in your browser
-open http://localhost:8080
-```
+B.O.B includes a local UI designed to be **inspectable**:
 
-The web UI provides:
+- **Ask**: 3-pane layout (filters/projects, answer, clickable sources)
+- **Library**: browse indexed documents + filters
+- **Indexing**: start indexing jobs and monitor progress
+- **Decisions**: decision lifecycle, superseded links, rejected options
+- **Routines**: one-click daily/meeting/weekly flows (planned)
+- **Health**: Fix Queue + ingestion/metadata/staleness metrics (planned)
 
-- **Ask page**: 3-pane layout with project filters, query input, and clickable source citations
-- **Library**: Browse all indexed documents with filtering by project and type
-- **Indexing**: Start indexing jobs and monitor progress in real-time
-
-All features work offline - no external network requests.
+All features work offline — no external network requests.
 
 ![Ask Page](docs/screenshots/ask-page.png) _(screenshot placeholder)_
+
+## Permissions (safe “deep access”)
+
+B.O.B uses explicit permission scopes so deeper access stays safe and intentional:
+
+- **Level 0**: read-only vault indexing/search
+- **Level 1**: optional calendar import (local ICS/Caldav file import)
+- **Level 2**: optional manual browser saves (explicit “save to vault” action)
+- **Level 3**: template-bound note writing only (no arbitrary edits)
+- **Level 4**: external accounts (out of scope for now)
 
 ## Configuration
 
@@ -205,9 +273,9 @@ search:
 
 Environment variables override config:
 
-- `BOB_DB_PATH` – database path
-- `BOB_EMBEDDING_MODEL` – embedding model name
-- `BOB_DEFAULT_PROJECT` – default project name
+- `BOB_DB_PATH` — database path
+- `BOB_EMBEDDING_MODEL` — embedding model name
+- `BOB_DEFAULT_PROJECT` — default project name
 
 ## Supported Inputs
 
@@ -224,27 +292,34 @@ Environment variables override config:
 
 ```
 /bob                 # Python package
-  /api               # HTTP API server (Phase 2)
-  /ui                # Web interface assets (Phase 3)
+  /api               # HTTP API server
+  /ui                # Web interface assets
   /cli               # CLI commands
   /ingest            # File parsers
   /index             # Chunking and embedding
   /retrieval         # Search and ranking
-  /answer            # Citation formatting
+  /answer            # Citation formatting + confidence rules
   /db                # Database and migrations
 /prompts             # Agent prompt templates
 /tests               # Unit and integration tests
-/docs                # Architecture documentation
+/docs                # Architecture & specs
 /data                # Local data (gitignored)
 ```
 
 ## Documentation
 
-- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) – Phased roadmap
-- [UI Plan](docs/UI_PLAN.md) – Interface design specification
-- [API Contract](docs/API_CONTRACT.md) – HTTP API endpoints
-- [Architecture](docs/architecture.md) – System design
-- [Data Model](docs/data-model.md) – Database schema
+- [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) — Phased roadmap (UI + routines + health prioritized)
+- [UI Plan](docs/UI_PLAN.md) — Interface design specification
+- [API Contract](docs/API_CONTRACT.md) — HTTP API endpoints and schemas
+- [Architecture](docs/architecture.md) — System design
+- [Data Model](docs/data-model.md) — Database schema
+
+Planned/added as the roadmap evolves:
+
+- `docs/ROUTINES_SPEC.md` — Daily/meeting/weekly workflows + templates
+- `docs/COACH_MODE_SPEC.md` — Coach Mode gates, cooldowns, suggestion types
+- `docs/PERMISSIONS.md` — Scope model and enforcement
+- Health/Fix Queue spec (name may vary) — metrics, queues, and acceptance tests
 
 ## Development
 
@@ -264,7 +339,7 @@ make check
 
 ## License
 
-MIT – See [LICENSE](LICENSE)
+MIT — See [LICENSE](LICENSE)
 
 ## Security
 
