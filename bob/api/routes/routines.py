@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import re
-from datetime import date
+from dataclasses import dataclass
+from datetime import date, timedelta
 from pathlib import Path
+from typing import Callable
 
 from fastapi import APIRouter, HTTPException
 
@@ -18,14 +20,31 @@ router = APIRouter()
 ROOT_DIR = Path(__file__).resolve().parents[3]
 TEMPLATES_DIR = ROOT_DIR / "docs" / "templates"
 DAILY_TEMPLATE = TEMPLATES_DIR / "daily.md"
+WEEKLY_TEMPLATE = TEMPLATES_DIR / "weekly.md"
 PLACEHOLDER_PATTERN = re.compile(r"{{\s*([\w-]+)\s*}}")
 SOURCE_PATTERN = re.compile(r'(source:\s*")[^"]+(")')
+
+TargetPathFn = Callable[[date, Path, RoutineRequest], Path]
+PlaceholderFn = Callable[[date, RoutineRequest], dict[str, str]]
+
+
+@dataclass(frozen=True)
+class RoutineAction:
+    """Configuration describing how a routine renders and writes notes."""
+
+    name: str
+    template: Path
+    source_tag: str
+    queries: tuple[tuple[str, str], ...]
+    target_path_fn: TargetPathFn
+    overwrite_warning: str
+    placeholder_fn: PlaceholderFn | None = None
 
 
 def _render_template(template_path: Path, values: dict[str, str], source_tag: str) -> str:
     """Render the template with the provided values and rewrite the source tag."""
     if not template_path.exists():
-        raise HTTPException(status_code=500, detail="Daily template not found")
+        raise HTTPException(status_code=500, detail="Template not found")
 
     raw = template_path.read_text(encoding="utf-8")
 
@@ -53,14 +72,57 @@ def _collect_retrieval(name: str, query: str, project: str | None, top_k: int) -
     return RoutineRetrieval(name=name, query=query, sources=sources)
 
 
-def _point_to_daily_note(target_date: date, vault_root: Path) -> Path:
+def _daily_target_path(target_date: date, vault_root: Path, request: RoutineRequest) -> Path:
     """Build the vault path for the daily check-in note."""
     return vault_root / "routines" / "daily" / f"{target_date.isoformat()}.md"
 
 
-@router.post("/routines/daily-checkin", response_model=RoutineResponse)
-def daily_checkin(request: RoutineRequest) -> RoutineResponse:
-    """Generate the daily check-in note with citations."""
+def _weekly_target_path(target_date: date, vault_root: Path, request: RoutineRequest) -> Path:
+    """Build the vault path for the weekly review note."""
+    iso_year, iso_week, _ = target_date.isocalendar()
+    filename = f"{iso_year}-W{iso_week:02d}.md"
+    return vault_root / "routines" / "weekly" / filename
+
+
+def _weekly_placeholders(target_date: date, request: RoutineRequest) -> dict[str, str]:
+    """Provide week-specific placeholders for the weekly template."""
+    week_start = target_date - timedelta(days=target_date.weekday())
+    week_end = week_start + timedelta(days=6)
+    return {
+        "week_range": f"{week_start.isoformat()} - {week_end.isoformat()}",
+    }
+
+
+ROUTINE_ACTIONS: dict[str, RoutineAction] = {
+    "daily-checkin": RoutineAction(
+        name="daily-checkin",
+        template=DAILY_TEMPLATE,
+        source_tag="routine/daily-checkin",
+        queries=(
+            ("open_loops", "open loop"),
+            ("recent_context", "recent context"),
+        ),
+        target_path_fn=_daily_target_path,
+        overwrite_warning="Existing daily check-in note was overwritten.",
+    ),
+    "weekly-review": RoutineAction(
+        name="weekly-review",
+        template=WEEKLY_TEMPLATE,
+        source_tag="routine/weekly-review",
+        queries=(
+            ("weekly_highlights", "weekly highlights"),
+            ("stale_decisions", "stale decisions"),
+            ("metadata_gaps", "missing metadata"),
+        ),
+        target_path_fn=_weekly_target_path,
+        overwrite_warning="Existing weekly review note was overwritten.",
+        placeholder_fn=_weekly_placeholders,
+    ),
+}
+
+
+def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineResponse:
+    """Execute the retrieval + templating + write cycle for a routine."""
     config = get_config()
     project = request.project or config.defaults.project
     language = request.language or config.defaults.language
@@ -70,7 +132,7 @@ def daily_checkin(request: RoutineRequest) -> RoutineResponse:
     retrievals: list[RoutineRetrieval] = []
     warnings: list[str] = []
 
-    for name, query in (("open_loops", "open loop"), ("recent_context", "recent context")):
+    for name, query in action.queries:
         retrieval = _collect_retrieval(name, query, project, top_k)
         if not retrieval.sources:
             warnings.append(f"No citations found for {name}; manual entry recommended.")
@@ -81,29 +143,47 @@ def daily_checkin(request: RoutineRequest) -> RoutineResponse:
         "date": target_date.isoformat(),
         "language": language,
     }
+    if action.placeholder_fn:
+        values.update(action.placeholder_fn(target_date, request))
+
     content = _render_template(
-        template_path=DAILY_TEMPLATE,
+        template_path=action.template,
         values=values,
-        source_tag="routine/daily-checkin",
+        source_tag=action.source_tag,
     )
 
     vault_root = config.paths.vault
-    target_path = _point_to_daily_note(target_date, vault_root)
+    target_path = action.target_path_fn(target_date, vault_root, request)
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     if target_path.exists():
-        warnings.append("Existing daily check-in note was overwritten.")
+        warnings.append(action.overwrite_warning)
 
     try:
         target_path.write_text(content, encoding="utf-8")
     except OSError as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to write daily note: {exc}") from exc
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to write {action.name} note: {exc}",
+        ) from exc
 
     return RoutineResponse(
-        routine="daily-checkin",
+        routine=action.name,
         file_path=str(target_path),
-        template=str(DAILY_TEMPLATE),
+        template=str(action.template),
         content=content,
         retrievals=retrievals,
         warnings=warnings,
     )
+
+
+@router.post("/routines/daily-checkin", response_model=RoutineResponse)
+def daily_checkin(request: RoutineRequest) -> RoutineResponse:
+    """Generate the daily check-in note with citations."""
+    return _run_routine(ROUTINE_ACTIONS["daily-checkin"], request)
+
+
+@router.post("/routines/weekly-review", response_model=RoutineResponse)
+def weekly_review(request: RoutineRequest) -> RoutineResponse:
+    """Generate the weekly review note with citations."""
+    return _run_routine(ROUTINE_ACTIONS["weekly-review"], request)

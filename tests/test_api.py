@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -463,6 +463,66 @@ class TestRoutinesEndpoint:
         assert 'project: "test"' in body
         assert 'source: "routine/daily-checkin"' in body
 
+    def test_weekly_review_creates_note_and_returns_retrievals(
+        self, client: TestClient, tmp_path
+    ):
+        """POST /routines/weekly-review writes a note with week range metadata."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="Sample context for the routine.",
+            score=0.9,
+            source_path="/docs/routine.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={
+                "heading": "Routine Section",
+                "start_line": 1,
+                "end_line": 5,
+            },
+            project="test",
+            source_date=datetime(2025, 1, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        results_by_query = {
+            "weekly highlights": [sample_result],
+            "stale decisions": [sample_result],
+            "missing metadata": [sample_result],
+        }
+
+        def fake_search(*, query, project, top_k, **kwargs):
+            return results_by_query.get(query, [])
+
+        with patch("bob.api.routes.routines.get_config", return_value=config), patch(
+            "bob.api.routes.routines.search", side_effect=fake_search
+        ):
+            response = client.post(
+                "/routines/weekly-review",
+                json={
+                    "project": "test",
+                    "date": "2025-01-01",
+                    "top_k": 1,
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "weekly-review"
+        assert data["template"].endswith("docs/templates/weekly.md")
+        assert len(data["retrievals"]) == 3
+        assert data["warnings"] == []
+
+        target_path = tmp_path / "routines" / "weekly" / "2025-W01.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        week_start = date(2025, 1, 1) - timedelta(days=date(2025, 1, 1).weekday())
+        week_end = week_start + timedelta(days=6)
+        expected_range = f'{week_start.isoformat()} - {week_end.isoformat()}'
+        assert f'week_range: "{expected_range}"' in body
     def test_get_nonexistent_job(self, client: TestClient):
         """GET /index/{job_id} returns 404 for unknown job."""
         response = client.get("/index/idx_nonexistent")

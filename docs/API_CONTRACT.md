@@ -125,6 +125,15 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** The endpoint runs `search` with `"open loop"` and `"recent context"` queries (respecting `project`/`top_k`), converts the chunks into `Source` citations, records warnings when citations are missing or a previous note is overwritten, writes the filled template to the vault, and returns the note path, template path, content, retrieval buckets, and any warnings.
 - **Errors:** Returns HTTP 500 if the template is missing, the retrieval search fails, or writing the note to the vault path fails.
 
+### POST /routines/weekly-review
+
+- **Purpose:** Create a weekly review note from `docs/templates/weekly.md`, fill in the `week_range` front matter, cite the most relevant highlights/stale decisions/metadata gaps, and persist it to `vault/routines/weekly/{{YYYY}}-W{{week}}.md`.
+- **Implementation:** `bob/api/routes/routines.py` orchestrates the retrieval queries (`"weekly highlights"`, `"stale decisions"`, `"missing metadata"`), renders the template (overwriting the `source` tag with `routine/weekly-review`), writes the file with a week-based filename, and surfaces any warnings (empty retrievals or overwrites).
+- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
+- **Response model:** `RoutineResponse` with the same fields as daily check-in plus the collected retrieval buckets (three queries) and warnings.
+- **Behavior:** Retrieval queries run in order, each producing a `RoutineRetrieval` with source citations; the handler calculates the Monday-to-Sunday `week_range`, injects it into the template, and writes the note. `warnings` capture missing citations or overwritten review notes.
+- **Errors:** HTTP 500 is returned if the template is missing, any of the search queries fail, or writing the weekly note fails.
+
 ### GET /settings
 
 - **Purpose:** Read persisted Coach Mode settings.

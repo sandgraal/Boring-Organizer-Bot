@@ -33,7 +33,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - **Evaluation suite**: `bob.eval.runner` computes recall/precision/MRR metrics, while `tests/` + CLI commands offer regression tooling out of the box.
 
 ## Known Gaps & Next Steps
-1. **Routines & Fix Queue** – The detailed workflow in `docs/ROUTINES_SPEC.md` is largely a roadmap. `/routines/daily-checkin` now exists, rendering the daily template into `vault/routines/daily/YYYY-MM-DD.md`, but the other `/routines/*` endpoints, Fix Queue dashboard, and UI routines surface remain unimplemented.
+1. **Routines & Fix Queue** – The detailed workflow in `docs/ROUTINES_SPEC.md` is still a roadmap. `/routines/daily-checkin` and `/routines/weekly-review` now write their respective templates into `vault/routines/daily/YYYY-MM-DD.md` and `vault/routines/weekly/YYYY-W##.md` with retrieval-backed citations, but the remaining `/routines/*` actions, Fix Queue dashboard, and UI routines surface remain unimplemented.
 2. **Coach Mode UI integration** – The UI exposes a toggle and suggestions list, but coach suggestions are limited to explainers from `/ask` rather than actionable routine prompts until the Fix Queue landings ship.
 3. **Planner + decision lifecycle automation** – Automated daily/meeting/weekly routines, decision superseding, and coach-driven nudges remain documented in `docs/IMPLEMENTATION_PLAN.md` but are not triggered by the UI/API today.
 4. **Health dashboard** – A Fix Queue dashboard and ingestion telemetry are described in the implementation plan but not surfaced in the `/health` endpoint or UI.
