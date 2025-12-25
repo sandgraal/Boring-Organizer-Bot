@@ -92,6 +92,7 @@
     // Indexing page
     elements.indexForm = document.getElementById("index-form");
     elements.indexPath = document.getElementById("index-path");
+    elements.pathOpenBtn = document.getElementById("path-open-btn");
     elements.indexProject = document.getElementById("index-project");
     elements.projectSuggestions = document.getElementById("index-project-options");
     elements.indexFeedback = document.getElementById("index-feedback");
@@ -152,6 +153,7 @@
 
     // Index form
     elements.indexForm?.addEventListener("submit", handleIndexSubmit);
+    elements.pathOpenBtn?.addEventListener("click", handleOpenPath);
 
     // Settings save
     elements.settingsSaveBtn?.addEventListener("click", handleSettingsSave);
@@ -414,6 +416,7 @@
     elements.indexFeedback.textContent = message;
     elements.indexFeedback.classList.remove("hidden");
     elements.indexFeedback.classList.toggle("error", type === "error");
+    elements.indexFeedback.classList.toggle("info", type === "info");
   }
 
   function clearIndexFeedback() {
@@ -421,6 +424,7 @@
     elements.indexFeedback.textContent = "";
     elements.indexFeedback.classList.add("hidden");
     elements.indexFeedback.classList.remove("error");
+    elements.indexFeedback.classList.remove("info");
   }
 
   /**
@@ -976,6 +980,32 @@
       setIndexFeedback(detail, "error");
       elements.startIndexBtn.disabled = false;
       elements.startIndexBtn.textContent = "Start Indexing";
+    }
+  }
+
+  async function handleOpenPath(e) {
+    e.preventDefault();
+    const path = elements.indexPath.value.trim();
+
+    if (!path) {
+      setIndexFeedback("Please enter a path before opening it in Explorer.", "error");
+      return;
+    }
+
+    try {
+      const response = await API.openFile(path);
+      if (response.success) {
+        setIndexFeedback(`Opened ${path}`, "info");
+      } else {
+        setIndexFeedback(response.message, "error");
+      }
+    } catch (err) {
+      console.error("Failed to open path:", err);
+      const detail =
+        err instanceof APIError && err.message
+          ? err.message
+          : "Could not open the selected path.";
+      setIndexFeedback(detail, "error");
     }
   }
 

@@ -808,6 +808,16 @@ code {
   margin-bottom: var(--space-xs);
 }
 
+.index-path-row {
+  display: flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.index-path-row .text-input {
+  flex: 1;
+}
+
 .index-feedback {
   margin-top: var(--space-md);
   padding: var(--space-sm) var(--space-md);
@@ -820,6 +830,11 @@ code {
 .index-feedback.error {
   background: var(--color-error-light);
   color: var(--color-error);
+}
+
+.index-feedback.info {
+  background: var(--color-success-light);
+  color: var(--color-success);
 }
 
 .watchlist-tip {

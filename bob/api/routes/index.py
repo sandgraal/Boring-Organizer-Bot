@@ -92,10 +92,11 @@ class IndexJobManager:
             current_file: Currently processing file.
         """
         with self._lock:
-        if not self._current_job:
-            return
-        if total_files is not None:
-            self._current_job["progress"]["total_files"] = total_files
+            if not self._current_job:
+                return
+
+            if total_files is not None:
+                self._current_job["progress"]["total_files"] = total_files
             if processed_files is not None:
                 self._current_job["progress"]["processed_files"] = processed_files
             if current_file is not None:
@@ -105,7 +106,7 @@ class IndexJobManager:
             total = self._current_job["progress"]["total_files"]
             processed = self._current_job["progress"]["processed_files"]
             if total > 0:
-            self._current_job["progress"]["percent"] = int((processed / total) * 100)
+                self._current_job["progress"]["percent"] = int((processed / total) * 100)
 
     def set_stats(self, stats: dict[str, int]) -> None:
         """Store cumulative stats for the job."""
