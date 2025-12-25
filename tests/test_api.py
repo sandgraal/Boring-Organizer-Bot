@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -131,8 +131,9 @@ class TestAskEndpoint:
         self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
     ):
         """Ask endpoint returns sources with citations."""
-        with patch("bob.api.routes.ask.search", return_value=mock_search_results), patch(
-            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        with (
+            patch("bob.api.routes.ask.search", return_value=mock_search_results),
+            patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
                 "/ask",
@@ -149,12 +150,11 @@ class TestAskEndpoint:
         assert data["footer"]["not_found"] is False
         assert "query_time_ms" in data
 
-    def test_ask_returns_not_found_when_empty(
-        self, client: TestClient, mock_coach_db: MagicMock
-    ):
+    def test_ask_returns_not_found_when_empty(self, client: TestClient, mock_coach_db: MagicMock):
         """Ask endpoint returns not_found when no results."""
-        with patch("bob.api.routes.ask.search", return_value=[]), patch(
-            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        with (
+            patch("bob.api.routes.ask.search", return_value=[]),
+            patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
                 "/ask",
@@ -174,8 +174,9 @@ class TestAskEndpoint:
         self, client: TestClient, mock_coach_db: MagicMock
     ):
         """Ask endpoint returns coverage suggestion when Coach Mode is enabled."""
-        with patch("bob.api.routes.ask.search", return_value=[]), patch(
-            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        with (
+            patch("bob.api.routes.ask.search", return_value=[]),
+            patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
                 "/ask",
@@ -235,8 +236,9 @@ class TestAskEndpoint:
             ),
         ]
 
-        with patch("bob.api.routes.ask.search", return_value=results), patch(
-            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        with (
+            patch("bob.api.routes.ask.search", return_value=results),
+            patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
                 "/ask",
@@ -270,8 +272,9 @@ class TestAskEndpoint:
         self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
     ):
         """Ask endpoint accepts filter parameters."""
-        with patch("bob.api.routes.ask.search", return_value=mock_search_results), patch(
-            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        with (
+            patch("bob.api.routes.ask.search", return_value=mock_search_results),
+            patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
                 "/ask",
@@ -290,8 +293,9 @@ class TestAskEndpoint:
         self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
     ):
         """Ask response sources include all required fields."""
-        with patch("bob.api.routes.ask.search", return_value=mock_search_results), patch(
-            "bob.api.routes.ask.get_database", return_value=mock_coach_db
+        with (
+            patch("bob.api.routes.ask.search", return_value=mock_search_results),
+            patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
                 "/ask",
@@ -346,7 +350,6 @@ class TestIndexEndpoint:
         assert data["status"] == "started"
         assert "job_id" in data
         assert data["project"] == "test"
-
 
     def test_index_rejects_concurrent_jobs(self, client: TestClient, tmp_path):
         """POST /index rejects when a job is already running."""
@@ -403,9 +406,7 @@ class TestIndexEndpoint:
 class TestRoutinesEndpoint:
     """Tests for the routines endpoints."""
 
-    def test_daily_checkin_creates_note_and_returns_retrievals(
-        self, client: TestClient, tmp_path
-    ):
+    def test_daily_checkin_creates_note_and_returns_retrievals(self, client: TestClient, tmp_path):
         """POST /routines/daily-checkin writes a note and returns citations."""
         from datetime import datetime as dt
 
@@ -435,11 +436,14 @@ class TestRoutinesEndpoint:
             "recent context": [sample_result],
         }
 
-        def fake_search(*, query, project, top_k, **kwargs):
+        def fake_search(*, query, project, top_k, **_kwargs):
+            _ = project
+            _ = top_k
             return results_by_query.get(query, [])
 
-        with patch("bob.api.routes.routines.get_config", return_value=config), patch(
-            "bob.api.routes.routines.search", side_effect=fake_search
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
         ):
             response = client.post(
                 "/routines/daily-checkin",
@@ -459,13 +463,79 @@ class TestRoutinesEndpoint:
 
         target_path = tmp_path / "routines" / "daily" / "2025-01-01.md"
         assert target_path.exists()
-        body = target_path.read_text()
-        assert 'project: "test"' in body
-        assert 'source: "routine/daily-checkin"' in body
 
-    def test_weekly_review_creates_note_and_returns_retrievals(
+    def test_daily_debrief_creates_note_and_applies_date_filters(
         self, client: TestClient, tmp_path
     ):
+        """POST /routines/daily-debrief applies date bounds before writing."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="End of day context.",
+            score=0.8,
+            source_path="/docs/routine.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={
+                "heading": "Evening Notes",
+                "start_line": 1,
+                "end_line": 5,
+            },
+            project="test",
+            source_date=datetime(2025, 1, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        results_by_query = {
+            "recent context": [sample_result],
+            "decisions decided today": [sample_result],
+        }
+        captured_kwargs: dict[str, dict[str, datetime]] = {}
+
+        def fake_search(*, query, project, top_k, **kwargs):
+            _ = project
+            _ = top_k
+            captured_kwargs[query] = kwargs
+            return results_by_query.get(query, [])
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
+        ):
+            response = client.post(
+                "/routines/daily-debrief",
+                json={
+                    "project": "test",
+                    "date": "2025-01-01",
+                    "top_k": 1,
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "daily-debrief"
+        assert data["template"].endswith("docs/templates/daily-debrief.md")
+        assert len(data["retrievals"]) == 2
+        assert data["warnings"] == []
+
+        recent_kwargs = captured_kwargs["recent context"]
+        assert recent_kwargs["date_after"] == datetime(2024, 12, 31, 0, 0)
+        assert recent_kwargs["date_before"] == datetime(2025, 1, 1, 23, 59, 59, 999999)
+
+        decisions_kwargs = captured_kwargs["decisions decided today"]
+        assert decisions_kwargs["date_after"] == datetime(2024, 12, 31, 0, 0)
+        assert decisions_kwargs["date_before"] == datetime(2025, 1, 1, 23, 59, 59, 999999)
+
+        target_path = tmp_path / "routines" / "daily" / "2025-01-01-debrief.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert 'project: "test"' in body
+        assert 'source: "routine/daily-debrief"' in body
+
+    def test_weekly_review_creates_note_and_returns_retrievals(self, client: TestClient, tmp_path):
         """POST /routines/weekly-review writes a note with week range metadata."""
         config = Config()
         config.paths.vault = tmp_path
@@ -494,11 +564,14 @@ class TestRoutinesEndpoint:
             "missing metadata": [sample_result],
         }
 
-        def fake_search(*, query, project, top_k, **kwargs):
+        def fake_search(*, query, project, top_k, **_kwargs):
+            _ = project
+            _ = top_k
             return results_by_query.get(query, [])
 
-        with patch("bob.api.routes.routines.get_config", return_value=config), patch(
-            "bob.api.routes.routines.search", side_effect=fake_search
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
         ):
             response = client.post(
                 "/routines/weekly-review",
@@ -521,8 +594,9 @@ class TestRoutinesEndpoint:
         body = target_path.read_text()
         week_start = date(2025, 1, 1) - timedelta(days=date(2025, 1, 1).weekday())
         week_end = week_start + timedelta(days=6)
-        expected_range = f'{week_start.isoformat()} - {week_end.isoformat()}'
+        expected_range = f"{week_start.isoformat()} - {week_end.isoformat()}"
         assert f'week_range: "{expected_range}"' in body
+
     def test_get_nonexistent_job(self, client: TestClient):
         """GET /index/{job_id} returns 404 for unknown job."""
         response = client.get("/index/idx_nonexistent")

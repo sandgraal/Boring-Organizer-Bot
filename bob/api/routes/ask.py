@@ -10,15 +10,13 @@ from bob.api.schemas import (
     AskFooter,
     AskRequest,
     AskResponse,
-    Source,
 )
-from bob.api.utils import convert_result_to_source, compute_overall_confidence
+from bob.api.utils import compute_overall_confidence, convert_result_to_source
 from bob.coach.engine import generate_coach_suggestions
 from bob.db.database import get_database
-from bob.retrieval.search import SearchResult, search
+from bob.retrieval.search import search
 
 router = APIRouter()
-
 
 
 def _resolve_coach_mode(

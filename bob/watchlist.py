@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Tuple
 
 import yaml
 
@@ -36,7 +36,7 @@ class WatchlistEntry:
 
     def to_dict(self) -> dict[str, str | None]:
         """Serialize the entry to a dict for storage."""
-        data = {"path": self.path}
+        data: dict[str, str | None] = {"path": self.path}
         if self.project:
             data["project"] = self.project
         if self.language:
@@ -105,9 +105,7 @@ def remove_watchlist_entry(target_path: str, path: Path | None = None) -> bool:
     """
     current = load_watchlist(path)
     normalized_target = _normalize_path(target_path)
-    filtered = [
-        entry for entry in current if _normalize_path(entry.path) != normalized_target
-    ]
+    filtered = [entry for entry in current if _normalize_path(entry.path) != normalized_target]
     if len(filtered) == len(current):
         return False
 

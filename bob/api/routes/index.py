@@ -169,7 +169,8 @@ def _run_index_job(path: str, project: str, recursive: bool) -> None:  # noqa: A
         project: Project name.
         recursive: Whether to index recursively (currently always True).
     """
-    from bob.index.indexer import count_indexable_targets, index_paths, is_git_url
+    from bob.index.indexer import count_indexable_targets, index_paths
+    from bob.ingest.git_docs import is_git_url
 
     manager = get_job_manager()
 

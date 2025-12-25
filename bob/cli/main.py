@@ -135,7 +135,9 @@ def index(
         if use_watchlist:
             entries = load_watchlist()
             if not entries:
-                console.print("[yellow]Watchlist is empty. Add targets with `bob watchlist add`.[/]")
+                console.print(
+                    "[yellow]Watchlist is empty. Add targets with `bob watchlist add`.[/]"
+                )
                 return
 
             stats: dict[str, int] = {"documents": 0, "chunks": 0, "skipped": 0, "errors": 0}
@@ -210,9 +212,7 @@ def watchlist_list() -> None:
     watchlist_path = get_watchlist_path()
 
     if not entries:
-        console.print(
-            "[yellow]Watchlist is empty. Add targets with `bob watchlist add <path>`.[/]"
-        )
+        console.print("[yellow]Watchlist is empty. Add targets with `bob watchlist add <path>`.[/]")
         return
 
     from rich.table import Table

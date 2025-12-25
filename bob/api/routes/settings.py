@@ -37,9 +37,7 @@ def update_settings(request: CoachSettings) -> SettingsUpdateResponse:
     return SettingsUpdateResponse(success=True)
 
 
-@router.post(
-    "/suggestions/{suggestion_id}/dismiss", response_model=SuggestionDismissResponse
-)
+@router.post("/suggestions/{suggestion_id}/dismiss", response_model=SuggestionDismissResponse)
 def dismiss_suggestion(
     suggestion_id: str, request: SuggestionDismissRequest | None = None
 ) -> SuggestionDismissResponse:

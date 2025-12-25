@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from datetime import date as DateType
-from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -30,9 +29,7 @@ class AskRequest(BaseModel):
     coach_mode_enabled: bool | None = Field(
         default=None, description="Override Coach Mode for this request"
     )
-    coach_show_anyway: bool = Field(
-        default=False, description="Bypass Coach Mode cooldown checks"
-    )
+    coach_show_anyway: bool = Field(default=False, description="Bypass Coach Mode cooldown checks")
 
 
 class SourceLocator(BaseModel):
@@ -106,13 +103,11 @@ class AskResponse(BaseModel):
 class RoutineRequest(BaseModel):
     """Request body for routine entry points."""
 
-    project: Optional[str] = Field(
+    project: str | None = Field(
         None, description="Project context for the routine; defaults to config default"
     )
-    language: Optional[str] = Field(
-        None, description="ISO 639-1 language code for the generated note"
-    )
-    date: Optional[DateType] = Field(None, description="Target date for the routine (YYYY-MM-DD)")
+    language: str | None = Field(None, description="ISO 639-1 language code for the generated note")
+    date: DateType | None = Field(None, description="Target date for the routine (YYYY-MM-DD)")
     top_k: int = Field(
         default=5,
         ge=1,

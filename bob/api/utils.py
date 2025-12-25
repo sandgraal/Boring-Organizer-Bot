@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 from bob.answer.formatter import get_date_confidence, is_outdated
 from bob.api.schemas import Source, SourceLocator
@@ -23,7 +23,22 @@ def build_locator(result: SearchResult) -> SourceLocator:
         sheet_name=lv.get("sheet_name"),
         row_count=lv.get("row_count"),
         section=lv.get("section"),
-        **{k: v for k, v in lv.items() if k not in {"heading", "start_line", "end_line", "page", "total_pages", "paragraph_index", "sheet_name", "row_count", "section"}},
+        **{
+            k: v
+            for k, v in lv.items()
+            if k
+            not in {
+                "heading",
+                "start_line",
+                "end_line",
+                "page",
+                "total_pages",
+                "paragraph_index",
+                "sheet_name",
+                "row_count",
+                "section",
+            }
+        },
     )
 
 

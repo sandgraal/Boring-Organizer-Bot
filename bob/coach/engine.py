@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from bob.api.schemas import CoachSuggestion, Source
 from bob.db.database import Database
@@ -39,7 +39,7 @@ def _fingerprint(suggestion_type: str, text: str) -> str:
 def _coverage_suggestion(project: str | None, why: str) -> SuggestionCandidate:
     if project:
         text = (
-            f"Add or index documents for this topic under project \"{project}\" "
+            f'Add or index documents for this topic under project "{project}" '
             "so future answers can be grounded."
         )
     else:
@@ -121,9 +121,7 @@ def generate_coach_suggestions(
     else:
         if len(sources) < MIN_CITED_CHUNKS:
             candidates.append(
-                _coverage_suggestion(
-                    project, f"Fewer than {MIN_CITED_CHUNKS} sources were cited."
-                )
+                _coverage_suggestion(project, f"Fewer than {MIN_CITED_CHUNKS} sources were cited.")
             )
         if overall_confidence == "LOW":
             candidates.append(_staleness_suggestion(sources))

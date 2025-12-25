@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Callable
 
 from fastapi import APIRouter, HTTPException
 
@@ -20,6 +20,7 @@ router = APIRouter()
 ROOT_DIR = Path(__file__).resolve().parents[3]
 TEMPLATES_DIR = ROOT_DIR / "docs" / "templates"
 DAILY_TEMPLATE = TEMPLATES_DIR / "daily.md"
+DAILY_DEBRIEF_TEMPLATE = TEMPLATES_DIR / "daily-debrief.md"
 WEEKLY_TEMPLATE = TEMPLATES_DIR / "weekly.md"
 PLACEHOLDER_PATTERN = re.compile(r"{{\s*([\w-]+)\s*}}")
 SOURCE_PATTERN = re.compile(r'(source:\s*")[^"]+(")')
@@ -29,13 +30,23 @@ PlaceholderFn = Callable[[date, RoutineRequest], dict[str, str]]
 
 
 @dataclass(frozen=True)
+class RoutineQuery:
+    """Query configuration for a routine retrieval bucket."""
+
+    name: str
+    query: str
+    date_after_offset: timedelta | None = None
+    date_before_offset: timedelta | None = None
+
+
+@dataclass(frozen=True)
 class RoutineAction:
     """Configuration describing how a routine renders and writes notes."""
 
     name: str
     template: Path
     source_tag: str
-    queries: tuple[tuple[str, str], ...]
+    queries: tuple[RoutineQuery, ...]
     target_path_fn: TargetPathFn
     overwrite_warning: str
     placeholder_fn: PlaceholderFn | None = None
@@ -53,38 +64,73 @@ def _render_template(template_path: Path, values: dict[str, str], source_tag: st
         return values.get(key, "")
 
     rendered = PLACEHOLDER_PATTERN.sub(replace, raw)
-    rendered = SOURCE_PATTERN.sub(rf'\1{source_tag}\2', rendered, count=1)
+    rendered = SOURCE_PATTERN.sub(rf"\1{source_tag}\2", rendered, count=1)
     return rendered
 
 
-def _collect_retrieval(name: str, query: str, project: str | None, top_k: int) -> RoutineRetrieval:
+def _resolve_date_after(target_date: date, offset: timedelta | None) -> datetime | None:
+    """Return the lower datetime bound relative to the target date."""
+    if offset is None:
+        return None
+    bound_date = target_date - offset
+    return datetime.combine(bound_date, time.min)
+
+
+def _resolve_date_before(target_date: date, offset: timedelta | None) -> datetime | None:
+    """Return the upper datetime bound relative to the target date."""
+    if offset is None:
+        return None
+    bound_date = target_date + offset
+    return datetime.combine(bound_date, time.max)
+
+
+def _collect_retrieval(
+    name: str,
+    query: str,
+    project: str | None,
+    top_k: int,
+    *,
+    date_after: datetime | None = None,
+    date_before: datetime | None = None,
+) -> RoutineRetrieval:
     """Perform a search query and convert the results to sources."""
     try:
-        results = search(query=query, project=project, top_k=top_k)
+        results = search(
+            query=query,
+            project=project,
+            top_k=top_k,
+            date_after=date_after,
+            date_before=date_before,
+        )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Search failed for {name}: {exc}") from exc
 
-    sources = [
-        convert_result_to_source(result, idx + 1)
-        for idx, result in enumerate(results)
-    ]
+    sources = [convert_result_to_source(result, idx + 1) for idx, result in enumerate(results)]
 
     return RoutineRetrieval(name=name, query=query, sources=sources)
 
 
-def _daily_target_path(target_date: date, vault_root: Path, request: RoutineRequest) -> Path:
+def _daily_target_path(target_date: date, vault_root: Path, _request: RoutineRequest) -> Path:
     """Build the vault path for the daily check-in note."""
     return vault_root / "routines" / "daily" / f"{target_date.isoformat()}.md"
 
 
-def _weekly_target_path(target_date: date, vault_root: Path, request: RoutineRequest) -> Path:
+def _weekly_target_path(target_date: date, vault_root: Path, _request: RoutineRequest) -> Path:
     """Build the vault path for the weekly review note."""
     iso_year, iso_week, _ = target_date.isocalendar()
     filename = f"{iso_year}-W{iso_week:02d}.md"
     return vault_root / "routines" / "weekly" / filename
 
 
-def _weekly_placeholders(target_date: date, request: RoutineRequest) -> dict[str, str]:
+def _daily_debrief_target_path(
+    target_date: date, vault_root: Path, _request: RoutineRequest
+) -> Path:
+    """Build the vault path for the end-of-day debrief note."""
+    filename = f"{target_date.isoformat()}-debrief.md"
+    return vault_root / "routines" / "daily" / filename
+
+
+def _weekly_placeholders(target_date: date, _request: RoutineRequest) -> dict[str, str]:
     """Provide week-specific placeholders for the weekly template."""
     week_start = target_date - timedelta(days=target_date.weekday())
     week_end = week_start + timedelta(days=6)
@@ -99,20 +145,46 @@ ROUTINE_ACTIONS: dict[str, RoutineAction] = {
         template=DAILY_TEMPLATE,
         source_tag="routine/daily-checkin",
         queries=(
-            ("open_loops", "open loop"),
-            ("recent_context", "recent context"),
+            RoutineQuery(name="open_loops", query="open loop"),
+            RoutineQuery(
+                name="recent_context",
+                query="recent context",
+                date_after_offset=timedelta(days=3),
+                date_before_offset=timedelta(days=0),
+            ),
         ),
         target_path_fn=_daily_target_path,
         overwrite_warning="Existing daily check-in note was overwritten.",
+    ),
+    "daily-debrief": RoutineAction(
+        name="daily-debrief",
+        template=DAILY_DEBRIEF_TEMPLATE,
+        source_tag="routine/daily-debrief",
+        queries=(
+            RoutineQuery(
+                name="recent_context",
+                query="recent context",
+                date_after_offset=timedelta(days=1),
+                date_before_offset=timedelta(days=0),
+            ),
+            RoutineQuery(
+                name="decisions_today",
+                query="decisions decided today",
+                date_after_offset=timedelta(days=1),
+                date_before_offset=timedelta(days=0),
+            ),
+        ),
+        target_path_fn=_daily_debrief_target_path,
+        overwrite_warning="Existing end-of-day debrief note was overwritten.",
     ),
     "weekly-review": RoutineAction(
         name="weekly-review",
         template=WEEKLY_TEMPLATE,
         source_tag="routine/weekly-review",
         queries=(
-            ("weekly_highlights", "weekly highlights"),
-            ("stale_decisions", "stale decisions"),
-            ("metadata_gaps", "missing metadata"),
+            RoutineQuery(name="weekly_highlights", query="weekly highlights"),
+            RoutineQuery(name="stale_decisions", query="stale decisions"),
+            RoutineQuery(name="metadata_gaps", query="missing metadata"),
         ),
         target_path_fn=_weekly_target_path,
         overwrite_warning="Existing weekly review note was overwritten.",
@@ -132,10 +204,20 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
     retrievals: list[RoutineRetrieval] = []
     warnings: list[str] = []
 
-    for name, query in action.queries:
-        retrieval = _collect_retrieval(name, query, project, top_k)
+    for query in action.queries:
+        date_after = _resolve_date_after(target_date, query.date_after_offset)
+        date_before = _resolve_date_before(target_date, query.date_before_offset)
+
+        retrieval = _collect_retrieval(
+            name=query.name,
+            query=query.query,
+            project=project,
+            top_k=top_k,
+            date_after=date_after,
+            date_before=date_before,
+        )
         if not retrieval.sources:
-            warnings.append(f"No citations found for {name}; manual entry recommended.")
+            warnings.append(f"No citations found for {query.name}; manual entry recommended.")
         retrievals.append(retrieval)
 
     values = {
@@ -187,3 +269,9 @@ def daily_checkin(request: RoutineRequest) -> RoutineResponse:
 def weekly_review(request: RoutineRequest) -> RoutineResponse:
     """Generate the weekly review note with citations."""
     return _run_routine(ROUTINE_ACTIONS["weekly-review"], request)
+
+
+@router.post("/routines/daily-debrief", response_model=RoutineResponse)
+def daily_debrief(request: RoutineRequest) -> RoutineResponse:
+    """Generate the end-of-day debrief note with citations."""
+    return _run_routine(ROUTINE_ACTIONS["daily-debrief"], request)

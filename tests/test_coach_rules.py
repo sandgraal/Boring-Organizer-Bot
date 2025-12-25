@@ -17,6 +17,8 @@ class DummyDB:
     def is_suggestion_type_in_cooldown(
         self, *, project: str, suggestion_type: str, cooldown_days: int
     ) -> bool:
+        _ = project
+        _ = cooldown_days
         return suggestion_type in self.cooldown_types
 
 

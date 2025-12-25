@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import fnmatch
 import logging
+from collections.abc import Callable, Iterator
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from bob.config import get_config
 from bob.db import get_database
