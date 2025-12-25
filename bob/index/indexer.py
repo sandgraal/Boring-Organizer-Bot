@@ -5,7 +5,7 @@ from __future__ import annotations
 import fnmatch
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterator
 
 from bob.config import get_config
 from bob.db import get_database
@@ -39,10 +39,51 @@ def should_ignore(path: Path) -> bool:
     return False
 
 
+def _iter_indexable_files(path: Path) -> Iterator[Path]:
+    """Yield files to index under a directory, respecting ignore rules."""
+
+    try:
+        for entry in path.iterdir():
+            if should_ignore(entry):
+                continue
+            if entry.is_file():
+                yield entry
+            elif entry.is_dir():
+                yield from _iter_indexable_files(entry)
+    except (PermissionError, OSError) as exc:
+        logger.warning("Unable to scan %s: %s", path, exc)
+
+
+def count_indexable_targets(paths: list[Path]) -> int:
+    """Estimate how many files/targets will be indexed."""
+
+    total = 0
+    for target in paths:
+        target_str = str(target)
+
+        if is_git_url(target_str):
+            total += 1
+            continue
+
+        if not target.exists():
+            continue
+
+        if target.is_file():
+            total += 1
+            continue
+
+        if target.is_dir():
+            for _ in _iter_indexable_files(target):
+                total += 1
+
+    return total
+
+
 def index_file(
     path: Path,
     project: str,
     language: str,
+    progress_callback: Callable[[Path], None] | None = None,
 ) -> dict[str, int]:
     """Index a single file.
 
@@ -54,6 +95,9 @@ def index_file(
     Returns:
         Stats dict with chunks count and skipped status.
     """
+    if progress_callback:
+        progress_callback(path)
+
     db = get_database()
     parser = get_parser(path)
 
@@ -120,6 +164,7 @@ def index_directory(
     path: Path,
     project: str,
     language: str,
+    progress_callback: Callable[[Path], None] | None = None,
 ) -> dict[str, int]:
     """Recursively index a directory.
 
@@ -138,11 +183,11 @@ def index_directory(
             continue
 
         if item.is_file():
-            result = index_file(item, project, language)
+            result = index_file(item, project, language, progress_callback)
             for key in stats:
                 stats[key] = stats.get(key, 0) + result.get(key, 0)
         elif item.is_dir():
-            result = index_directory(item, project, language)
+            result = index_directory(item, project, language, progress_callback)
             for key in stats:
                 stats[key] = stats.get(key, 0) + result.get(key, 0)
 
@@ -153,6 +198,7 @@ def index_git_repo(
     url: str,
     project: str,
     language: str,
+    progress_callback: Callable[[Path], None] | None = None,
 ) -> dict[str, int]:
     """Index documentation from a git repository.
 
@@ -169,6 +215,8 @@ def index_git_repo(
 
     try:
         for parsed in parse_git_repo(url, project):
+            if progress_callback and parsed.source_path:
+                progress_callback(Path(parsed.source_path))
             content_hash = compute_content_hash(parsed.content)
 
             doc_id = db.insert_document(
@@ -213,6 +261,7 @@ def index_paths(
     paths: list[Path],
     project: str,
     language: str,
+    progress_callback: Callable[[Path], None] | None = None,
 ) -> dict[str, Any]:
     """Index multiple paths (files, directories, or git URLs).
 
@@ -234,11 +283,11 @@ def index_paths(
         path_str = str(path)
 
         if is_git_url(path_str):
-            result = index_git_repo(path_str, project, language)
+            result = index_git_repo(path_str, project, language, progress_callback)
         elif path.is_file():
-            result = index_file(path, project, language)
+            result = index_file(path, project, language, progress_callback)
         elif path.is_dir():
-            result = index_directory(path, project, language)
+            result = index_directory(path, project, language, progress_callback)
         else:
             logger.warning(f"Path not found: {path}")
             stats["errors"] = stats.get("errors", 0) + 1

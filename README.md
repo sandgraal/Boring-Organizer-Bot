@@ -23,6 +23,18 @@ It’s designed to become a daily-use partner via **routines** (daily check-in, 
 - **Beautiful & inspectable.** The UI makes source verification one click away.
 - **Smart retrieval.** Hybrid search combining semantic vectors with keyword matching.
 
+## Current Capabilities
+
+B.O.B currently ships as a CLI-first/local API experience. The built-in commands, services, and UI that work out of the box right now are:
+
+- **Document tooling:** `bob init`, `bob index`, `bob watchlist` plus recursive indexing with hybrid chunking/embedding and sqlite-vec if available.
+- **Query surface:** `bob ask` for synthesized answers, `bob search` for raw retrieval, and the FastAPI `POST /ask` route with citations + Coach Mode suggestions.
+- **Decision & metadata helpers:** `bob extract-decisions`, `bob decisions`, `bob decision`, `bob supersede`, plus the HTTP settings/suggestion endpoints that keep Coach Mode state in sync.
+- **Evaluation + health:** `bob eval run/compare`, `bob status`, and `GET /health` for database stats.
+- **Local UI + server:** `bob serve` hosts the FastAPI app that mounts `bob/ui/` (ask/library/indexing/settings panes) and the static editors/Open endpoint.
+
+For a full inventory of what works today (and what gaps remain before routines/fix queue land), see [`docs/CURRENT_STATE.md`](docs/CURRENT_STATE.md).
+
 ## Non-negotiables (answer contract)
 
 Every answer must:
@@ -35,20 +47,17 @@ Every answer must:
 - Follow: **No citation => no claim**  
   If B.O.B cannot support the answer from indexed sources, it returns: **“Not found in sources.”**
 
-## Daily use: routines (UI-first)
+## Routines Roadmap
 
-B.O.B is not terminal-only. The primary experience is a **local web UI** with one-click entry points that create structured notes and/or run grounded queries.
+B.O.B ships today with the Ask/Library/Indexing/Settings UI and the CLI/API surface described above. The multi-routine, fix-queue, and template-driven workflows are still in the plan stage. The actions and behaviors we intend to deliver are captured in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and include:
 
-Planned routine actions (implemented incrementally):
+- **Daily Check-in / End-of-Day Debrief** → structured daily notes seeded from `open_loops` and recent context.
+- **Meeting Prep / Debrief** → pre-flight bundles of agenda bullets, decisions, rejected options, and next actions with citations.
+- **Weekly Review** → a weekly summary that flags stale decisions and metadata gaps.
+- **New Decision / Trip Debrief** → guided templates for decisions, learnings, checklist seeds, and reusable insights.
+- **Fix Queue** → health metrics, lint flags, and ingestion problems surfaced as prioritized tasks before optional-generation layers ship.
 
-- **Daily Check-in** → creates `daily/YYYY-MM-DD.md` from a template + pulls open loops/recent context
-- **End-of-day Debrief** → adds lessons/open loops to today’s note
-- **Meeting Prep** → pulls last decisions, unresolved questions, relevant notes + produces agenda bullets
-- **Meeting Debrief** → captures decisions, rejected options + why, next actions; updates decision index
-- **Weekly Review** → creates a weekly note + flags stale decisions
-- **New Decision** → structured capture with lifecycle (decided/superseded)
-- **Trip Debrief** → “what I learned” + reusable checklist seeds
-- **Fix Queue** → prioritized cleanup tasks (metadata gaps, ingestion errors, staleness)
+Each routine is still aspirational; no `/routines/*` API endpoints or template writes exist in the current codebase. The spec describes the retrieval queries, metadata expectations, failure handling, and Coach Mode interactions we aim to implement in the next phases.
 
 ## Modes
 
@@ -65,15 +74,9 @@ Coach Mode adds a separate **“Suggestions (Coach Mode)”** section while pres
 - Cooldown to prevent repeated nagging
 - Suggestions never override grounded answers
 
-## Knowledge Health + Fix Queue (keep it reliable over years)
+## Knowledge Health & Fix Queue (current API + roadmap)
 
-B.O.B tracks system health and turns it into a prioritized Fix Queue:
-
-- “Not found in sources” frequency by project
-- PDFs with no text / ingestion errors
-- missing metadata counts
-- repeated questions (discoverability issues)
-- stale decisions radar
+At the moment, the main health insight is `GET /health`, which reports whether the server is running, the version, the database status, and how many documents are indexed. For richer telemetry (Fix Queue, ingestion errors, metadata gaps, repeated questions, stale decisions, coach-driven tasks) refer to the Fix Queue design in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and the data-metric goals in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). That roadmap also explains how each metric will feed a prioritized task list before optional generation features ship.
 
 ## Quick Start
 
@@ -228,21 +231,22 @@ bob serve --port 9000
 bob serve --reload
 ```
 
-The API provides (core today; expands as routines/health ship):
+The API currently exposes the following local-only endpoints:
 
-- `POST /ask` — Query with structured citations
-- `POST /index` — Start indexing jobs
-- `GET /index/{job_id}` — Check indexing progress
-- `GET /projects` — List all projects
-- `GET /documents` — List indexed documents with filters
-- `POST /open` — Open files at specific locations
+- `GET /health` — Uptime, version, database status, and indexed document count.
+- `POST /ask` — Natural-language query with citations plus Coach Mode suggestions and footer metadata.
+- `POST /index` / `GET /index/{job_id}` — Submit an indexing job, stream progress/errors, and fetch its status once finished.
+- `GET /projects` — Enumerate projects with document/chunk counts.
+- `GET /documents` — Paginated document list filtered by project and source type.
+- `POST /open` — Launch a suitable editor (or fallback instructions) for the requested file path and line.
+- `GET /settings`, `PUT /settings`, `POST /suggestions/{id}/dismiss` — Coach Mode preferences, cooldowns, and dismissal logging.
 
-Planned additions:
+Implementation details, request/response models, and example payloads live in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). 
 
-- `GET /health` — Metrics + Fix Queue
-- `POST /feedback` — Helpful / wrong / outdated / too long / didn’t answer
-- `GET/PUT /settings` — Mode preferences (boring/coach), thresholds, per-project defaults
-- `/routines/*` — Daily check-in, meeting prep/debrief, weekly review, new decision
+Planned API additions (not implemented yet):
+
+- `POST /feedback` — capture Helpful / Wrong / Outdated / Too long / Didn’t answer signals.
+- `/routines/*` (`daily-checkin`, `meeting-prep`, etc.) — template-driven writes plus Fix Queue alerts.
 
 OpenAPI docs: `http://localhost:8080/docs`
 
@@ -250,12 +254,12 @@ OpenAPI docs: `http://localhost:8080/docs`
 
 B.O.B includes a local UI designed to be **inspectable**:
 
-- **Ask**: 3-pane layout (filters/projects, answer, clickable sources)
-- **Library**: browse indexed documents + filters
-- **Indexing**: start indexing jobs and monitor progress
-- **Decisions**: decision lifecycle, superseded links, rejected options
-- **Routines**: one-click daily/meeting/weekly flows (planned)
-- **Health**: Fix Queue + ingestion/metadata/staleness metrics (planned)
+- **Ask**: 3-pane layout (filters/project list, answer, clickable sources) backed by `/ask`.
+- **Library**: browse indexed documents, drill into chunks, view sources.
+- **Indexing**: dispatch indexing jobs via `/index` and monitor progress.
+- **Settings**: Coach Mode preferences and toggle state via `/settings`.
+- **Routines** (planned): one-click daily/meeting/weekly flows driven by the spec in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md).
+- **Health** (planned): Fix Queue metrics, ingestion insights, and stale-decision radars before optional generation layers ship.
 
 All features work offline — no external network requests.
 
@@ -332,17 +336,18 @@ Environment variables override config:
 
 ## Documentation
 
+- [Current State](docs/CURRENT_STATE.md) — Live CLI/API/UI surface and known gaps.
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) — Phased roadmap (UI + routines + health prioritized)
 - [UI Plan](docs/UI_PLAN.md) — Interface design specification
 - [API Contract](docs/API_CONTRACT.md) — HTTP API endpoints and schemas
 - [Architecture](docs/architecture.md) — System design
 - [Data Model](docs/data-model.md) — Database schema
+- [Coach Mode Spec](docs/COACH_MODE_SPEC.md) — Coach Mode gates, cooldowns, suggestion types
+- [Permissions](docs/PERMISSIONS.md) — Scope model and enforcement
 
-Planned/added as the roadmap evolves:
+Roadmap/longer-term specs:
 
-- `docs/ROUTINES_SPEC.md` — Daily/meeting/weekly workflows + templates
-- `docs/COACH_MODE_SPEC.md` — Coach Mode gates, cooldowns, suggestion types
-- `docs/PERMISSIONS.md` — Scope model and enforcement
+- `docs/ROUTINES_SPEC.md` — Daily/meeting/weekly workflows + templates (planning stage)
 - Health/Fix Queue spec (name may vary) — metrics, queues, and acceptance tests
 
 ## Development

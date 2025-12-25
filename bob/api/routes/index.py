@@ -16,6 +16,7 @@ from bob.api.schemas import (
     IndexProgress,
     IndexRequest,
     IndexResponse,
+    IndexStats,
 )
 
 router = APIRouter()
@@ -72,6 +73,7 @@ class IndexJobManager:
                     "percent": 0,
                     "current_file": None,
                 },
+                "stats": {"documents": 0, "chunks": 0, "skipped": 0, "errors": 0},
                 "errors": [],
             }
             return self._current_job.copy()
@@ -90,10 +92,10 @@ class IndexJobManager:
             current_file: Currently processing file.
         """
         with self._lock:
-            if not self._current_job:
-                return
-            if total_files is not None:
-                self._current_job["progress"]["total_files"] = total_files
+        if not self._current_job:
+            return
+        if total_files is not None:
+            self._current_job["progress"]["total_files"] = total_files
             if processed_files is not None:
                 self._current_job["progress"]["processed_files"] = processed_files
             if current_file is not None:
@@ -103,7 +105,14 @@ class IndexJobManager:
             total = self._current_job["progress"]["total_files"]
             processed = self._current_job["progress"]["processed_files"]
             if total > 0:
-                self._current_job["progress"]["percent"] = int((processed / total) * 100)
+            self._current_job["progress"]["percent"] = int((processed / total) * 100)
+
+    def set_stats(self, stats: dict[str, int]) -> None:
+        """Store cumulative stats for the job."""
+
+        with self._lock:
+            if self._current_job:
+                self._current_job["stats"] = stats
 
     def add_error(self, file: str, error: str) -> None:
         """Add an error to the job.
@@ -159,21 +168,37 @@ def _run_index_job(path: str, project: str, recursive: bool) -> None:  # noqa: A
         project: Project name.
         recursive: Whether to index recursively (currently always True).
     """
-    from bob.index.indexer import index_paths
+    from bob.index.indexer import count_indexable_targets, index_paths, is_git_url
 
     manager = get_job_manager()
 
     try:
-        # Collect files first
         target_path = Path(path)
-        if not target_path.exists():
+        if not is_git_url(path) and not target_path.exists():
             manager.add_error(path, f"Path does not exist: {path}")
             manager.complete_job("failed")
             return
 
-        # Index the path
-        # The indexer.index_paths function handles the actual indexing
-        index_paths([target_path], project=project, language="en")
+        total_files = count_indexable_targets([target_path])
+        manager.update_progress(total_files=total_files)
+
+        processed_files = 0
+
+        def report_progress(file_path: Path) -> None:
+            nonlocal processed_files
+            processed_files += 1
+            manager.update_progress(
+                processed_files=processed_files,
+                current_file=str(file_path),
+            )
+
+        stats = index_paths(
+            [target_path],
+            project=project,
+            language="en",
+            progress_callback=report_progress,
+        )
+        manager.set_stats(stats)
         manager.complete_job("completed")
     except Exception as e:
         manager.add_error(path, str(e))
@@ -220,6 +245,7 @@ def start_index_job(request: IndexRequest) -> IndexResponse:
         started_at=job["started_at"],
         progress=IndexProgress(**job["progress"]),
         errors=[],
+        stats=IndexStats(**job.get("stats", {})),
     )
 
 
@@ -251,4 +277,5 @@ def get_index_job(job_id: str) -> IndexResponse:
         completed_at=job.get("completed_at"),
         progress=IndexProgress(**job["progress"]),
         errors=[IndexError(**e) for e in job.get("errors", [])],
+        stats=IndexStats(**job.get("stats", {})),
     )

@@ -156,6 +156,15 @@ class IndexProgress(BaseModel):
     current_file: str | None = None
 
 
+class IndexStats(BaseModel):
+    """Cumulative counters captured during an indexing job."""
+
+    documents: int = 0
+    chunks: int = 0
+    skipped: int = 0
+    errors: int = 0
+
+
 class IndexResponse(BaseModel):
     """Response body for POST /index and GET /index/{job_id}."""
 
@@ -167,6 +176,7 @@ class IndexResponse(BaseModel):
     completed_at: datetime | None = None
     progress: IndexProgress
     errors: list[IndexError] = Field(default_factory=list)
+    stats: IndexStats = Field(default_factory=IndexStats)
 
 
 class IndexAlreadyRunningError(BaseModel):

@@ -272,9 +272,11 @@
                   <input
                     type="text"
                     id="index-project"
+                    list="index-project-options"
                     class="text-input"
                     placeholder="my-project"
                   />
+                  <datalist id="index-project-options"></datalist>
                 </div>
                 <button
                   type="submit"
@@ -285,15 +287,41 @@
                 </button>
               </form>
 
+              <div id="index-feedback" class="index-feedback hidden"></div>
+              <p class="watchlist-tip">
+                Save repeat targets with <code>bob watchlist add /path --project my-project</code>
+                and run <code>bob index --watchlist</code> to refresh them.
+              </p>
+
               <!-- Job Progress -->
               <div id="job-progress" class="job-progress hidden">
-                <h3>Indexing Progress</h3>
+                <h3>Current Index Job</h3>
+                <div class="job-meta">
+                  <div>
+                    <span class="job-meta-label">Path</span>
+                    <span id="job-path" class="job-meta-value">—</span>
+                  </div>
+                  <div>
+                    <span class="job-meta-label">Project</span>
+                    <span id="job-project" class="job-meta-value">—</span>
+                  </div>
+                  <div>
+                    <span class="job-meta-label">Started</span>
+                    <span id="job-started" class="job-meta-value">—</span>
+                  </div>
+                </div>
                 <div class="progress-bar-container">
                   <div class="progress-bar" id="progress-bar"></div>
                 </div>
                 <div class="progress-details">
                   <span id="progress-status">Starting...</span>
-                  <span id="progress-percent">0%</span>
+                  <div class="progress-meta">
+                    <span id="progress-percent">0%</span>
+                    <span class="progress-files-meta">
+                      <span id="job-processed-files">0</span> /
+                      <span id="job-total-files">0</span> files
+                    </span>
+                  </div>
                 </div>
                 <div id="progress-files" class="progress-files"></div>
               </div>
@@ -304,7 +332,11 @@
                 <div class="result-stats">
                   <div class="stat">
                     <span class="stat-value" id="result-files">0</span>
-                    <span class="stat-label">Files indexed</span>
+                    <span class="stat-label">Files processed</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-value" id="result-documents">0</span>
+                    <span class="stat-label">Documents indexed</span>
                   </div>
                   <div class="stat">
                     <span class="stat-value" id="result-chunks">0</span>
@@ -312,6 +344,27 @@
                   </div>
                 </div>
                 <div id="job-errors" class="job-errors hidden"></div>
+              </div>
+
+              <div class="indexing-summary">
+                <h3>Last index run</h3>
+                <p id="last-index-summary">
+                  No indexing activity recorded yet. Once you run a job, results will surface here.
+                </p>
+              </div>
+
+              <div class="indexing-history">
+                <div class="history-header">
+                  <h3>Recent jobs</h3>
+                  <button id="clear-history-btn" class="btn btn-secondary btn-sm">
+                    Clear history
+                  </button>
+                </div>
+                <div id="job-history-list" class="job-history-list">
+                  <div class="history-empty">
+                    Recent jobs will appear here along with stats and errors.
+                  </div>
+                </div>
               </div>
             </section>
           </div>

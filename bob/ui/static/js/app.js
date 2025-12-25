@@ -20,6 +20,10 @@
     lastAsk: null,
   };
 
+  const JOB_STORAGE_KEY = "bob_current_index_job";
+  const HISTORY_STORAGE_KEY = "bob_index_job_history";
+  const HISTORY_LIMIT = 5;
+
   // DOM Elements
   const elements = {};
 
@@ -32,6 +36,8 @@
     setupNavigation();
     await loadProjects();
     await loadSettings();
+    await restoreSavedJob();
+    renderJobHistory();
 
     // Check if we have a hash route
     const hash = window.location.hash.slice(1) || "ask";
@@ -87,16 +93,27 @@
     elements.indexForm = document.getElementById("index-form");
     elements.indexPath = document.getElementById("index-path");
     elements.indexProject = document.getElementById("index-project");
+    elements.projectSuggestions = document.getElementById("index-project-options");
+    elements.indexFeedback = document.getElementById("index-feedback");
     elements.startIndexBtn = document.getElementById("start-index-btn");
     elements.jobProgress = document.getElementById("job-progress");
     elements.progressBar = document.getElementById("progress-bar");
     elements.progressStatus = document.getElementById("progress-status");
     elements.progressPercent = document.getElementById("progress-percent");
     elements.progressFiles = document.getElementById("progress-files");
+    elements.jobPath = document.getElementById("job-path");
+    elements.jobProject = document.getElementById("job-project");
+    elements.jobStarted = document.getElementById("job-started");
+    elements.jobTotalFiles = document.getElementById("job-total-files");
+    elements.jobProcessedFiles = document.getElementById("job-processed-files");
     elements.jobResult = document.getElementById("job-result");
     elements.resultFiles = document.getElementById("result-files");
+    elements.resultDocuments = document.getElementById("result-documents");
     elements.resultChunks = document.getElementById("result-chunks");
     elements.jobErrors = document.getElementById("job-errors");
+    elements.lastIndexSummary = document.getElementById("last-index-summary");
+    elements.jobHistoryList = document.getElementById("job-history-list");
+    elements.clearHistoryBtn = document.getElementById("clear-history-btn");
 
     // Settings page
     elements.settingsDefaultMode = document.getElementById(
@@ -138,6 +155,8 @@
 
     // Settings save
     elements.settingsSaveBtn?.addEventListener("click", handleSettingsSave);
+
+    elements.clearHistoryBtn?.addEventListener("click", handleClearHistory);
   }
 
   /**
@@ -212,6 +231,7 @@
     if (state.projects.length === 0) {
       elements.projectFilters.innerHTML =
         '<div class="loading-placeholder">No projects indexed</div>';
+      renderProjectSuggestions();
       return;
     }
 
@@ -226,6 +246,14 @@
             </label>
         `
       )
+      .join("");
+    renderProjectSuggestions();
+  }
+
+  function renderProjectSuggestions() {
+    if (!elements.projectSuggestions) return;
+    elements.projectSuggestions.innerHTML = state.projects
+      .map((project) => `<option value="${escapeHtml(project)}">`)
       .join("");
   }
 
@@ -379,6 +407,20 @@
     const enabled = e.target.checked;
     state.coachModeOverride = enabled;
     updateCoachStatus(enabled);
+  }
+
+  function setIndexFeedback(message, type = "error") {
+    if (!elements.indexFeedback) return;
+    elements.indexFeedback.textContent = message;
+    elements.indexFeedback.classList.remove("hidden");
+    elements.indexFeedback.classList.toggle("error", type === "error");
+  }
+
+  function clearIndexFeedback() {
+    if (!elements.indexFeedback) return;
+    elements.indexFeedback.textContent = "";
+    elements.indexFeedback.classList.add("hidden");
+    elements.indexFeedback.classList.remove("error");
   }
 
   /**
@@ -895,33 +937,43 @@
     const project = elements.indexProject.value.trim();
 
     if (!path || !project) {
-      alert("Please enter both a path and project name.");
+      setIndexFeedback("Please enter both a path and project name.", "error");
       return;
     }
+
+    clearIndexFeedback();
 
     // Disable form
     elements.startIndexBtn.disabled = true;
     elements.startIndexBtn.textContent = "Starting...";
 
     // Hide previous results
-    elements.jobProgress.classList.add("hidden");
-    elements.jobResult.classList.add("hidden");
+    elements.jobProgress?.classList.add("hidden");
+    elements.jobResult?.classList.add("hidden");
+    elements.jobErrors?.classList.add("hidden");
 
     try {
       const response = await API.startIndex(path, project);
       state.currentJobId = response.job_id;
+      storeCurrentJobId(response.job_id);
 
       // Show progress
       elements.jobProgress.classList.remove("hidden");
       elements.progressBar.style.width = "0%";
-      elements.progressStatus.textContent = "Starting...";
+      elements.progressStatus.textContent = getJobStatusLabel(response.status);
       elements.progressPercent.textContent = "0%";
+      renderJobMetadata(response);
+      updateJobProgress(response);
 
       // Start polling
       startJobPolling();
     } catch (err) {
       console.error("Failed to start indexing:", err);
-      alert(`Failed to start indexing: ${err.message}`);
+      const detail =
+        err instanceof APIError && err.data?.error?.message
+          ? err.data.error.message
+          : err.message || "Failed to start indexing.";
+      setIndexFeedback(detail, "error");
       elements.startIndexBtn.disabled = false;
       elements.startIndexBtn.textContent = "Start Indexing";
     }
@@ -967,14 +1019,26 @@
    * Update job progress display.
    */
   function updateJobProgress(job) {
-    const progress = job.progress || 0;
-    elements.progressBar.style.width = `${progress}%`;
-    elements.progressPercent.textContent = `${Math.round(progress)}%`;
-    elements.progressStatus.textContent = job.status_message || job.status;
+    const progress = job.progress || {};
+    elements.jobProgress?.classList.remove("hidden");
+    renderJobMetadata(job);
 
-    if (job.current_file) {
-      elements.progressFiles.textContent = `Processing: ${job.current_file}`;
+    const percent = progress.percent ?? 0;
+    elements.progressBar.style.width = `${percent}%`;
+    elements.progressPercent.textContent = `${Math.round(percent)}%`;
+    elements.progressStatus.textContent = getJobStatusLabel(job.status);
+
+    if (elements.jobTotalFiles) {
+      elements.jobTotalFiles.textContent = progress.total_files ?? 0;
     }
+    if (elements.jobProcessedFiles) {
+      elements.jobProcessedFiles.textContent = progress.processed_files ?? 0;
+    }
+
+    const currentFile = progress.current_file;
+    elements.progressFiles.textContent = currentFile
+      ? `Processing: ${escapeHtml(currentFile)}`
+      : "Preparing files…";
   }
 
   /**
@@ -984,25 +1048,218 @@
     elements.jobProgress.classList.add("hidden");
     elements.jobResult.classList.remove("hidden");
 
-    elements.resultFiles.textContent = job.files_processed || 0;
-    elements.resultChunks.textContent = job.chunks_created || 0;
+    elements.resultFiles.textContent = job.progress?.processed_files ?? 0;
+    elements.resultDocuments.textContent = job.stats?.documents ?? 0;
+    elements.resultChunks.textContent = job.stats?.chunks ?? 0;
 
     if (job.errors && job.errors.length > 0) {
       elements.jobErrors.classList.remove("hidden");
       elements.jobErrors.innerHTML = `
                 <strong>Errors:</strong>
                 <ul>${job.errors
-                  .map((e) => `<li>${escapeHtml(e)}</li>`)
+                  .map(
+                    (error) =>
+                      `<li><strong>${escapeHtml(error.file)}</strong>: ${escapeHtml(
+                        error.error
+                      )}</li>`
+                  )
                   .join("")}</ul>
             `;
     } else {
       elements.jobErrors.classList.add("hidden");
     }
 
+    recordJobHistory(job);
+    clearStoredJobId();
+    state.currentJobId = null;
+
     // Refresh projects list
     loadProjects();
   }
 
+  /**
+   * Update metadata labels for the current job.
+   */
+  function renderJobMetadata(job) {
+    if (elements.jobPath) {
+      elements.jobPath.textContent = job.path || "—";
+    }
+    if (elements.jobProject) {
+      elements.jobProject.textContent = job.project || "—";
+    }
+    if (elements.jobStarted) {
+      elements.jobStarted.textContent = formatDateTime(job.started_at);
+    }
+  }
+
+  /**
+   * Format an ISO timestamp for display.
+   */
+  function formatDateTime(value) {
+    if (!value) {
+      return "—";
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return parsed.toLocaleString();
+  }
+
+  /**
+   * Map job status codes to human-friendly labels.
+   */
+  function getJobStatusLabel(status) {
+    switch (status) {
+      case "started":
+        return "Preparing files…";
+      case "running":
+        return "Indexing files…";
+      case "completed":
+        return "Completed";
+      case "failed":
+        return "Failed";
+      default:
+        return status ? status.charAt(0).toUpperCase() + status.slice(1) : "Unknown";
+    }
+  }
+
+  function getStoredJobId() {
+    try {
+      return localStorage.getItem(JOB_STORAGE_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  function storeCurrentJobId(jobId) {
+    try {
+      localStorage.setItem(JOB_STORAGE_KEY, jobId);
+    } catch {
+      // ignore
+    }
+  }
+
+  function clearStoredJobId() {
+    try {
+      localStorage.removeItem(JOB_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function restoreSavedJob() {
+    const jobId = getStoredJobId();
+    if (!jobId) {
+      return;
+    }
+    try {
+      const job = await API.getIndexJob(jobId);
+      state.currentJobId = job.job_id;
+      elements.jobProgress?.classList.remove("hidden");
+      updateJobProgress(job);
+      if (job.status === "running" || job.status === "started") {
+        startJobPolling();
+      } else {
+        showJobResult(job);
+      }
+    } catch (err) {
+      console.warn("Unable to resume indexing job:", err);
+      clearStoredJobId();
+    }
+  }
+
+  function getJobHistory() {
+    try {
+      const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function persistJobHistory(history) {
+    try {
+      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
+    } catch {
+      // ignore
+    }
+  }
+
+  function recordJobHistory(job) {
+    const history = getJobHistory();
+    const entry = {
+      jobId: job.job_id,
+      path: job.path || "—",
+      project: job.project || "—",
+      status: job.status,
+      startedAt: job.started_at,
+      completedAt: job.completed_at,
+      filesProcessed: job.progress?.processed_files ?? 0,
+      totalFiles: job.progress?.total_files ?? 0,
+      documents: job.stats?.documents ?? 0,
+      chunks: job.stats?.chunks ?? 0,
+      errors: job.errors?.length ?? 0,
+    };
+
+    const filtered = history.filter((item) => item.jobId !== entry.jobId);
+    const updated = [entry, ...filtered].slice(0, HISTORY_LIMIT);
+    persistJobHistory(updated);
+    renderJobHistory(updated);
+  }
+
+  function updateLastSummary(entry) {
+    if (!elements.lastIndexSummary) return;
+    if (!entry) {
+      elements.lastIndexSummary.textContent =
+        "No indexing activity recorded yet. Once you run a job, results will surface here.";
+      return;
+    }
+    const statusText = entry.status === "failed" ? "Last run failed" : "Last run completed";
+    elements.lastIndexSummary.textContent = `${statusText} on ${formatDateTime(
+      entry.completedAt || entry.startedAt
+    )} • ${entry.path} (project ${entry.project}, ${entry.filesProcessed}/${entry.totalFiles} files).`;
+  }
+
+  function renderJobHistory(history = getJobHistory()) {
+    if (!elements.jobHistoryList) return;
+
+    if (!history || history.length === 0) {
+      elements.jobHistoryList.innerHTML =
+        '<div class="history-empty">Recent jobs will appear here along with stats and errors.</div>';
+      updateLastSummary(null);
+      return;
+    }
+
+    elements.jobHistoryList.innerHTML = history
+      .map((entry) => {
+        const icon = entry.status === "failed" ? "⚠️" : "✅";
+        return `
+          <div class="history-card">
+            <div class="history-row">
+              <span class="history-status">${icon}</span>
+              <span>${formatDateTime(entry.completedAt || entry.startedAt)}</span>
+            </div>
+            <div class="history-meta">${escapeHtml(entry.path)}</div>
+            <div class="history-stats">
+              <span>${entry.filesProcessed}/${entry.totalFiles} files</span>
+              <span>${entry.documents} docs</span>
+              <span>${entry.chunks} chunks</span>
+              <span>${entry.errors} errors</span>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+
+    updateLastSummary(history[0]);
+  }
+
+  function handleClearHistory() {
+    persistJobHistory([]);
+    renderJobHistory([]);
+    setIndexFeedback("Index history cleared.", "info");
+  }
   /**
    * Escape HTML to prevent XSS.
    */
