@@ -57,7 +57,7 @@ B.O.B ships today with the Ask/Library/Indexing/Settings UI and the CLI/API surf
 - **New Decision / Trip Debrief** → guided templates for decisions, learnings, checklist seeds, and reusable insights.
 - **Fix Queue** → health metrics, lint flags, and ingestion problems surfaced as prioritized tasks before optional-generation layers ship.
 
-Each routine is still aspirational; no `/routines/*` API endpoints or template writes exist in the current codebase. The spec describes the retrieval queries, metadata expectations, failure handling, and Coach Mode interactions we aim to implement in the next phases.
+Each routine is still aspirational; `/routines/daily-checkin` now exists to seed the daily template, while the remaining `/routines/*` API endpoints and template writes in `docs/ROUTINES_SPEC.md` stay on the roadmap.
 
 ## Modes
 

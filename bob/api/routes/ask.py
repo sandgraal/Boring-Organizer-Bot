@@ -6,115 +6,19 @@ import time
 
 from fastapi import APIRouter, HTTPException
 
-from bob.answer.formatter import get_date_confidence, is_outdated
 from bob.api.schemas import (
     AskFooter,
     AskRequest,
     AskResponse,
     Source,
-    SourceLocator,
 )
+from bob.api.utils import convert_result_to_source, compute_overall_confidence
 from bob.coach.engine import generate_coach_suggestions
 from bob.db.database import get_database
 from bob.retrieval.search import SearchResult, search
 
 router = APIRouter()
 
-
-def _build_locator(result: SearchResult) -> SourceLocator:
-    """Build a SourceLocator from a SearchResult's locator_value.
-
-    Args:
-        result: Search result with locator information.
-
-    Returns:
-        SourceLocator model.
-    """
-    lv = result.locator_value
-    return SourceLocator(
-        type=result.locator_type,
-        heading=lv.get("heading"),
-        start_line=lv.get("start_line"),
-        end_line=lv.get("end_line"),
-        page=lv.get("page"),
-        total_pages=lv.get("total_pages"),
-        paragraph_index=lv.get("paragraph_index"),
-        sheet_name=lv.get("sheet_name"),
-        row_count=lv.get("row_count"),
-        section=lv.get("section"),
-        # Pass through any extra fields
-        **{
-            k: v
-            for k, v in lv.items()
-            if k
-            not in {
-                "heading",
-                "start_line",
-                "end_line",
-                "page",
-                "total_pages",
-                "paragraph_index",
-                "sheet_name",
-                "row_count",
-                "section",
-            }
-        },
-    )
-
-
-def _convert_result_to_source(result: SearchResult, index: int) -> Source:
-    """Convert a SearchResult to a Source model.
-
-    Args:
-        result: Search result from retrieval.
-        index: 1-based index for the source ID.
-
-    Returns:
-        Source model for API response.
-    """
-    confidence = get_date_confidence(result.source_date)
-    outdated = is_outdated(result.source_date)
-
-    # Create snippet: first 500 chars of content
-    snippet = result.content[:500]
-    if len(result.content) > 500:
-        snippet += "..."
-
-    return Source(
-        id=index,
-        chunk_id=result.chunk_id,
-        file_path=result.source_path,
-        file_type=result.source_type,
-        locator=_build_locator(result),
-        snippet=snippet,
-        date=result.source_date,
-        date_confidence=confidence.value,
-        project=result.project,
-        may_be_outdated=outdated,
-        similarity_score=round(result.score, 4),
-        git_repo=result.git_repo,
-        git_commit=result.git_commit,
-    )
-
-
-def _compute_overall_confidence(sources: list[Source]) -> str | None:
-    """Compute overall date confidence from sources.
-
-    Returns the lowest confidence level among all sources.
-
-    Args:
-        sources: List of sources.
-
-    Returns:
-        Overall confidence level or None if no sources.
-    """
-    if not sources:
-        return None
-
-    # Order: UNKNOWN < LOW < MEDIUM < HIGH
-    priority = {"UNKNOWN": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3}
-    lowest = min(sources, key=lambda s: priority.get(s.date_confidence, 0))
-    return lowest.date_confidence
 
 
 def _resolve_coach_mode(
@@ -180,7 +84,7 @@ def ask_query(request: AskRequest) -> AskResponse:
         raise HTTPException(status_code=500, detail=f"Search failed: {e}") from e
 
     # Convert results to sources
-    sources = [_convert_result_to_source(result, idx + 1) for idx, result in enumerate(results)]
+    sources = [convert_result_to_source(result, idx + 1) for idx, result in enumerate(results)]
 
     # Build response
     elapsed_ms = int((time.time() - start_time) * 1000)
@@ -231,7 +135,7 @@ def ask_query(request: AskRequest) -> AskResponse:
 
     # Compute footer
     outdated_count = sum(1 for s in sources if s.may_be_outdated)
-    overall_confidence = _compute_overall_confidence(sources)
+    overall_confidence = compute_overall_confidence(sources)
     any_outdated = outdated_count > 0
     suggestions = generate_coach_suggestions(
         sources=sources,

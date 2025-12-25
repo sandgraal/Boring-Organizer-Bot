@@ -116,6 +116,15 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** `_get_editor_command` selects `code`, `cursor`, `vim`, `subl`, or system defaults per OS/EDITOR environment (`bob/api/routes/open.py`). It returns success when the command launches; otherwise, it replies with instructions.
 - **Response model:** `OpenResponse` describing `success`, `message`, and the attempted `command`.
 
+### POST /routines/daily-checkin
+
+- **Purpose:** Generate the daily routine note by rendering `docs/templates/daily.md`, gathering cited passages for open loops and recent context, and writing `vault/routines/daily/{{YYYY-MM-DD}}.md`.
+- **Implementation:** `bob/api/routes/routines.py` handles the template substitution, source rewriting, and vault write while collecting citations from two search queries before returning the rendered note plus retrieval metadata.
+- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
+- **Response model:** `RoutineResponse` (`routine`, `file_path`, `template`, `content`, `retrievals`, `warnings`).
+- **Behavior:** The endpoint runs `search` with `"open loop"` and `"recent context"` queries (respecting `project`/`top_k`), converts the chunks into `Source` citations, records warnings when citations are missing or a previous note is overwritten, writes the filled template to the vault, and returns the note path, template path, content, retrieval buckets, and any warnings.
+- **Errors:** Returns HTTP 500 if the template is missing, the retrieval search fails, or writing the note to the vault path fails.
+
 ### GET /settings
 
 - **Purpose:** Read persisted Coach Mode settings.
@@ -157,5 +166,5 @@ For field-level detail, consult the schema file and rely on the tests under `tes
 ## Future Work
 
 - `POST /feedback` (Helpful / Wrong / Outdated / Too long / Didn’t answer) is still planned. Feedback spikes are intended to feed the health metrics described in [`docs/IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
-- `/routines/*` endpoints remain part of the routines/Fix Queue roadmap in [`docs/ROUTINES_SPEC.md`](ROUTINES_SPEC.md). Those actions will orchestrate template writes, lint-driven Fix Queue tasks, and Coach Mode nudges once implemented.
+- The remaining `/routines/*` endpoints remain part of the routines/Fix Queue roadmap in [`docs/ROUTINES_SPEC.md`](ROUTINES_SPEC.md). Those actions will orchestrate template writes, lint-driven Fix Queue tasks, and Coach Mode nudges once implemented.
 - The Fix Queue dashboard, ingest/metadata monitors, and stale-decision radar currently have no API surface beyond `/health`; they live in the roadmap docs until landed.

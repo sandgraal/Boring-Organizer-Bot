@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime
+from datetime import date as DateType
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -99,6 +101,43 @@ class AskResponse(BaseModel):
     sources: list[Source]
     footer: AskFooter
     query_time_ms: int
+
+
+class RoutineRequest(BaseModel):
+    """Request body for routine entry points."""
+
+    project: Optional[str] = Field(
+        None, description="Project context for the routine; defaults to config default"
+    )
+    language: Optional[str] = Field(
+        None, description="ISO 639-1 language code for the generated note"
+    )
+    date: Optional[DateType] = Field(None, description="Target date for the routine (YYYY-MM-DD)")
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=20,
+        description="Number of retrieved chunks to collect per query",
+    )
+
+
+class RoutineRetrieval(BaseModel):
+    """Retrieval bucket surfaced by a routine."""
+
+    name: str
+    query: str
+    sources: list[Source] = Field(default_factory=list)
+
+
+class RoutineResponse(BaseModel):
+    """Response body for routine endpoints."""
+
+    routine: str
+    file_path: str
+    template: str
+    content: str
+    retrievals: list[RoutineRetrieval] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class CoachSettings(BaseModel):

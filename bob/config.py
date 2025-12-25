@@ -99,6 +99,7 @@ class PathsConfig(BaseModel):
             "recipe": [".recipe.yaml", ".recipe.json"],
         }
     )
+    vault: Path = Field(default=Path("./vault"))
 
 
 class GitDocsConfig(BaseModel):

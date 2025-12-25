@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from bob.api.routes import ask, documents, health, index, open, projects, settings
+from bob.api.routes import ask, documents, health, index, open, projects, routines, settings
 
 # Path to UI static files
 UI_DIR = Path(__file__).parent.parent / "ui"
@@ -53,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(documents.router, tags=["Documents"])
     app.include_router(settings.router, tags=["Settings"])
     app.include_router(open.router, tags=["Files"])
+    app.include_router(routines.router, tags=["Routines"])
 
     # Mount static files for UI
     if STATIC_DIR.exists():

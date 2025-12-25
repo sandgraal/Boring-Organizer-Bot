@@ -24,7 +24,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 ## Web UI (`bob/ui/`)
 - Built as a 3-pane experience with navigation tabs (Ask, Library, Indexing, Settings), filter sidebar, answer + footer, suggestion list, and sources panel.
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, and `settings` endpoints today.
-- Coach Mode toggle, source footer, and “not found”/error states are functional; the currently visible UI does *not yet include the planned `/routines` or Fix Queue flows.
+- Coach Mode toggle, source footer, and “not found”/error states are functional; the currently visible UI does *not yet include the planned `/routines` or Fix Queue flows (the API now exposes `/routines/daily-checkin`, but the UI still lacks a Routines/Fix Queue surface).
 
 ## Data & Quality Helpers
 - **Watchlist**: `.bob_watchlist.yaml` entries (via `bob.watchlist`) define repeated indexing targets so users can `bob index --watchlist`.
@@ -33,7 +33,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - **Evaluation suite**: `bob.eval.runner` computes recall/precision/MRR metrics, while `tests/` + CLI commands offer regression tooling out of the box.
 
 ## Known Gaps & Next Steps
-1. **Routines & Fix Queue** – The detailed workflow in `docs/ROUTINES_SPEC.md` is a roadmap/spec rather than implemented behavior. There are no `/routines/*` API routes yet, nor are there contract-backed template writes.
+1. **Routines & Fix Queue** – The detailed workflow in `docs/ROUTINES_SPEC.md` is largely a roadmap. `/routines/daily-checkin` now exists, rendering the daily template into `vault/routines/daily/YYYY-MM-DD.md`, but the other `/routines/*` endpoints, Fix Queue dashboard, and UI routines surface remain unimplemented.
 2. **Coach Mode UI integration** – The UI exposes a toggle and suggestions list, but coach suggestions are limited to explainers from `/ask` rather than actionable routine prompts until the Fix Queue landings ship.
 3. **Planner + decision lifecycle automation** – Automated daily/meeting/weekly routines, decision superseding, and coach-driven nudges remain documented in `docs/IMPLEMENTATION_PLAN.md` but are not triggered by the UI/API today.
 4. **Health dashboard** – A Fix Queue dashboard and ingestion telemetry are described in the implementation plan but not surfaced in the `/health` endpoint or UI.

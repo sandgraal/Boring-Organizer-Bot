@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from bob.api.app import create_app
+from bob.config import Config
+from bob.retrieval.search import SearchResult
 
 
 @pytest.fixture
@@ -395,6 +398,70 @@ class TestIndexEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["job_id"] == job_id
+
+
+class TestRoutinesEndpoint:
+    """Tests for the routines endpoints."""
+
+    def test_daily_checkin_creates_note_and_returns_retrievals(
+        self, client: TestClient, tmp_path
+    ):
+        """POST /routines/daily-checkin writes a note and returns citations."""
+        from datetime import datetime as dt
+
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="Sample context for the routine.",
+            score=0.9,
+            source_path="/docs/routine.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={
+                "heading": "Routine Section",
+                "start_line": 1,
+                "end_line": 5,
+            },
+            project="test",
+            source_date=dt(2025, 1, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        results_by_query = {
+            "open loop": [sample_result],
+            "recent context": [sample_result],
+        }
+
+        def fake_search(*, query, project, top_k, **kwargs):
+            return results_by_query.get(query, [])
+
+        with patch("bob.api.routes.routines.get_config", return_value=config), patch(
+            "bob.api.routes.routines.search", side_effect=fake_search
+        ):
+            response = client.post(
+                "/routines/daily-checkin",
+                json={
+                    "project": "test",
+                    "date": "2025-01-01",
+                    "top_k": 1,
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "daily-checkin"
+        assert data["template"].endswith("docs/templates/daily.md")
+        assert len(data["retrievals"]) == 2
+        assert data["warnings"] == []
+
+        target_path = tmp_path / "routines" / "daily" / "2025-01-01.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert 'project: "test"' in body
+        assert 'source: "routine/daily-checkin"' in body
 
     def test_get_nonexistent_job(self, client: TestClient):
         """GET /index/{job_id} returns 404 for unknown job."""
