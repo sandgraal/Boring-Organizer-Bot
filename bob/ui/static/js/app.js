@@ -1321,6 +1321,14 @@
         const hypothesis = suggestion.hypothesis
           ? '<span class="coach-hypothesis">Hypothesis</span>'
           : "";
+        const routineAction = suggestion.routine_action;
+        const routineButton = routineAction
+          ? `<button type="button" class="btn btn-primary btn-sm coach-run" data-routine="${escapeHtml(
+              routineAction
+            )}" data-project="${escapeHtml(selectedProject || "")}">
+              Run routine
+            </button>`
+          : "";
         return `
           <li class="coach-suggestion-item">
             <div class="coach-suggestion-text">${escapeHtml(
@@ -1339,13 +1347,16 @@
                   : ""
               }
             </div>
-            <button class="btn btn-secondary btn-sm coach-dismiss" data-id="${
-              suggestion.id
-            }" data-type="${suggestion.type}" data-project="${escapeHtml(
-              selectedProject || ""
-            )}">
-              Dismiss
-            </button>
+            <div class="coach-suggestion-actions">
+              ${routineButton}
+              <button class="btn btn-secondary btn-sm coach-dismiss" data-id="${
+                suggestion.id
+              }" data-type="${suggestion.type}" data-project="${escapeHtml(
+                selectedProject || ""
+              )}">
+                Dismiss
+              </button>
+            </div>
           </li>
         `;
       })
@@ -1367,6 +1378,19 @@
           } catch (err) {
             console.error("Failed to dismiss suggestion:", err);
           }
+        });
+      });
+
+    elements.coachSuggestions
+      .querySelectorAll(".coach-run")
+      .forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const actionId = btn.dataset.routine;
+          if (!actionId) return;
+          const project = btn.dataset.project || null;
+          const overrides = project ? { project } : {};
+          navigateTo("routines");
+          await executeRoutine(actionId, overrides);
         });
       });
 

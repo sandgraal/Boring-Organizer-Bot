@@ -668,6 +668,13 @@ code {
   color: var(--color-text-muted);
 }
 
+.coach-suggestion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
 .coach-hypothesis {
   padding: 0.125rem 0.375rem;
   border: 1px dashed var(--color-border);

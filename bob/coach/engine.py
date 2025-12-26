@@ -12,6 +12,8 @@ from bob.db.database import Database
 
 MIN_CITED_CHUNKS = 2
 MAX_SUGGESTIONS = 3
+ROUTINE_FOR_COVERAGE = "daily-checkin"
+ROUTINE_FOR_STALENESS = "weekly-review"
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,7 @@ class SuggestionCandidate:
     text: str
     why: str
     hypothesis: bool
+    routine_action: str | None = None
     citations: list[Source] | None = None
 
 
@@ -52,6 +55,7 @@ def _coverage_suggestion(project: str | None, why: str) -> SuggestionCandidate:
         text=text,
         why=why,
         hypothesis=True,
+        routine_action=ROUTINE_FOR_COVERAGE,
         citations=None,
     )
 
@@ -69,6 +73,7 @@ def _staleness_suggestion(sources: list[Source]) -> SuggestionCandidate:
         text="Consider re-checking this topic before acting on the answer.",
         why="Date confidence is LOW based on older source dates.",
         hypothesis=False,
+        routine_action=ROUTINE_FOR_STALENESS,
         citations=_select_staleness_citations(sources),
     )
 
@@ -161,6 +166,7 @@ def generate_coach_suggestions(
                 text=candidate.text,
                 why=candidate.why,
                 hypothesis=candidate.hypothesis,
+                routine_action=candidate.routine_action,
                 citations=candidate.citations,
             )
         )

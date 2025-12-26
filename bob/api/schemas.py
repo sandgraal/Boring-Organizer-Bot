@@ -113,6 +113,9 @@ class CoachSuggestion(BaseModel):
     text: str
     why: str
     hypothesis: bool = False
+    routine_action: str | None = Field(
+        None, description="Optional routine action id (e.g., daily-checkin)"
+    )
     citations: list[Source] | None = None
 
 

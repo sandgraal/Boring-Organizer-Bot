@@ -70,6 +70,7 @@ def test_not_found_returns_coverage_suggestion():
     assert len(suggestions) == 1
     assert suggestions[0].type == "coverage_gaps"
     assert suggestions[0].hypothesis is True
+    assert suggestions[0].routine_action == "daily-checkin"
 
 
 def test_low_confidence_limits_to_one_suggestion():
@@ -89,6 +90,7 @@ def test_low_confidence_limits_to_one_suggestion():
     )
     assert len(suggestions) == 1
     assert suggestions[0].type == "staleness"
+    assert suggestions[0].routine_action == "weekly-review"
 
 
 def test_low_source_count_limits_to_coverage():
@@ -105,6 +107,7 @@ def test_low_source_count_limits_to_coverage():
     )
     assert len(suggestions) == 1
     assert suggestions[0].type == "coverage_gaps"
+    assert suggestions[0].routine_action == "daily-checkin"
 
 
 def test_cooldown_suppresses_suggestion():
@@ -138,3 +141,4 @@ def test_capture_hygiene_suggestion_when_decisions_missing_rationale():
     )
     assert len(suggestions) == 1
     assert suggestions[0].type == "capture_hygiene"
+    assert suggestions[0].routine_action is None

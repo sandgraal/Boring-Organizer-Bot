@@ -29,7 +29,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 ## Web UI (`bob/ui/`)
 - Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar, answer + footer, suggestion list, and a sources panel with an Audit tab for retrieved vs used chunks.
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, and `health/fix-queue` endpoints today.
-- Coach Mode toggle, source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks.
+- Coach Mode toggle, suggestion list (with routine run actions when available), source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks.
 
 ## Data & Quality Helpers
 - **Watchlist**: `.bob_watchlist.yaml` entries (via `bob.watchlist`) define repeated indexing targets so users can `bob index --watchlist`.
