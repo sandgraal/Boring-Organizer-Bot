@@ -699,9 +699,15 @@
                     Prioritized cleanup tasks derived from feedback and lint signals.
                   </p>
                 </div>
-                <button id="refresh-fixqueue-btn" class="btn btn-secondary btn-sm">
-                  Refresh
-                </button>
+                <div class="health-tasks-actions">
+                  <div class="health-filter">
+                    <label class="filter-label" for="fixqueue-project-filter">Project</label>
+                    <select id="fixqueue-project-filter" class="select-input"></select>
+                  </div>
+                  <button id="refresh-fixqueue-btn" class="btn btn-secondary btn-sm">
+                    Refresh
+                  </button>
+                </div>
               </div>
               <div id="fixqueue-tasks-list" class="fixqueue-tasks-list">
                 <div class="loading-placeholder">

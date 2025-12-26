@@ -417,6 +417,17 @@ code {
   gap: var(--space-md);
 }
 
+.health-tasks-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+}
+
+.health-filter {
+  display: flex;
+  flex-direction: column;
+}
+
 .fixqueue-task-card {
   display: flex;
   flex-direction: column;

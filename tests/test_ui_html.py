@@ -27,6 +27,12 @@ def test_fix_queue_query_action_hook_exists() -> None:
     assert "handleFixQueueQuery" in js
 
 
+def test_fix_queue_project_filter_exists() -> None:
+    """Health view exposes a Fix Queue project filter."""
+    html = Path("bob/ui/index.html").read_text(encoding="utf-8")
+    assert 'id="fixqueue-project-filter"' in html
+
+
 def test_language_filter_markup_exists() -> None:
     """Ask filters include a language input."""
     html = Path("bob/ui/index.html").read_text(encoding="utf-8")

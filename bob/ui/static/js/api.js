@@ -119,8 +119,9 @@ const API = {
   /**
    * Fetch the Fix Queue health dashboard signals.
    */
-  async getFixQueue() {
-    return this.request("/health/fix-queue");
+  async getFixQueue(project = null) {
+    const query = project ? `?project=${encodeURIComponent(project)}` : "";
+    return this.request(`/health/fix-queue${query}`);
   },
 
   /**

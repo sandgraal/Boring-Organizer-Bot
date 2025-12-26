@@ -134,6 +134,8 @@
     routineLoading: false,
     fixQueue: null,
     fixQueueLoading: false,
+    fixQueueProject: null,
+    fixQueueProjectLoaded: null,
     noteTemplateId: DEFAULT_NOTE_TEMPLATE_ID,
     noteResultPath: null,
     noteModalOpen: false,
@@ -319,6 +321,7 @@
     elements.failureSignalsList = document.getElementById("failure-signals-list");
     elements.fixQueueTasksList = document.getElementById("fixqueue-tasks-list");
     elements.refreshFixQueueBtn = document.getElementById("refresh-fixqueue-btn");
+    elements.fixQueueProjectFilter = document.getElementById("fixqueue-project-filter");
   }
 
   /**
@@ -360,6 +363,10 @@
     );
     elements.runRoutineBtn?.addEventListener("click", handleRunSelectedRoutine);
     elements.refreshFixQueueBtn?.addEventListener("click", () => loadFixQueue(true));
+    elements.fixQueueProjectFilter?.addEventListener(
+      "change",
+      handleFixQueueProjectChange
+    );
     elements.fixQueueTasksList?.addEventListener("click", handleFixQueueTaskClick);
 
     // New note modal
@@ -448,6 +455,7 @@
       state.projects = Array.from(new Set(normalized));
       renderProjectFilters();
       renderLibraryProjectOptions();
+      renderFixQueueProjectOptions();
     } catch (err) {
       console.error("Failed to load projects:", err);
       elements.projectFilters.innerHTML =
@@ -1134,6 +1142,12 @@
     elements.routineStatus.classList.toggle("error", type === "error");
   }
 
+  function handleFixQueueProjectChange() {
+    const value = elements.fixQueueProjectFilter?.value || "";
+    state.fixQueueProject = value ? value : null;
+    loadFixQueue(true);
+  }
+
   async function loadFixQueue(force = false) {
     if (
       !elements.failureSignalsList ||
@@ -1143,7 +1157,12 @@
       return;
     }
 
-    if (!force && state.fixQueue) {
+    const selectedProject = state.fixQueueProject || null;
+    if (
+      !force &&
+      state.fixQueue &&
+      state.fixQueueProjectLoaded === selectedProject
+    ) {
       renderFailureSignals(state.fixQueue.failure_signals);
       renderFixQueueTasks(state.fixQueue.tasks);
       return;
@@ -1157,8 +1176,9 @@
     elements.refreshFixQueueBtn?.setAttribute("disabled", "true");
 
     try {
-      const response = await API.getFixQueue();
+      const response = await API.getFixQueue(selectedProject);
       state.fixQueue = response;
+      state.fixQueueProjectLoaded = selectedProject;
       renderFailureSignals(response.failure_signals);
       renderFixQueueTasks(response.tasks);
     } catch (err) {
@@ -1374,6 +1394,20 @@
       );
     });
     elements.libraryProjectFilter.innerHTML = options.join("");
+  }
+
+  function renderFixQueueProjectOptions() {
+    if (!elements.fixQueueProjectFilter) return;
+    const options = ['<option value="">All Projects</option>'];
+    state.projects.forEach((project) => {
+      options.push(
+        `<option value="${escapeHtml(project)}">${escapeHtml(project)}</option>`
+      );
+    });
+    elements.fixQueueProjectFilter.innerHTML = options.join("");
+    if (state.fixQueueProject) {
+      elements.fixQueueProjectFilter.value = state.fixQueueProject;
+    }
   }
 
   /**
