@@ -82,6 +82,7 @@ The B.O.B API is a local-only FastAPI server that exposes the same index/retriev
 - **Response model:** `AskResponse`
   - `answer`: snippet from the highest-ranked chunk
   - `sources`: list of citations (source path, locator, snippet, date)
+  - `audit`: retrieved vs used chunks plus unsupported spans (for the Audit tab)
   - `suggestions`: up to three deterministic Coach Mode suggestions
   - `footer`: counts, date confidence, outdated flags, not-found metadata
   - `query_time_ms`: elapsed milliseconds

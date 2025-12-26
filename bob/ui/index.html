@@ -185,10 +185,27 @@
 
             <!-- Sources Panel -->
             <aside class="sources-sidebar">
-              <h3 class="sidebar-title">Sources</h3>
-              <div id="sources-list" class="sources-list">
-                <div class="sources-empty">
-                  <p>Sources will appear here after you ask a question.</p>
+              <div class="sidebar-header">
+                <h3 class="sidebar-title">Sources</h3>
+                <div class="sidebar-tabs">
+                  <button class="sidebar-tab active" data-panel="sources">
+                    Sources
+                  </button>
+                  <button class="sidebar-tab" data-panel="audit">Audit</button>
+                </div>
+              </div>
+              <div id="sources-panel" class="sidebar-panel active">
+                <div id="sources-list" class="sources-list">
+                  <div class="sources-empty">
+                    <p>Sources will appear here after you ask a question.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="audit-panel" class="sidebar-panel">
+                <div id="audit-list" class="audit-list">
+                  <div class="sources-empty">
+                    <p>Audit details will appear after you ask a question.</p>
+                  </div>
                 </div>
               </div>
             </aside>

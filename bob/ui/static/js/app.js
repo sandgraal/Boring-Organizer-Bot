@@ -138,6 +138,10 @@
     elements.errorState = document.getElementById("error-state");
     elements.errorMessage = document.getElementById("error-message");
     elements.sourcesList = document.getElementById("sources-list");
+    elements.auditList = document.getElementById("audit-list");
+    elements.sourcesPanel = document.getElementById("sources-panel");
+    elements.auditPanel = document.getElementById("audit-panel");
+    elements.sidebarTabs = document.querySelectorAll(".sidebar-tab");
 
     // Library page
     elements.libraryProjectFilter = document.getElementById(
@@ -233,6 +237,9 @@
     elements.askForm.addEventListener("submit", handleAskSubmit);
     elements.projectFilters?.addEventListener("change", handleProjectFilterChange);
     elements.coachToggle?.addEventListener("change", handleCoachToggle);
+    elements.sidebarTabs?.forEach((tab) =>
+      tab.addEventListener("click", handleSidebarTabClick)
+    );
 
     // Library filters
     elements.libraryProjectFilter?.addEventListener(
@@ -1092,6 +1099,30 @@
   }
 
   /**
+   * Handle sidebar tab switching.
+   */
+  function handleSidebarTabClick(event) {
+    const panel = event.currentTarget?.dataset?.panel;
+    if (!panel) return;
+    setSidebarPanel(panel);
+  }
+
+  /**
+   * Activate a sidebar panel by name.
+   */
+  function setSidebarPanel(panel) {
+    elements.sidebarTabs?.forEach((tab) => {
+      tab.classList.toggle("active", tab.dataset.panel === panel);
+    });
+    if (elements.sourcesPanel) {
+      elements.sourcesPanel.classList.toggle("active", panel === "sources");
+    }
+    if (elements.auditPanel) {
+      elements.auditPanel.classList.toggle("active", panel === "audit");
+    }
+  }
+
+  /**
    * Render answer with sources.
    */
   function renderAnswer(response) {
@@ -1124,6 +1155,7 @@
 
     // Render sources
     renderSources(response.sources);
+    renderAudit(response.audit);
 
     // Add citation click handlers
     document.querySelectorAll(".citation").forEach((el) => {
@@ -1158,6 +1190,7 @@
     elements.outdatedWarningContainer.innerHTML = "";
 
     renderSources([]);
+    renderAudit(null);
     elements.answerContent.classList.remove("hidden");
   }
 
@@ -1338,6 +1371,78 @@
   }
 
   /**
+   * Render audit payload for retrieved vs used chunks.
+   */
+  function renderAudit(audit) {
+    if (!elements.auditList) return;
+    if (!audit || !audit.retrieved || audit.retrieved.length === 0) {
+      elements.auditList.innerHTML =
+        '<div class="sources-empty"><p>No audit data available.</p></div>';
+      return;
+    }
+
+    const used = audit.used || [];
+    const retrieved = audit.retrieved || [];
+    const unsupported = audit.unsupported_spans || [];
+
+    const renderChunk = (chunk, isUsed) => {
+      const locator = formatLocator(chunk.locator);
+      const score = typeof chunk.score === "number" ? chunk.score.toFixed(3) : "-";
+      return `
+        <div class="audit-card ${isUsed ? "used" : ""}">
+          <div class="audit-card-header">
+            <span class="audit-rank">#${chunk.rank}</span>
+            <span>Source ${chunk.source_id}</span>
+            <span>Score ${score}</span>
+          </div>
+          <div class="audit-path">${escapeHtml(chunk.file_path)}</div>
+          <div class="audit-locator">${escapeHtml(locator)}</div>
+          <div class="audit-snippet">${escapeHtml(chunk.snippet)}</div>
+        </div>
+      `;
+    };
+
+    const renderSection = (title, chunks, markUsed) => {
+      const body =
+        chunks.length === 0
+          ? '<div class="sources-empty"><p>No chunks in this section.</p></div>'
+          : chunks.map((chunk) => renderChunk(chunk, markUsed)).join("");
+      return `
+        <div class="audit-section">
+          <div class="audit-section-title">${escapeHtml(title)}</div>
+          ${body}
+        </div>
+      `;
+    };
+
+    const sections = [
+      renderSection(`Used in Answer (${used.length})`, used, true),
+      renderSection(`Retrieved (${retrieved.length})`, retrieved, false),
+    ];
+
+    if (unsupported.length > 0) {
+      const unsupportedCards = unsupported
+        .map(
+          (span) => `
+            <div class="audit-unsupported">
+              <div><strong>Unsupported:</strong> ${escapeHtml(span.text)}</div>
+              <div>${escapeHtml(span.reason)}</div>
+            </div>
+          `
+        )
+        .join("");
+      sections.push(`
+        <div class="audit-section">
+          <div class="audit-section-title">Unsupported Spans</div>
+          ${unsupportedCards}
+        </div>
+      `);
+    }
+
+    elements.auditList.innerHTML = sections.join("");
+  }
+
+  /**
    * Format locator for display.
    */
   function formatLocator(locator) {
@@ -1367,6 +1472,7 @@
     elements.notFoundState.classList.remove("hidden");
     elements.sourcesList.innerHTML =
       '<div class="sources-empty"><p>No sources found.</p></div>';
+    renderAudit(null);
   }
 
   /**
@@ -1375,6 +1481,8 @@
   function renderError(message) {
     elements.errorMessage.textContent = message;
     elements.errorState.classList.remove("hidden");
+    renderSources([]);
+    renderAudit(null);
   }
 
   /**

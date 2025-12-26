@@ -318,6 +318,8 @@ class TestAskEndpoint:
         assert data["footer"]["source_count"] == 2
         assert data["footer"]["not_found"] is False
         assert "query_time_ms" in data
+        assert len(data["audit"]["retrieved"]) == 2
+        assert len(data["audit"]["used"]) == 1
 
     def test_ask_returns_not_found_when_empty(self, client: TestClient, mock_coach_db: MagicMock):
         """Ask endpoint returns not_found when no results."""
@@ -338,6 +340,8 @@ class TestAskEndpoint:
         assert data["footer"]["not_found"] is True
         assert data["footer"]["not_found_message"] == NOT_FOUND_MESSAGE
         assert data["suggestions"] == []
+        assert data["audit"]["retrieved"] == []
+        assert data["audit"]["used"] == []
 
     def test_ask_not_found_with_coach_enabled_returns_coverage_suggestion(
         self, client: TestClient, mock_coach_db: MagicMock
@@ -358,6 +362,7 @@ class TestAskEndpoint:
         assert data["footer"]["not_found"] is True
         assert len(data["suggestions"]) == 1
         assert data["suggestions"][0]["type"] == "coverage_gaps"
+        assert data["audit"]["retrieved"] == []
 
     def test_ask_low_confidence_with_coach_enabled_returns_staleness_suggestion(
         self, client: TestClient, mock_coach_db: MagicMock
@@ -420,6 +425,7 @@ class TestAskEndpoint:
         assert data["footer"]["not_found"] is False
         assert len(data["suggestions"]) == 1
         assert data["suggestions"][0]["type"] == "staleness"
+        assert len(data["audit"]["retrieved"]) == 2
 
     def test_ask_validates_top_k(self, client: TestClient, mock_coach_db: MagicMock):
         """Ask endpoint validates top_k parameter."""
@@ -495,6 +501,7 @@ class TestAskEndpoint:
         assert "date_confidence" in source
         assert "project" in source
         assert "similarity_score" in source
+        assert "audit" in data
 
 
 class TestIndexEndpoint:

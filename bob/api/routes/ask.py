@@ -6,6 +6,7 @@ import time
 
 from fastapi import APIRouter, HTTPException
 
+from bob.answer.audit import build_audit_payload
 from bob.answer.constants import NOT_FOUND_MESSAGE
 from bob.api.schemas import AskFooter, AskRequest, AskResponse
 from bob.api.utils import compute_overall_confidence, convert_result_to_source
@@ -113,6 +114,7 @@ def ask_query(request: AskRequest) -> AskResponse:
             coach_mode_enabled=coach_enabled,
             suggestions=suggestions,
             sources=[],
+            audit=build_audit_payload([]),
             footer=AskFooter(
                 source_count=0,
                 date_confidence=None,
@@ -156,6 +158,7 @@ def ask_query(request: AskRequest) -> AskResponse:
         coach_mode_enabled=coach_enabled,
         suggestions=suggestions,
         sources=sources,
+        audit=build_audit_payload(results),
         footer=AskFooter(
             source_count=len(sources),
             date_confidence=overall_confidence,

@@ -161,7 +161,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Expose core functionality via a local HTTP API that the web UI will consume.
 
-### Status: ✅ Complete
+### Status: 🔄 In Progress
 
 ### Prerequisites
 
@@ -415,9 +415,9 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Audit Panel (Ask UI)**
 
-   - [ ] Show retrieved chunks ranked with scores
-   - [ ] Mark which chunks were used in the final answer
-   - [ ] Surface unused chunks for transparency
+   - [x] Show retrieved chunks ranked with scores
+   - [x] Mark which chunks were used in the final answer
+   - [x] Surface unused chunks for transparency
 
 2. **Unsupported Claim Detection**
 
@@ -433,8 +433,8 @@ These are explicit non-goals to avoid scope creep:
 
 ### Acceptance Criteria
 
-- [ ] Audit panel shows top-k retrieved chunks and scores
-- [ ] Used chunks are clearly labeled and linked to citations
+- [x] Audit panel shows top-k retrieved chunks and scores
+- [x] Used chunks are clearly labeled and linked to citations
 - [ ] Unsupported claims never appear unmarked in the answer
 - [ ] "Copy as report" output is consistent and citation-complete
 
@@ -443,7 +443,7 @@ These are explicit non-goals to avoid scope creep:
 | Test                         | Description                                       | File                    |
 | ---------------------------- | ------------------------------------------------- | ----------------------- |
 | Unit: Claim validator        | Unsupported spans detected and removed/marked     | `tests/test_audit.py`   |
-| Integration: /ask audit data | API returns retrieved + used + unsupported fields | `tests/test_api_ask.py` |
+| Integration: /ask audit data | API returns retrieved + used + unsupported fields | `tests/test_api.py`     |
 | UI: Audit panel              | Panel renders and filters correctly               | Manual + E2E            |
 
 ### Risks
@@ -456,8 +456,8 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] Audit payload returned in /ask
-- [ ] UI panel shows retrieved vs used chunks
+- [x] Audit payload returned in /ask
+- [x] UI panel shows retrieved vs used chunks
 - [ ] Unsupported claims are blocked or marked
 - [ ] Report export works offline
 

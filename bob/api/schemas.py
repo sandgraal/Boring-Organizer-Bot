@@ -67,6 +67,33 @@ class Source(BaseModel):
     git_commit: str | None = None
 
 
+class AuditChunk(BaseModel):
+    """Chunk metadata for audit trail payloads."""
+
+    chunk_id: int
+    source_id: int
+    rank: int
+    score: float
+    file_path: str
+    locator: SourceLocator
+    snippet: str
+
+
+class UnsupportedSpan(BaseModel):
+    """Unsupported span detected in an answer."""
+
+    text: str
+    reason: str
+
+
+class AskAudit(BaseModel):
+    """Audit payload for Ask responses."""
+
+    retrieved: list[AuditChunk] = Field(default_factory=list)
+    used: list[AuditChunk] = Field(default_factory=list)
+    unsupported_spans: list[UnsupportedSpan] = Field(default_factory=list)
+
+
 class AskFooter(BaseModel):
     """Footer information for ask response."""
 
@@ -96,6 +123,7 @@ class AskResponse(BaseModel):
     coach_mode_enabled: bool = Field(..., description="Effective Coach Mode for response")
     suggestions: list[CoachSuggestion] = Field(default_factory=list)
     sources: list[Source]
+    audit: AskAudit
     footer: AskFooter
     query_time_ms: int
 

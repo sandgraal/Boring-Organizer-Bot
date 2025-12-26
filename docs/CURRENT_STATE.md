@@ -27,7 +27,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - Static UI (`GET /`) + `/static/*` – `bob/api.app.create_app` mounts `bob/ui/static` and serves `bob/ui/index.html`.
 
 ## Web UI (`bob/ui/`)
-- Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar, answer + footer, suggestion list, and sources panel.
+- Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar, answer + footer, suggestion list, and a sources panel with an Audit tab for retrieved vs used chunks.
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, and `health/fix-queue` endpoints today.
 - Coach Mode toggle, source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks.
 
