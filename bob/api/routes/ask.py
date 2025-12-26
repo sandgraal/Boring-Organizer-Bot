@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import uuid
 
 from fastapi import APIRouter, HTTPException
 
@@ -84,6 +85,7 @@ def ask_query(request: AskRequest) -> AskResponse:
 
     # Build response
     elapsed_ms = int((time.time() - start_time) * 1000)
+    answer_id = f"ans_{uuid.uuid4().hex[:12]}"
     db = get_database()
     settings = db.get_user_settings()
     coach_enabled = _resolve_coach_mode(request, project, settings)
@@ -111,6 +113,7 @@ def ask_query(request: AskRequest) -> AskResponse:
             )
         return AskResponse(
             answer=None,
+            answer_id=answer_id,
             coach_mode_enabled=coach_enabled,
             suggestions=suggestions,
             sources=[],
@@ -155,6 +158,7 @@ def ask_query(request: AskRequest) -> AskResponse:
 
     return AskResponse(
         answer=answer,
+        answer_id=answer_id,
         coach_mode_enabled=coach_enabled,
         suggestions=suggestions,
         sources=sources,

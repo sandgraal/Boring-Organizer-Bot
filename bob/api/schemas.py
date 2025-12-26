@@ -123,6 +123,7 @@ class AskResponse(BaseModel):
     """Response body for POST /ask."""
 
     answer: str | None = Field(None, description="Answer text, null if not found")
+    answer_id: str = Field(..., description="Identifier for feedback correlation")
     coach_mode_enabled: bool = Field(..., description="Effective Coach Mode for response")
     suggestions: list[CoachSuggestion] = Field(default_factory=list)
     sources: list[Source]
