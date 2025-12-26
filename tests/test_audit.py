@@ -50,6 +50,29 @@ def test_build_audit_payload_marks_retrieved_and_used() -> None:
     assert audit.unsupported_spans == []
 
 
+def test_build_audit_payload_ignores_citation_markers() -> None:
+    """Audit payload does not flag answers with inline citations."""
+    results = [
+        SearchResult(
+            chunk_id=30,
+            content="Cited content.",
+            score=0.9,
+            source_path="/docs/cited.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Cited", "start_line": 1, "end_line": 3},
+            project="test",
+            source_date=datetime(2024, 3, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+    ]
+
+    audit = build_audit_payload(results, answer="Cited content. [1]")
+
+    assert audit.unsupported_spans == []
+
+
 def test_build_audit_payload_flags_unsupported_span() -> None:
     """Audit payload flags answers that are not in used chunks."""
     results = [

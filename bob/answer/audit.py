@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import re
+
 from bob.api.schemas import AskAudit, AuditChunk, SourceLocator, UnsupportedSpan
 from bob.api.utils import build_locator
 from bob.retrieval.search import SearchResult
 
 SNIPPET_MAX_CHARS = 500
+CITATION_PATTERN = re.compile(r"\[\d+\]")
 
 
 def _build_snippet(content: str) -> str:
@@ -24,7 +27,8 @@ def _find_unsupported_spans(
 ) -> list[UnsupportedSpan]:
     if not answer:
         return []
-    normalized = _normalize_text(answer.replace("...", ""))
+    cleaned = CITATION_PATTERN.sub("", answer.replace("...", ""))
+    normalized = _normalize_text(cleaned)
     if not normalized:
         return []
     for chunk in used_chunks:
