@@ -83,6 +83,12 @@ search:
   recency_boost_enabled: false
   recency_half_life_days: 180  # Score halves every N days old
 
+  # Boost when project matches query context
+  project_match_boost: 1.1
+
+  # Boost when language matches query context
+  language_match_boost: 1.05
+
 # Health dashboard thresholds
 health:
   # Projects with fewer documents than this are flagged

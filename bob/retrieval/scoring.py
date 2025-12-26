@@ -39,6 +39,7 @@ class ScoringConfig:
     recency_half_life_days: int = 180  # Score halves every 180 days old
 
     project_match_boost: float = 1.0  # Boost when project matches query context
+    language_match_boost: float = 1.0  # Boost when language matches query context
 
 
 @dataclass
@@ -239,6 +240,8 @@ class HybridScorer:
         query: str,
         results: list[dict[str, Any]],
         vector_scores: list[float],
+        query_projects: list[str] | None = None,
+        query_language: str | None = None,
     ) -> list[ScoredResult]:
         """Score and re-rank results using hybrid scoring.
 
@@ -246,6 +249,8 @@ class HybridScorer:
             query: Original query text.
             results: List of result dictionaries with 'content' field.
             vector_scores: Corresponding vector similarity scores (0-1).
+            query_projects: Projects scoped in the request (optional).
+            query_language: Language scoped in the request (optional).
 
         Returns:
             List of ScoredResult objects, sorted by final_score descending.
@@ -302,11 +307,12 @@ class HybridScorer:
             v_score = normalized_vector[i]
             k_score = normalized_keyword[i]
             r_score = recency_scores[i]
+            metadata_boost = self._metadata_boost(result, query_projects, query_language)
 
             # Weighted combination with recency boost
             # Recency acts as a multiplier on the combined relevance score
             base_score = self.config.vector_weight * v_score + self.config.keyword_weight * k_score
-            final_score = base_score * r_score
+            final_score = min(1.0, base_score * r_score * metadata_boost)
 
             scored_results.append(
                 ScoredResult(
@@ -324,3 +330,19 @@ class HybridScorer:
         scored_results.sort(key=lambda x: x.final_score, reverse=True)
 
         return scored_results
+
+    def _metadata_boost(
+        self,
+        result: dict[str, Any],
+        query_projects: list[str] | None,
+        query_language: str | None,
+    ) -> float:
+        """Compute a metadata boost for project and language matches."""
+        boost = 1.0
+        if query_projects:
+            filtered = [name for name in query_projects if name]
+            if len(filtered) == 1 and result.get("project") == filtered[0]:
+                boost *= self.config.project_match_boost
+        if query_language and result.get("language") == query_language:
+            boost *= self.config.language_match_boost
+        return boost

@@ -233,6 +233,54 @@ class TestHybridScorer:
         # Despite lower vector score, keyword match should push it up
         assert scored[0].chunk_id == 2
 
+    def test_project_match_boost_affects_ranking(self):
+        """Project boosts should favor the scoped project when scores tie."""
+        config = ScoringConfig(
+            vector_weight=1.0,
+            keyword_weight=0.0,
+            project_match_boost=1.2,
+        )
+        scorer = HybridScorer(config)
+
+        results = [
+            {"id": 1, "content": "test content", "project": "alpha"},
+            {"id": 2, "content": "test content", "project": "beta"},
+        ]
+        vector_scores = [0.8, 0.8]
+
+        scored = scorer.score_results(
+            "test",
+            results,
+            vector_scores,
+            query_projects=["beta"],
+        )
+
+        assert scored[0].chunk_id == 2
+
+    def test_language_match_boost_affects_ranking(self):
+        """Language boosts should favor matching language results."""
+        config = ScoringConfig(
+            vector_weight=1.0,
+            keyword_weight=0.0,
+            language_match_boost=1.2,
+        )
+        scorer = HybridScorer(config)
+
+        results = [
+            {"id": 1, "content": "test content", "language": "en"},
+            {"id": 2, "content": "test content", "language": "es"},
+        ]
+        vector_scores = [0.8, 0.8]
+
+        scored = scorer.score_results(
+            "test",
+            results,
+            vector_scores,
+            query_language="es",
+        )
+
+        assert scored[0].chunk_id == 2
+
     def test_empty_results(self, default_scorer):
         """Empty results returns empty list."""
         results = default_scorer.score_results("test", [], [])

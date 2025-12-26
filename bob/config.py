@@ -73,6 +73,8 @@ class SearchConfig(BaseModel):
     # Metadata boosts
     recency_boost_enabled: bool = False
     recency_half_life_days: int = 180
+    project_match_boost: float = 1.1
+    language_match_boost: float = 1.05
 
 
 class HealthConfig(BaseModel):

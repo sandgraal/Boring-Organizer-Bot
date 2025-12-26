@@ -161,6 +161,8 @@ def search(
             bm25_b=config.search.bm25_b,
             recency_boost_enabled=config.search.recency_boost_enabled,
             recency_half_life_days=config.search.recency_half_life_days,
+            project_match_boost=config.search.project_match_boost,
+            language_match_boost=config.search.language_match_boost,
         )
 
     # Embed the query text (without syntax markers)
@@ -193,7 +195,13 @@ def search(
         # Apply hybrid scoring
         vector_scores = [max(0.0, 1.0 - row.get("distance", 0)) for row in raw_results]
         scorer = HybridScorer(scoring_config)
-        scored_results = scorer.score_results(query, raw_results, vector_scores)
+        scored_results = scorer.score_results(
+            query,
+            raw_results,
+            vector_scores,
+            query_projects=effective_projects,
+            query_language=language,
+        )
 
         # Convert scored results to SearchResult objects
         hybrid_results: list[SearchResult] = []
