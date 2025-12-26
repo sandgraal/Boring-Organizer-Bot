@@ -45,6 +45,13 @@ class DummyDB:
         _ = project
         return int(self.health.get("missing_metadata_total", 0))
 
+    def get_documents_missing_metadata(
+        self, *, limit: int = 5, project: str | None = None
+    ) -> list[dict[str, object]]:
+        _ = limit
+        _ = project
+        return self.health.get("missing_metadata_docs", [])
+
     def get_permission_denial_metrics(
         self,
         *,

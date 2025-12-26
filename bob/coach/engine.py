@@ -133,6 +133,11 @@ def _health_suggestion_candidates(
 
     metadata_total = db.get_missing_metadata_total(project=project)
     if metadata_total > 0:
+        metadata_deficits = db.get_documents_missing_metadata(limit=1, project=project)
+        metadata_target = (
+            str(metadata_deficits[0].get("source_path")) if metadata_deficits else ""
+        )
+        metadata_action = "open_file" if metadata_target else "open_health"
         candidates.append(
             (
                 _priority_from_count(metadata_total),
@@ -144,7 +149,8 @@ def _health_suggestion_candidates(
                     ),
                     why="Health metrics show missing metadata fields.",
                     hypothesis=True,
-                    action="open_health",
+                    action=metadata_action,
+                    target=metadata_target or None,
                 ),
             )
         )
@@ -265,6 +271,11 @@ def _health_suggestion_candidates(
     )
     ingestion_total = int(ingestion_metrics.get("total", 0))
     if ingestion_total > 0:
+        ingestion_recent = ingestion_metrics.get("recent", []) if ingestion_metrics else []
+        ingestion_target = ""
+        if ingestion_recent:
+            ingestion_target = str(ingestion_recent[0].get("source_path") or "")
+        ingestion_action = "open_file" if ingestion_target else "open_health"
         candidates.append(
             (
                 _priority_from_count(ingestion_total),
@@ -276,7 +287,8 @@ def _health_suggestion_candidates(
                     ),
                     why="Indexing errors reduce coverage.",
                     hypothesis=True,
-                    action="open_health",
+                    action=ingestion_action,
+                    target=ingestion_target or None,
                 ),
             )
         )
