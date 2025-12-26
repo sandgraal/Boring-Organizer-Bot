@@ -24,11 +24,15 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    8. [POST /routines/daily-checkin](#post-routinesdaily-checkin)
    9. [POST /routines/daily-debrief](#post-routinesdaily-debrief)
    10. [POST /routines/weekly-review](#post-routinesweekly-review)
-   11. [GET /settings](#get-settings)
-   12. [PUT /settings](#put-settings)
-   13. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   14. [POST /feedback](#post-feedback)
-   15. [GET /health/fix-queue](#get-healthfix-queue)
+   11. [POST /routines/meeting-prep](#post-routinesmeeting-prep)
+   12. [POST /routines/meeting-debrief](#post-routinesmeeting-debrief)
+   13. [POST /routines/new-decision](#post-routinesnew-decision)
+   14. [POST /routines/trip-debrief](#post-routinestrip-debrief)
+   15. [GET /settings](#get-settings)
+   16. [PUT /settings](#put-settings)
+   17. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   18. [POST /feedback](#post-feedback)
+   19. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -125,7 +129,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 - **Purpose:** Generate the daily routine note by rendering `docs/templates/daily.md`, gathering cited passages for open loops and recent context, and writing `vault/routines/daily/{{YYYY-MM-DD}}.md`.
 - **Implementation:** `bob/api/routes/routines.py` handles the template substitution, source rewriting, and vault write while collecting citations from two search queries before returning the rendered note plus retrieval metadata.
-- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
+- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k` + optional `slug`/meeting/trip/decision fields that are ignored by this action).
 - **Response model:** `RoutineResponse` (`routine`, `file_path`, `template`, `content`, `retrievals`, `warnings`).
 - **Behavior:** The endpoint runs `search` with `"open loop"` and `"recent context"` queries (respecting `project`/`top_k`), converts the chunks into `Source` citations, records warnings when citations are missing or a previous note is overwritten, writes the filled template to the vault, and returns the note path, template path, content, retrieval buckets, and any warnings.
 - **Errors:** Returns HTTP 500 if the template is missing, the retrieval search fails, or writing the note to the vault path fails. Also returns HTTP 403 (`PERMISSION_DENIED`) when the configured scope level is below 3 or the target path is outside `permissions.allowed_vault_paths`; the detail includes `scope_level`, `required_scope_level`, and `target_path`.
@@ -134,7 +138,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 - **Purpose:** Generate the end-of-day debrief note by filling `docs/templates/daily-debrief.md`, sourcing the prior 24 hours of context and decisions, and persisting `vault/routines/daily/{{YYYY-MM-DD}}-debrief.md`.
 - **Implementation:** `bob/api/routes/routines.py` invokes `_run_routine` with the `daily-debrief` action to rewrite the template’s front matter `source` tag to `routine/daily-debrief`, inject project/date/language placeholders, and drive the vault write while collecting retrieval metadata.
-- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
+- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k` + optional `slug`/meeting/trip/decision fields that are ignored by this action).
 - **Response model:** `RoutineResponse` (`routine`, `file_path`, `template`, `content`, `retrievals`, `warnings`).
 - **Behavior:** The handler runs `search` for two queries—`"recent context"` and `"decisions decided today"`, each constrained to the 24-hour window ending at the requested date—and converts the results into the `recent_context` and `decisions_today` retrieval buckets containing `Source` citations. Empty retrievals add warnings advising manual capture, and overwriting an existing note adds the configured warning message before the rendered template is written to the vault. The response returns the path, template, rendered content, retrievals, and any warnings.
 - **Errors:** HTTP 500 is returned when the template is missing, any search query fails, or writing the debrief note fails. HTTP 403 (`PERMISSION_DENIED`) is issued when `permissions.default_scope` is below 3 or the target path falls outside `permissions.allowed_vault_paths`; the detail object includes the offending path plus `scope_level`/`required_scope_level`.
@@ -143,7 +147,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 - **Purpose:** Create a weekly review note from `docs/templates/weekly.md`, fill in the `week_range` front matter, cite the most relevant highlights/stale decisions/metadata gaps, and persist it to `vault/routines/weekly/{{YYYY}}-W{{week}}.md`.
 - **Implementation:** `bob/api/routes/routines.py` orchestrates the retrieval queries (`"weekly highlights"`, `"stale decisions"`, `"missing metadata"`), renders the template (overwriting the `source` tag with `routine/weekly-review`), writes the file with a week-based filename, and surfaces any warnings (empty retrievals or overwrites).
-- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
+- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k` + optional `slug`/meeting/trip/decision fields that are ignored by this action).
 - **Response model:** `RoutineResponse` with the same fields as daily check-in plus the collected retrieval buckets (three queries) and warnings.
 - **Behavior:** Retrieval queries run in order, each producing a `RoutineRetrieval` with source citations; the handler calculates the Monday-to-Sunday `week_range`, injects it into the template, and writes the note. `warnings` capture missing citations or overwritten review notes.
 - **Errors:** HTTP 500 is returned if the template is missing, any of the search queries fail, or writing the weekly note fails. HTTP 403 (`PERMISSION_DENIED`) is used when the scope level is insufficient or the target path is not covered by `permissions.allowed_vault_paths` (detail enumerates the allowed directories plus the offending `target_path`).
@@ -151,8 +155,8 @@ After the background thread finishes, the job status moves to `completed` or `fa
 ### POST /routines/meeting-prep
 
 - **Purpose:** Generate a meeting prep note by rendering `docs/templates/meeting.md`, populating `meeting_date`/`participants`, gathering agenda-related citations, and writing `vault/meetings/{{project}}/{{meeting-slug}}-prep.md`.
-- **Implementation:** The handler uses `_meeting_target_factory("prep")` to derive a slugified path, rewrites the template `source` tag to `routine/meeting-prep`, and runs the three queries (`"recent decisions"`, `"unresolved questions"`, `"recent notes"`) that surface retrievals dated within the last seven days before writing the template to the vault.
-- **Request model:** `RoutineRequest` with optional `meeting_slug`, `meeting_date`, and `participants` to seed the metadata.
+- **Implementation:** The handler uses `_meeting_target_factory("prep")` to derive a slugified path, rewrites the template `source` tag to `routine/meeting-prep`, and runs the three queries (`"recent decisions"`, `"unresolved questions"`, `"recent notes"` with a 7-day bound) before writing the template to the vault.
+- **Request model:** `RoutineRequest` with optional `meeting_slug`, `slug`, `meeting_date`, and `participants` to seed the metadata.
 - **Response model:** `RoutineResponse` with retrieval buckets for each query plus warnings when citations are missing or an existing prep note is overwritten.
 - **Behavior:** The handler defaults `meeting_date` to the routine date when not provided, inserts the first participant (and any extras if the template expands), and writes the note inside `vault/meetings/<sanitized-project>/<slug>-prep.md`. Each query contributes a `RoutineRetrieval`, and empty retrievals add instructions to capture context manually.
 - **Errors:** Same as the other routine endpoints—HTTP 500 for missing templates/search/write failures and HTTP 403 when the configured scope `default_scope` is below 3 or the target path is outside `permissions.allowed_vault_paths`.
@@ -161,7 +165,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 - **Purpose:** Capture the meeting debrief with a filled `docs/templates/meeting.md`, citing meeting notes and open decisions, and persist it as `vault/meetings/{{project}}/{{meeting-slug}}-debrief.md`.
 - **Implementation:** The route runs `_meeting_target_factory("debrief")`, rewrites the template’s `source` tag to `routine/meeting-debrief`, and executes the `"meeting notes"` (last 24 hours) and `"open decisions"` queries before writing to the vault.
-- **Request model:** `RoutineRequest` plus the same meeting metadata hints (`meeting_slug`, `meeting_date`, `participants`).
+- **Request model:** `RoutineRequest` plus the same meeting metadata hints (`meeting_slug`, `slug`, `meeting_date`, `participants`).
 - **Response model:** `RoutineResponse` carrying the two retrieval buckets and any warnings.
 - **Behavior:** Meeting notes retrieval is bounded to the 24 hours ending at the requested date, open decisions are surfaced regardless of time, and the participant list is rendered into the template’s `participants` block before the note is written.
 - **Errors:** Mirrors the other routine endpoints—500 for missing template/search/write failures and 403 when scope or allowed paths disallow the write.
@@ -179,7 +183,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 - **Purpose:** Document a trip debrief by rendering `docs/templates/trip.md`, injecting the trip name, and saving `vault/trips/{{trip-slug}}/debrief.md`.
 - **Implementation:** `_trip_target_path` builds the destination folder from `trip_slug`, `slug`, or a sanitized version of `trip_name`, rewrites the template’s `source` tag to `routine/trip-debrief`, and runs three queries (`"trip notes"` capped at the last 30 days, `"trip recipes"`, `"trip open loops"`) to gather context.
-- **Request model:** `RoutineRequest` with optional `trip_name` and `trip_slug`.
+- **Request model:** `RoutineRequest` with optional `trip_name`, `trip_slug`, and `slug`.
 - **Response model:** `RoutineResponse` holding the retrieval buckets and warnings.
 - **Behavior:** The handler ensures `trip_name` is populated in the template, the `trip notes` query honors the 30-day lookback, and the note is written under the slugified trip folder.
 - **Errors:** Same 500/403 semantics as the other routine endpoints when templates/searches/writes fail or scope/path checks reject the action.
@@ -274,6 +278,7 @@ Key models are defined in [`bob/api/schemas.py`](../bob/api/schemas.py). Example
 
 - `AskRequest` / `AskResponse` describe filters, top-k, Coach Mode overrides, source metadata, and the mandatory footer.
 - `Source` carries `file_path`, `source_type`, `locator`, `similarity_score`, `project`, and optional Git metadata.
+- `RoutineRequest` / `RoutineResponse` cover all `/routines/*` actions: base fields (`project`, `language`, `date`, `top_k`) plus optional `slug`, `meeting_slug`, `meeting_date`, `participants`, `trip_name`, `trip_slug`, `decision_slug`, and `title`, and the rendered note path/content + retrieval buckets + warnings returned.
 - `IndexRequest` / `IndexResponse` / `IndexProgress` capture job metadata, statuses, timestamps, and per-file errors.
 - `ProjectListResponse`, `DocumentListResponse`, and `DocumentInfo` provide project/document metadata for the UI.
 - `OpenRequest` / `OpenResponse`, `CoachSettings`, and `SuggestionDismissRequest` round out the coaching + editor flows.
