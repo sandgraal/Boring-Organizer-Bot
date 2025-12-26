@@ -2,7 +2,7 @@
 project: "{{project}}"
 date: "{{date}}"
 language: "{{language}}"
-source: "routine/daily-debrief"
+source: "template/daily-debrief"
 ---
 
 # End-of-Day Debrief
