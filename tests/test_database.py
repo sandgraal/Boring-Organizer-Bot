@@ -1,5 +1,7 @@
 """Tests for the database module."""
 
+from datetime import datetime, timedelta
+
 from bob.db.database import compute_content_hash
 
 
@@ -187,6 +189,66 @@ class TestDatabaseOperations:
         assert counts
         assert counts[0]["project"] == "unknown"
         assert counts[0]["count"] >= 1
+
+    def test_stale_document_buckets(self, test_db):
+        old_date = datetime.now() - timedelta(days=200)
+        recent_date = datetime.now() - timedelta(days=10)
+        test_db.insert_document(
+            source_path="/old.md",
+            source_type="markdown",
+            project="docs",
+            content_hash="old",
+            source_date=old_date,
+        )
+        test_db.insert_document(
+            source_path="/recent.md",
+            source_type="markdown",
+            project="docs",
+            content_hash="recent",
+            source_date=recent_date,
+        )
+
+        buckets = test_db.get_stale_document_buckets(
+            buckets_days=[90, 180], source_type="markdown"
+        )
+        bucket_by_days = {item["days"]: item["count"] for item in buckets}
+        assert bucket_by_days[90] >= 1
+        assert bucket_by_days[180] >= 1
+
+    def test_stale_decision_buckets(self, test_db):
+        from bob.extract.decisions import ExtractedDecision, save_decision
+
+        old_date = datetime.now() - timedelta(days=200)
+        doc_id = test_db.insert_document(
+            source_path="/decisions.md",
+            source_type="markdown",
+            project="docs",
+            content_hash="decisions",
+            source_date=old_date,
+        )
+        chunk_id = test_db.insert_chunk(
+            document_id=doc_id,
+            content="Decision: Use SQLite.",
+            locator_type="heading",
+            locator_value={"heading": "Decisions"},
+            chunk_index=0,
+        )
+
+        decision = ExtractedDecision(
+            chunk_id=chunk_id,
+            decision_text="Use SQLite",
+            context="For simplicity.",
+            decision_type="technology",
+            decision_date=old_date,
+            confidence=0.9,
+            rejected_alternatives=["PostgreSQL"],
+        )
+        save_decision(decision)
+
+        buckets = test_db.get_stale_decision_buckets(buckets_days=[90, 180])
+        bucket_by_days = {item["days"]: item["count"] for item in buckets}
+        assert bucket_by_days[90] >= 1
+        assert bucket_by_days[180] >= 1
 
 
 class TestDecisionStorage:

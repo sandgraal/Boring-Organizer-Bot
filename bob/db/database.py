@@ -941,6 +941,54 @@ class Database:
             for row in cursor.fetchall()
         ]
 
+    def get_stale_document_buckets(
+        self,
+        *,
+        buckets_days: list[int],
+        source_type: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return counts of stale documents for the given age buckets."""
+        buckets = sorted({int(days) for days in buckets_days if int(days) > 0})
+        results: list[dict[str, Any]] = []
+        for days in buckets:
+            params: list[Any] = [f"-{days} days"]
+            query = """
+                SELECT COUNT(*) as count
+                FROM documents
+                WHERE source_date IS NOT NULL
+                  AND source_date != ''
+                  AND datetime(source_date) <= datetime('now', ?)
+            """
+            if source_type:
+                query += " AND source_type = ?"
+                params.append(source_type)
+            count = self.conn.execute(query, params).fetchone()[0]
+            results.append({"days": days, "count": int(count)})
+        return results
+
+    def get_stale_decision_buckets(
+        self,
+        *,
+        buckets_days: list[int],
+    ) -> list[dict[str, Any]]:
+        """Return counts of stale active decisions for the given age buckets."""
+        buckets = sorted({int(days) for days in buckets_days if int(days) > 0})
+        results: list[dict[str, Any]] = []
+        for days in buckets:
+            count = self.conn.execute(
+                """
+                SELECT COUNT(*) as count
+                FROM decisions
+                WHERE status = 'active'
+                  AND decision_date IS NOT NULL
+                  AND decision_date != ''
+                  AND datetime(decision_date) <= datetime('now', ?)
+                """,
+                (f"-{days} days",),
+            ).fetchone()[0]
+            results.append({"days": days, "count": int(count)})
+        return results
+
     # Coach Mode settings and suggestion log
 
     def _ensure_user_settings(self) -> None:

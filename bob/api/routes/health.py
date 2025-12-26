@@ -120,6 +120,21 @@ def _format_metadata_offenders_details(entries: list[dict[str, Any]]) -> str:
     return f"Top {label}: {preview}"
 
 
+def _format_staleness_details(buckets: list[dict[str, Any]], label: str) -> str:
+    """Describe staleness buckets for notes or decisions."""
+    if not buckets:
+        return f"No {label} staleness data."
+    preview = ", ".join(f"{item['days']}d+: {item['count']}" for item in buckets)
+    return f"{label} older than {preview}"
+
+
+def _staleness_value(buckets: list[dict[str, Any]]) -> int:
+    """Use the smallest bucket (most inclusive) count as the signal value."""
+    if not buckets:
+        return 0
+    return int(buckets[0]["count"])
+
+
 def _build_fix_queue_tasks(
     metrics: dict[str, Any],
     metadata_deficits: list[dict[str, Any]],
@@ -264,6 +279,11 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     low_hit_rate_projects = [
         item for item in search_stats if item["hit_rate"] < low_hit_rate_threshold
     ]
+    staleness_buckets = config.health.staleness_buckets_days
+    stale_notes = db.get_stale_document_buckets(
+        buckets_days=staleness_buckets, source_type="markdown"
+    )
+    stale_decisions = db.get_stale_decision_buckets(buckets_days=staleness_buckets)
 
     failure_signals = [
         FailureSignal(
@@ -283,6 +303,16 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
             name="metadata_top_offenders",
             value=len(metadata_counts),
             details=_format_metadata_offenders_details(metadata_counts),
+        ),
+        FailureSignal(
+            name="stale_notes",
+            value=_staleness_value(stale_notes),
+            details=_format_staleness_details(stale_notes, "Notes"),
+        ),
+        FailureSignal(
+            name="stale_decisions",
+            value=_staleness_value(stale_decisions),
+            details=_format_staleness_details(stale_decisions, "Decisions"),
         ),
         FailureSignal(
             name="repeated_questions",

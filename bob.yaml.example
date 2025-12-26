@@ -97,6 +97,9 @@ health:
   # Minimum number of searches before calculating hit rate
   min_searches_for_rate: 5
 
+  # Staleness buckets (days) for notes/decisions
+  staleness_buckets_days: [90, 180, 365]
+
 # Paths configuration
 paths:
   # Directories to ignore during indexing

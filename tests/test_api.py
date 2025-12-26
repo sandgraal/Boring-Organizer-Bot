@@ -169,6 +169,14 @@ class TestHealthFixQueueEndpoint:
         mock_db.get_search_history_stats.return_value = [
             {"project": "docs", "total": 5, "not_found": 4, "hit_rate": 0.2}
         ]
+        mock_db.get_stale_document_buckets.return_value = [
+            {"days": 90, "count": 3},
+            {"days": 180, "count": 1},
+        ]
+        mock_db.get_stale_decision_buckets.return_value = [
+            {"days": 90, "count": 2},
+            {"days": 180, "count": 1},
+        ]
 
         with patch(
             "bob.api.routes.health.get_database",
@@ -186,6 +194,8 @@ class TestHealthFixQueueEndpoint:
         assert any(
             f["name"] == "metadata_top_offenders" for f in data["failure_signals"]
         )
+        assert any(f["name"] == "stale_notes" for f in data["failure_signals"])
+        assert any(f["name"] == "stale_decisions" for f in data["failure_signals"])
         assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
         assert any(f["name"] == "low_indexed_volume" for f in data["failure_signals"])
         assert any(
@@ -213,6 +223,8 @@ class TestHealthFixQueueEndpoint:
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
         mock_db.get_project_document_counts.return_value = []
         mock_db.get_search_history_stats.return_value = []
+        mock_db.get_stale_document_buckets.return_value = []
+        mock_db.get_stale_decision_buckets.return_value = []
 
         with patch(
             "bob.api.routes.health.get_database",

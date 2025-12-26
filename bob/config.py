@@ -82,6 +82,7 @@ class HealthConfig(BaseModel):
     low_hit_rate_threshold: float = 0.4
     search_window_hours: int = 168
     min_searches_for_rate: int = 5
+    staleness_buckets_days: list[int] = Field(default_factory=lambda: [90, 180, 365])
 
 
 class PathsConfig(BaseModel):

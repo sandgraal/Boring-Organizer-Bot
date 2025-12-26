@@ -488,8 +488,8 @@ These are explicit non-goals to avoid scope creep:
 
 3. **Staleness Radar**
 
-   - [ ] Decisions/notes older than thresholds
-   - [ ] Configurable age buckets (3/6/12 months)
+   - [x] Decisions/notes older than thresholds
+   - [x] Configurable age buckets (3/6/12 months)
 
 4. **Ingestion Failures**
 

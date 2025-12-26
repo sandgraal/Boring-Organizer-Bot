@@ -85,6 +85,7 @@ Failure metrics collected locally include:
 - **Missing metadata counts** (documents missing `source_date`, `project`, or `language`), plus top offenders by file count. 
 - **Low indexed volume** per project (document counts below the health threshold).
 - **Low retrieval hit rate** per project (recent searches returning zero results).
+- **Stale notes/decisions** in configurable age buckets (default 3/6/12 months).
 - **Repeated questions** (same query text >1 within rolling 48 hours). 
 - **Permission denials** (scope/path blocks on `/routines/*` writes).
 - **Capture lint issues** (missing rationale, rejected options, metadata, or next actions) from vault notes.
