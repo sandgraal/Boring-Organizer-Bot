@@ -125,7 +125,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
 - **Response model:** `RoutineResponse` (`routine`, `file_path`, `template`, `content`, `retrievals`, `warnings`).
 - **Behavior:** The endpoint runs `search` with `"open loop"` and `"recent context"` queries (respecting `project`/`top_k`), converts the chunks into `Source` citations, records warnings when citations are missing or a previous note is overwritten, writes the filled template to the vault, and returns the note path, template path, content, retrieval buckets, and any warnings.
-- **Errors:** Returns HTTP 500 if the template is missing, the retrieval search fails, or writing the note to the vault path fails.
+- **Errors:** Returns HTTP 500 if the template is missing, the retrieval search fails, or writing the note to the vault path fails. Also returns HTTP 403 (`PERMISSION_DENIED`) when the configured scope level is below 3 or the target path is outside `permissions.allowed_vault_paths`; the detail includes `scope_level`, `required_scope_level`, and `target_path`.
 
 ### POST /routines/weekly-review
 
@@ -134,7 +134,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
 - **Response model:** `RoutineResponse` with the same fields as daily check-in plus the collected retrieval buckets (three queries) and warnings.
 - **Behavior:** Retrieval queries run in order, each producing a `RoutineRetrieval` with source citations; the handler calculates the Monday-to-Sunday `week_range`, injects it into the template, and writes the note. `warnings` capture missing citations or overwritten review notes.
-- **Errors:** HTTP 500 is returned if the template is missing, any of the search queries fail, or writing the weekly note fails.
+- **Errors:** HTTP 500 is returned if the template is missing, any of the search queries fail, or writing the weekly note fails. HTTP 403 (`PERMISSION_DENIED`) is used when the scope level is insufficient or the target path is not covered by `permissions.allowed_vault_paths` (detail enumerates the allowed directories plus the offending `target_path`).
 
 ### GET /settings
 

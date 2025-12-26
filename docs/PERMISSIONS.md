@@ -23,32 +23,35 @@
 | **3 (Template Writes)** | All routine/actions writes (`POST /notes/create`, `/routines/*`) that render from canonical templates | Vault paths locked to `vault/routines/`, `vault/decisions/`, `vault/trips/`; any attempt to point elsewhere is rejected and reported to Fix Queue. |
 | **4 (External Accounts)** | Out of scope for now — no OAuth or cloud storage is supported | Mentioned for completeness but always denied in code. |
 
+By default, operations run at scope level **3 (Template Writes)** so the routine APIs succeed. Drop the `permissions.default_scope` value toward `0` for read-only inspections and raise it back to `3` (plus connector toggles) when you trust the vault directories the routines write to; denied attempts are surfaced in the Fix Queue and the API returns `PERMISSION_DENIED`.
+
 Calendar and browser connector toggles are grouped in settings (see `bob.yaml` snippet below and the UI settings panel) and default to `false`. Activating them flips the scope flag for that project/session, guaranteeing user control over deep access.
 
 ## Configuration
 
 ```yaml
 permissions:
-  default_scope: 0
+  default_scope: 3
   enabled_connectors:
     calendar_import: false
     browser_saves: false
   allowed_vault_paths:
-    - "vault/routines"
-    - "vault/decisions"
-    - "vault/trips"
-    - "vault/manual-saves"
+    - vault/routines
+    - vault/decisions
+    - vault/trips
+    - vault/manual-saves
 ```
 
-- `default_scope` drives the initial experience (read-only). 
-- `enabled_connectors` flags toggle Level 1 and 2 access and are persisted per project (UI shows the toggle and records the timestamp). 
-- `allowed_vault_paths` informs the template renderer and API validators (any write outside this list is rejected). 
+ - `default_scope` drives the initial experience (read-only vs template writes); the Fix Queue surfaces denials so you can raise it only when you trust the destination paths.
+ - `enabled_connectors` toggles optional deep access; flipping one pushes the session to the matching level and logs the event for Fix Queue analytics.
+- `allowed_vault_paths` lists the directories that template-enabled APIs may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
 
 ## Enforcement & UI
 
 - APIs that write (routine endpoints, `POST /notes/create`, manual highlight saves) first check the caller’s `scope_level`. If it is insufficient, they return a structured error (`error.code=PERMISSION_DENIED`, `details.scope_level`). 
 - The UI Settings page greys out write buttons unless the required scope is granted and displays a banner for optional connectors (calendar or browser saves) that links to the same toggles. 
 - Audit logs include `permission_level`, `action`, and `target_path` so Fix Queue and `GET /health` can surface denied attempts as health alerts.
+- Attempting to write anywhere outside `permissions.allowed_vault_paths` also returns `PERMISSION_DENIED` with `allowed_paths` and the target path included so the Fix Queue can flag vault misconfiguration before any template is created.
 
 ## Tests
 

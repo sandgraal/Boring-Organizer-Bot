@@ -674,6 +674,53 @@ class TestRoutinesEndpoint:
         expected_range = f"{week_start.isoformat()} - {week_end.isoformat()}"
         assert f'week_range: "{expected_range}"' in body
 
+    def test_daily_checkin_requires_template_scope(
+        self, client: TestClient, tmp_path
+    ):
+        """POST /routines/daily-checkin returns 403 when scope < 3."""
+        config = Config()
+        config.paths.vault = tmp_path
+        config.permissions.default_scope = 2
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search") as mock_search,
+        ):
+            response = client.post(
+                "/routines/daily-checkin",
+                json={"project": "test", "date": "2025-01-01"},
+            )
+
+        assert response.status_code == 403
+        detail = response.json()["detail"]
+        assert detail["code"] == "PERMISSION_DENIED"
+        assert detail["scope_level"] == 2
+        assert detail["required_scope_level"] == 3
+        assert not (tmp_path / "routines").exists()
+        mock_search.assert_not_called()
+
+    def test_daily_checkin_requires_allowed_path(self, client: TestClient, tmp_path):
+        """POST /routines/daily-checkin rejects targets outside allowed directories."""
+        config = Config()
+        config.paths.vault = tmp_path
+        config.permissions.allowed_vault_paths = ["vault/decisions"]
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search") as mock_search,
+        ):
+            response = client.post(
+                "/routines/daily-checkin",
+                json={"project": "test", "date": "2025-01-01"},
+            )
+
+        assert response.status_code == 403
+        detail = response.json()["detail"]
+        assert detail["code"] == "PERMISSION_DENIED"
+        assert "allowed_paths" in detail
+        assert not (tmp_path / "routines").exists()
+        mock_search.assert_not_called()
+
     def test_get_nonexistent_job(self, client: TestClient):
         """GET /index/{job_id} returns 404 for unknown job."""
         response = client.get("/index/idx_nonexistent")

@@ -193,6 +193,68 @@ ROUTINE_ACTIONS: dict[str, RoutineAction] = {
 }
 
 
+TEMPLATE_WRITE_SCOPE = 3
+
+
+def _resolve_allowed_directories(config) -> list[Path]:
+    """Resolve configured allowed vault paths into absolute directories."""
+    cwd = Path.cwd()
+    vault_root = config.paths.vault.resolve()
+    allowed_dirs: set[Path] = set()
+
+    for entry in config.permissions.allowed_vault_paths:
+        candidate = Path(entry)
+        if candidate.is_absolute():
+            allowed_dirs.add(candidate.resolve())
+            continue
+
+        parts = list(candidate.parts)
+        if parts and parts[0] in {vault_root.name, "vault"}:
+            parts = parts[1:]
+
+        relative = Path(*parts) if parts else Path(".")
+        allowed_dirs.add((vault_root / relative).resolve())
+        allowed_dirs.add((cwd / candidate).resolve())
+
+    return list(allowed_dirs)
+
+
+def _ensure_allowed_write_path(target_path: Path, config) -> None:
+    """Validate that the routine is writing into an allowed vault directory."""
+    resolved_target = target_path.resolve()
+    allowed_dirs = _resolve_allowed_directories(config)
+    if any(resolved_target.is_relative_to(dir_path) for dir_path in allowed_dirs):
+        return
+
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "PERMISSION_DENIED",
+            "message": "Target path is outside allowed vault directories.",
+            "target_path": str(target_path),
+            "allowed_paths": [str(dir_path) for dir_path in allowed_dirs],
+        },
+    )
+
+
+def _ensure_scope_level(action_name: str, target_path: Path, config) -> None:
+    """Ensure the configured scope level permits template writes."""
+    current = config.permissions.default_scope
+    if current >= TEMPLATE_WRITE_SCOPE:
+        return
+
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "PERMISSION_DENIED",
+            "message": f"Permission level {TEMPLATE_WRITE_SCOPE} required for {action_name}.",
+            "scope_level": current,
+            "required_scope_level": TEMPLATE_WRITE_SCOPE,
+            "target_path": str(target_path),
+        },
+    )
+
+
 def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineResponse:
     """Execute the retrieval + templating + write cycle for a routine."""
     config = get_config()
@@ -201,9 +263,23 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
     target_date = request.date or date.today()
     top_k = request.top_k
 
-    retrievals: list[RoutineRetrieval] = []
     warnings: list[str] = []
 
+    values = {
+        "project": project,
+        "date": target_date.isoformat(),
+        "language": language,
+    }
+    if action.placeholder_fn:
+        values.update(action.placeholder_fn(target_date, request))
+
+    vault_root = config.paths.vault
+    target_path = action.target_path_fn(target_date, vault_root, request)
+
+    _ensure_allowed_write_path(target_path, config)
+    _ensure_scope_level(action.name, target_path, config)
+
+    retrievals: list[RoutineRetrieval] = []
     for query in action.queries:
         date_after = _resolve_date_after(target_date, query.date_after_offset)
         date_before = _resolve_date_before(target_date, query.date_before_offset)
@@ -220,22 +296,12 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
             warnings.append(f"No citations found for {query.name}; manual entry recommended.")
         retrievals.append(retrieval)
 
-    values = {
-        "project": project,
-        "date": target_date.isoformat(),
-        "language": language,
-    }
-    if action.placeholder_fn:
-        values.update(action.placeholder_fn(target_date, request))
-
     content = _render_template(
         template_path=action.template,
         values=values,
         source_tag=action.source_tag,
     )
 
-    vault_root = config.paths.vault
-    target_path = action.target_path_fn(target_date, vault_root, request)
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     if target_path.exists():

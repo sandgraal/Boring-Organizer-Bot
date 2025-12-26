@@ -276,6 +276,21 @@ B.O.B uses explicit permission scopes so deeper access stays safe and intentiona
 - **Level 3**: template-bound note writing only (no arbitrary edits)
 - **Level 4**: external accounts (out of scope for now)
 
+The `permissions` block in `bob.yaml` mirrors this model and defaults to `scope=3`. Template writes (e.g., `/routines/daily-checkin`) require scope 3 and `permissions.allowed_vault_paths` to cover the target directory; setting the scope to `0` or removing a directory will make those endpoints return HTTP 403 `PERMISSION_DENIED` with the offending `target_path`/`scope_level`.
+
+```yaml
+permissions:
+  default_scope: 3
+  enabled_connectors:
+    calendar_import: false
+    browser_saves: false
+  allowed_vault_paths:
+    - vault/routines
+    - vault/decisions
+    - vault/trips
+    - vault/manual-saves
+```
+
 ## Configuration
 
 Configuration lives in `bob.yaml` (project root or `~/.config/bob/bob.yaml`):

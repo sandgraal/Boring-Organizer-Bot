@@ -146,3 +146,15 @@ logging:
   
   # Log file (null = stderr only)
   file: null
+
+# Permission scopes control what can be written to the vault.
+permissions:
+  default_scope: 3
+  enabled_connectors:
+    calendar_import: false
+    browser_saves: false
+  allowed_vault_paths:
+    - vault/routines
+    - vault/decisions
+    - vault/trips
+    - vault/manual-saves

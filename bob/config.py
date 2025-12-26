@@ -102,6 +102,28 @@ class PathsConfig(BaseModel):
     vault: Path = Field(default=Path("./vault"))
 
 
+class PermissionsConfig(BaseModel):
+    """Permission configuration for vault writes and optional connectors."""
+
+    default_scope: int = Field(
+        default=3,
+        description="Current scope level; template writes require level 3",
+    )
+    enabled_connectors: dict[str, bool] = Field(
+        default_factory=lambda: {"calendar_import": False, "browser_saves": False},
+        description="Toggles for opt-in connectors (calendar, browser saves)",
+    )
+    allowed_vault_paths: list[str] = Field(
+        default_factory=lambda: [
+            "vault/routines",
+            "vault/decisions",
+            "vault/trips",
+            "vault/manual-saves",
+        ],
+        description="Directories that template writes may target",
+    )
+
+
 class GitDocsConfig(BaseModel):
     """Git documentation settings."""
 
@@ -145,6 +167,7 @@ class Config(BaseSettings):
     date_confidence: DateConfidenceConfig = Field(default_factory=DateConfidenceConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
+    permissions: PermissionsConfig = Field(default_factory=PermissionsConfig)
     git_docs: GitDocsConfig = Field(default_factory=GitDocsConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
