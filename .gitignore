@@ -1,5 +1,6 @@
 # B.O.B local data and cache
 /data/
+/vault/
 
 # Python
 __pycache__/
