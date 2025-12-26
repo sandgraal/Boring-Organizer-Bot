@@ -242,6 +242,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Response model:** `FixQueueResponse` with `failure_signals` (instances of `FailureSignal`) and `tasks` (instances of `FixQueueTask`).
 - **Behavior:** 
   - `failure_signals` include `not_found_frequency`, `metadata_deficits`, `metadata_top_offenders`, `stale_notes`, `stale_decisions`, `repeated_questions`, `permission_denials`, `low_indexed_volume`, and `low_retrieval_hit_rate`, each with counts/details that the UI can render directly.
+  - `failure_signals` now also include `ingestion_errors`, summarizing parse/no-text failures with recent file previews.
   - `tasks` are prioritized actions such as `run_routine` for high not-found ratios, `fix_metadata` for documents missing `source_date`/`project`/`language`, and `run_routine` for repeated queries (question text is the target).
   - Capture lint issues generate `fix_capture` tasks that point at the offending vault note paths with a reason describing the missing sections or metadata.
   - Permission denials create `raise_scope` (target `permissions.default_scope`) and `allow_path` (target is the blocked path) tasks.
@@ -275,6 +276,11 @@ After the background thread finishes, the job status moves to `completed` or `fa
       "name": "stale_decisions",
       "value": 2,
       "details": "Decisions older than 90d+: 2, 180d+: 1, 365d+: 0"
+    },
+    {
+      "name": "ingestion_errors",
+      "value": 1,
+      "details": "parse error: 1. Recent: broken.pdf"
     },
     {
       "name": "repeated_questions",

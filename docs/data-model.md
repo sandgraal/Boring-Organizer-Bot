@@ -123,20 +123,19 @@ Planned; not created by current migrations.
 | files_indexed | INTEGER | Successfully indexed files          |
 | files_failed  | INTEGER | Failed files                        |
 
-### ingestion_errors (planned)
+### ingestion_errors
 
-Planned; not created by current migrations.
+Ingestion failures recorded for health metrics and Fix Queue tasks.
 
 | Column        | Type    | Description                          |
 | ------------- | ------- | ------------------------------------ |
 | id            | INTEGER | Primary key                          |
-| index_run_id  | INTEGER | FK to index_runs                     |
-| file_path     | TEXT    | File path that failed                |
+| source_path   | TEXT    | File path that failed                |
 | source_type   | TEXT    | Document type                        |
+| project       | TEXT    | Project tag (if available)           |
 | error_type    | TEXT    | 'parse_error', 'no_text', 'oversize' |
 | error_message | TEXT    | Error message                        |
 | created_at    | TEXT    | Error timestamp                      |
-| resolved_at   | TEXT    | Resolution timestamp (optional)      |
 
 ### eval_runs (planned)
 

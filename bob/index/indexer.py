@@ -40,6 +40,17 @@ def should_ignore(path: Path) -> bool:
     return False
 
 
+def _resolve_source_type(path: Path, parser: object | None) -> str | None:
+    """Best-effort source type detection for ingestion error logging."""
+    if parser is not None:
+        name = parser.__class__.__name__
+        if name.lower().endswith("parser"):
+            name = name[:-6]
+        return name.lower() or None
+    suffix = path.suffix.lower().lstrip(".")
+    return suffix or None
+
+
 def _iter_indexable_files(path: Path) -> Iterator[Path]:
     """Yield files to index under a directory, respecting ignore rules."""
 
@@ -111,7 +122,23 @@ def index_file(
         parsed = parser.parse(path)
     except Exception as e:
         logger.error(f"Failed to parse {path}: {e}")
+        db.log_ingestion_error(
+            source_path=str(path),
+            source_type=_resolve_source_type(path, parser),
+            project=project,
+            error_type="parse_error",
+            error_message=str(e),
+        )
         return {"chunks": 0, "skipped": 0, "documents": 0, "errors": 1}
+
+    if not parsed.content.strip():
+        db.log_ingestion_error(
+            source_path=str(path),
+            source_type=parsed.source_type,
+            project=project,
+            error_type="no_text",
+            error_message="Parsed document contained no text.",
+        )
 
     # Check if document has changed
     content_hash = compute_content_hash(parsed.content)

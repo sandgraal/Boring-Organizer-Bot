@@ -148,6 +148,21 @@ class TestHealthFixQueueEndpoint:
             ],
             "window_hours": 168,
         }
+        ingestion_metrics = {
+            "total": 1,
+            "counts": {"parse_error": 1},
+            "recent": [
+                {
+                    "source_path": "/docs/broken.pdf",
+                    "source_type": "pdf",
+                    "project": "docs",
+                    "error_type": "parse_error",
+                    "error_message": "Failed to read PDF",
+                    "created_at": "2025-12-25T00:00:00Z",
+                }
+            ],
+            "window_hours": 168,
+        }
         lint_issues = [
             LintIssue(
                 code="missing_rationale",
@@ -162,6 +177,7 @@ class TestHealthFixQueueEndpoint:
         mock_db.get_missing_metadata_total.return_value = 1
         mock_db.get_missing_metadata_counts.return_value = [{"project": "docs", "count": 1}]
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
+        mock_db.get_ingestion_error_metrics.return_value = ingestion_metrics
         mock_db.get_project_document_counts.return_value = [
             {"project": "docs", "document_count": 2}
         ]
@@ -196,12 +212,14 @@ class TestHealthFixQueueEndpoint:
         assert any(f["name"] == "metadata_top_offenders" for f in data["failure_signals"])
         assert any(f["name"] == "stale_notes" for f in data["failure_signals"])
         assert any(f["name"] == "stale_decisions" for f in data["failure_signals"])
+        assert any(f["name"] == "ingestion_errors" for f in data["failure_signals"])
         assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
         assert any(f["name"] == "low_indexed_volume" for f in data["failure_signals"])
         assert any(f["name"] == "low_retrieval_hit_rate" for f in data["failure_signals"])
-        assert len(data["tasks"]) == 8
+        assert len(data["tasks"]) == 9
         targets = [t["target"] for t in data["tasks"]]
         assert "/docs/notes.md" in targets
+        assert "/docs/broken.pdf" in targets
         assert "Where is the API?" in targets
         assert "permissions.default_scope" in targets
         assert "/vault/decisions/decision-01.md" in targets
@@ -230,6 +248,7 @@ class TestHealthFixQueueEndpoint:
         mock_db.get_missing_metadata_total.return_value = 0
         mock_db.get_missing_metadata_counts.return_value = []
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
+        mock_db.get_ingestion_error_metrics.return_value = {"total": 0, "counts": {}, "recent": []}
         mock_db.get_project_document_counts.return_value = []
         mock_db.get_search_history_stats.return_value = []
         mock_db.get_stale_document_buckets.return_value = []

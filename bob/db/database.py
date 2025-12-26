@@ -803,6 +803,31 @@ class Database:
                 ),
             )
 
+    def log_ingestion_error(
+        self,
+        *,
+        source_path: str,
+        source_type: str | None,
+        project: str | None,
+        error_type: str,
+        error_message: str | None = None,
+    ) -> None:
+        """Record ingestion errors for health metrics."""
+        with self.transaction():
+            self.conn.execute(
+                """
+                INSERT INTO ingestion_errors (
+                    source_path,
+                    source_type,
+                    project,
+                    error_type,
+                    error_message
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (source_path, source_type, project, error_type, error_message),
+            )
+
     def get_permission_denial_metrics(
         self,
         *,
@@ -868,6 +893,69 @@ class Database:
                     "created_at": row["created_at"],
                 }
             )
+
+        return {
+            "total": total,
+            "counts": counts,
+            "recent": recent,
+            "window_hours": window_hours,
+        }
+
+    def get_ingestion_error_metrics(
+        self,
+        *,
+        project: str | None = None,
+        window_hours: int | None = 168,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        """Summarize ingestion errors for health metrics."""
+        base_filters = "WHERE 1=1"
+        params: list[Any] = []
+        if project:
+            base_filters += " AND project = ?"
+            params.append(project)
+        if window_hours is not None:
+            base_filters += " AND datetime(created_at) >= datetime('now', ?)"
+            params.append(f"-{int(window_hours)} hours")
+
+        counts_cursor = self.conn.execute(
+            f"""
+            SELECT error_type, COUNT(*) as count
+            FROM ingestion_errors
+            {base_filters}
+            GROUP BY error_type
+            """,
+            params,
+        )
+        counts: dict[str, int] = {}
+        total = 0
+        for row in counts_cursor.fetchall():
+            error_type = row["error_type"] or "unknown"
+            count = int(row["count"])
+            counts[error_type] = count
+            total += count
+
+        recent_cursor = self.conn.execute(
+            f"""
+            SELECT source_path, source_type, project, error_type, error_message, created_at
+            FROM ingestion_errors
+            {base_filters}
+            ORDER BY datetime(created_at) DESC
+            LIMIT ?
+            """,
+            params + [limit],
+        )
+        recent = [
+            {
+                "source_path": row["source_path"],
+                "source_type": row["source_type"],
+                "project": row["project"],
+                "error_type": row["error_type"],
+                "error_message": row["error_message"],
+                "created_at": row["created_at"],
+            }
+            for row in recent_cursor.fetchall()
+        ]
 
         return {
             "total": total,

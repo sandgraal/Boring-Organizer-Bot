@@ -38,6 +38,7 @@ class TestDatabaseOperations:
         assert "documents" in tables
         assert "chunks" in tables
         assert "decisions" in tables
+        assert "ingestion_errors" in tables
         assert "permission_denials" in tables
         assert "search_history" in tables
         assert "schema_migrations" in tables
@@ -168,6 +169,24 @@ class TestDatabaseOperations:
         denial = metrics["recent"][0]
         assert denial["action_name"] == "daily-checkin"
         assert denial["reason_code"] == "scope"
+
+    def test_ingestion_error_metrics(self, test_db):
+        test_db.log_ingestion_error(
+            source_path="/docs/broken.pdf",
+            source_type="pdf",
+            project="docs",
+            error_type="parse_error",
+            error_message="Failed to read PDF",
+        )
+
+        metrics = test_db.get_ingestion_error_metrics(window_hours=1, limit=5)
+
+        assert metrics["total"] == 1
+        assert metrics["counts"]["parse_error"] == 1
+        assert len(metrics["recent"]) == 1
+        recent = metrics["recent"][0]
+        assert recent["source_path"] == "/docs/broken.pdf"
+        assert recent["error_type"] == "parse_error"
 
     def test_search_history_stats(self, test_db):
         test_db.log_search(query="missing answer", project="docs", results_count=0)

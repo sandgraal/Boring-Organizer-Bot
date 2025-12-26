@@ -100,6 +100,12 @@ health:
   # Lookback window for search hit rate calculations
   search_window_hours: 168
 
+  # Lookback window for ingestion error reporting
+  ingestion_error_window_hours: 168
+
+  # Max ingestion error tasks to surface in Fix Queue
+  ingestion_error_task_limit: 5
+
   # Minimum number of searches before calculating hit rate
   min_searches_for_rate: 5
 

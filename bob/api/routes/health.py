@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
@@ -118,6 +119,55 @@ def _format_staleness_details(buckets: list[dict[str, Any]], label: str) -> str:
         return f"No {label} staleness data."
     preview = ", ".join(f"{item['days']}d+: {item['count']}" for item in buckets)
     return f"{label} older than {preview}"
+
+
+def _format_ingestion_error_details(metrics: dict[str, Any]) -> str:
+    """Describe ingestion errors by type with recent file previews."""
+    total = metrics.get("total", 0)
+    if total == 0:
+        return "No ingestion errors recorded."
+    counts = metrics.get("counts", {})
+    parts: list[str] = []
+    for label in ("parse_error", "no_text", "oversize"):
+        count = counts.get(label, 0)
+        if count:
+            parts.append(f"{label.replace('_', ' ')}: {count}")
+    if not parts and counts:
+        for key, count in counts.items():
+            parts.append(f"{str(key).replace('_', ' ')}: {count}")
+    detail = ", ".join(parts) if parts else f"{total} ingestion errors logged."
+    recent = metrics.get("recent", [])
+    if recent:
+        preview = ", ".join(
+            Path(item["source_path"]).name
+            for item in recent[:3]
+            if item.get("source_path")
+        )
+        if preview:
+            detail = f"{detail}. Recent: {preview}"
+    return detail
+
+
+def _format_ingestion_task_reason(error_type: str, message: str | None) -> str:
+    """Create a user-facing reason string for ingestion failures."""
+    label = error_type.replace("_", " ")
+    if message:
+        trimmed = message.strip()
+        if len(trimmed) > 160:
+            trimmed = f"{trimmed[:157]}..."
+        return f"{label} while indexing: {trimmed}"
+    return f"{label} while indexing this file."
+
+
+def _priority_for_ingestion_error(error_type: str | None) -> int:
+    """Map ingestion error types to priority buckets."""
+    if error_type == "parse_error":
+        return 2
+    if error_type == "no_text":
+        return 3
+    if error_type == "oversize":
+        return 3
+    return 4
 
 
 def _staleness_value(buckets: list[dict[str, Any]]) -> int:
@@ -326,6 +376,33 @@ def _build_indexing_tasks(
     return tasks
 
 
+def _build_ingestion_tasks(errors: list[dict[str, Any]]) -> list[FixQueueTask]:
+    """Create Fix Queue tasks from recent ingestion errors."""
+    tasks: list[FixQueueTask] = []
+    seen: set[tuple[str, str]] = set()
+    for error in errors:
+        path = error.get("source_path")
+        error_type = error.get("error_type") or "ingestion_error"
+        if not path:
+            continue
+        key = (path, error_type)
+        if key in seen:
+            continue
+        seen.add(key)
+        reason = _format_ingestion_task_reason(error_type, error.get("error_message"))
+        task_hash = hashlib.sha1(f"{path}:{error_type}".encode()).hexdigest()[:10]
+        tasks.append(
+            FixQueueTask(
+                id=f"ingest-{task_hash}",
+                action="open_file",
+                target=path,
+                reason=reason,
+                priority=_priority_for_ingestion_error(error_type),
+            )
+        )
+    return tasks
+
+
 @router.get("/health/fix-queue", response_model=FixQueueResponse)
 def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     """Return Fix Queue signals and tasks derived from failure metrics."""
@@ -358,6 +435,11 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     stale_decisions = db.get_stale_decision_buckets(
         buckets_days=staleness_buckets, project=project
     )
+    ingestion_metrics = db.get_ingestion_error_metrics(
+        project=project,
+        window_hours=config.health.ingestion_error_window_hours,
+        limit=config.health.ingestion_error_task_limit,
+    )
 
     failure_signals = [
         FailureSignal(
@@ -389,6 +471,11 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
             details=_format_staleness_details(stale_decisions, "Decisions"),
         ),
         FailureSignal(
+            name="ingestion_errors",
+            value=ingestion_metrics.get("total", 0),
+            details=_format_ingestion_error_details(ingestion_metrics),
+        ),
+        FailureSignal(
             name="repeated_questions",
             value=len(metrics.get("repeated_questions", [])),
             details="Repeated queries observed over the past 48 hours",
@@ -414,6 +501,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         metrics, metadata_deficits, project, permission_metrics.get("recent", [])
     )
     tasks.extend(_build_lint_tasks(lint_issues))
+    tasks.extend(_build_ingestion_tasks(ingestion_metrics.get("recent", [])))
     tasks.extend(
         _build_indexing_tasks(
             low_volume_projects,

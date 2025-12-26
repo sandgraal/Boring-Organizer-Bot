@@ -493,13 +493,14 @@ These are explicit non-goals to avoid scope creep:
 
 4. **Ingestion Failures**
 
-   - [ ] PDFs with no text
-   - [ ] Parse errors and oversized files
-   - [ ] Recent failures list with file paths
+   - [x] PDFs with no text
+   - [x] Parse errors logged during indexing
+   - [ ] Oversized files
+   - [x] Recent failures list with file paths
 
 5. **Fix Queue**
    - [x] Task list derived from feedback, metadata, and permission signals
-   - [ ] Links to open file or re-index path
+   - [x] Links to open file or re-index path
 
 ### Acceptance Criteria
 

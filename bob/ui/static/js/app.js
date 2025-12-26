@@ -1244,7 +1244,11 @@
          Run query
        </button>`;
     }
-    if (task.action === "fix_metadata" || task.action === "fix_capture") {
+    if (
+      task.action === "fix_metadata" ||
+      task.action === "fix_capture" ||
+      task.action === "open_file"
+    ) {
       return `<button type="button" class="btn btn-secondary btn-sm" data-fixqueue-open="${escapeHtml(
         task.target
       )}">
