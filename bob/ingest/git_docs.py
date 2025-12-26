@@ -39,7 +39,7 @@ def clone_repo(url: str, target_dir: Path) -> str:
         depth=config.git_docs.clone_depth,
         branch=config.git_docs.default_branch,
     )
-    return repo.head.commit.hexsha
+    return str(repo.head.commit.hexsha)
 
 
 def find_docs_files(repo_dir: Path) -> Iterator[Path]:
