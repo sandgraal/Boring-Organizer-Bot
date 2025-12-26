@@ -921,6 +921,26 @@ class Database:
             )
         return results
 
+    def get_missing_metadata_counts(self, *, limit: int = 5) -> list[dict[str, Any]]:
+        """Return top projects with missing metadata by file count."""
+        cursor = self.conn.execute(
+            """
+            SELECT COALESCE(NULLIF(project, ''), 'unknown') as project,
+                   COUNT(*) as count
+            FROM documents
+            WHERE source_date IS NULL OR source_date = ''
+               OR project = '' OR language = ''
+            GROUP BY COALESCE(NULLIF(project, ''), 'unknown')
+            ORDER BY count DESC
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [
+            {"project": row["project"], "count": int(row["count"])}
+            for row in cursor.fetchall()
+        ]
+
     # Coach Mode settings and suggestion log
 
     def _ensure_user_settings(self) -> None:

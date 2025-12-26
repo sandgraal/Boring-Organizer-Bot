@@ -173,6 +173,21 @@ class TestDatabaseOperations:
         assert record["not_found"] == 1
         assert record["hit_rate"] == 0.5
 
+    def test_missing_metadata_counts(self, test_db):
+        test_db.insert_document(
+            source_path="/missing.md",
+            source_type="markdown",
+            project="",
+            content_hash="missing",
+            language="",
+            source_date=None,
+        )
+
+        counts = test_db.get_missing_metadata_counts(limit=5)
+        assert counts
+        assert counts[0]["project"] == "unknown"
+        assert counts[0]["count"] >= 1
+
 
 class TestDecisionStorage:
     """Tests for decision storage operations."""

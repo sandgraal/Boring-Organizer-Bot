@@ -82,7 +82,7 @@ Every answer pane includes five feedback buttons: **Helpful**, **Wrong or missin
 Failure metrics collected locally include:
 
 - **Not found frequency** per project (percentage of feedback entries labeled `didnt_answer`). 
-- **Missing metadata counts** (documents missing `source_date`, `project`, or `language`). 
+- **Missing metadata counts** (documents missing `source_date`, `project`, or `language`), plus top offenders by file count. 
 - **Low indexed volume** per project (document counts below the health threshold).
 - **Low retrieval hit rate** per project (recent searches returning zero results).
 - **Repeated questions** (same query text >1 within rolling 48 hours). 

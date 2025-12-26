@@ -484,7 +484,7 @@ These are explicit non-goals to avoid scope creep:
 2. **Metadata Hygiene**
 
    - [x] Missing project/date/language counts
-   - [ ] Top offenders by file count
+   - [x] Top offenders by file count
 
 3. **Staleness Radar**
 

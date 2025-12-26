@@ -159,6 +159,9 @@ class TestHealthFixQueueEndpoint:
         mock_db = MagicMock()
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = metadata
+        mock_db.get_missing_metadata_counts.return_value = [
+            {"project": "docs", "count": 1}
+        ]
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
         mock_db.get_project_document_counts.return_value = [
             {"project": "docs", "document_count": 2}
@@ -180,6 +183,9 @@ class TestHealthFixQueueEndpoint:
         data = response.json()
         assert any(f["name"] == "not_found_frequency" for f in data["failure_signals"])
         assert any(f["name"] == "metadata_deficits" for f in data["failure_signals"])
+        assert any(
+            f["name"] == "metadata_top_offenders" for f in data["failure_signals"]
+        )
         assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
         assert any(f["name"] == "low_indexed_volume" for f in data["failure_signals"])
         assert any(
@@ -203,6 +209,7 @@ class TestHealthFixQueueEndpoint:
         mock_db = MagicMock()
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = []
+        mock_db.get_missing_metadata_counts.return_value = []
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
         mock_db.get_project_document_counts.return_value = []
         mock_db.get_search_history_stats.return_value = []

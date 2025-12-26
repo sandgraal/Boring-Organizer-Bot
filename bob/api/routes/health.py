@@ -109,6 +109,17 @@ def _format_low_hit_rate_details(
     return f"{len(projects)} {label} below {threshold * 100:.0f}% hit rate: {preview}"
 
 
+def _format_metadata_offenders_details(entries: list[dict[str, Any]]) -> str:
+    """Describe top metadata offenders by file count."""
+    if not entries:
+        return "No metadata offenders detected."
+    preview = ", ".join(
+        f"{item['project']} ({item['count']})" for item in entries[:3]
+    )
+    label = "project" if len(entries) == 1 else "projects"
+    return f"Top {label}: {preview}"
+
+
 def _build_fix_queue_tasks(
     metrics: dict[str, Any],
     metadata_deficits: list[dict[str, Any]],
@@ -237,6 +248,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     config = get_config()
     metrics = db.get_feedback_metrics(project=project)
     metadata_deficits = db.get_documents_missing_metadata()
+    metadata_counts = db.get_missing_metadata_counts()
     permission_metrics = db.get_permission_denial_metrics(project=project)
     lint_issues = collect_capture_lint_issues(config)
     project_counts = db.get_project_document_counts()
@@ -266,6 +278,11 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
             name="metadata_deficits",
             value=len(metadata_deficits),
             details="Documents missing source_date/project/language metadata",
+        ),
+        FailureSignal(
+            name="metadata_top_offenders",
+            value=len(metadata_counts),
+            details=_format_metadata_offenders_details(metadata_counts),
         ),
         FailureSignal(
             name="repeated_questions",
