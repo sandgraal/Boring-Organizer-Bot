@@ -21,11 +21,14 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    5. [GET /projects](#get-projects)
    6. [GET /documents](#get-documents)
    7. [POST /open](#post-open)
-   8. [GET /settings](#get-settings)
-   9. [PUT /settings](#put-settings)
-   10. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   11. [POST /feedback](#post-feedback)
-   12. [GET /health/fix-queue](#get-healthfix-queue)
+   8. [POST /routines/daily-checkin](#post-routinesdaily-checkin)
+   9. [POST /routines/daily-debrief](#post-routinesdaily-debrief)
+   10. [POST /routines/weekly-review](#post-routinesweekly-review)
+   11. [GET /settings](#get-settings)
+   12. [PUT /settings](#put-settings)
+   13. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   14. [POST /feedback](#post-feedback)
+   15. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -126,6 +129,15 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Response model:** `RoutineResponse` (`routine`, `file_path`, `template`, `content`, `retrievals`, `warnings`).
 - **Behavior:** The endpoint runs `search` with `"open loop"` and `"recent context"` queries (respecting `project`/`top_k`), converts the chunks into `Source` citations, records warnings when citations are missing or a previous note is overwritten, writes the filled template to the vault, and returns the note path, template path, content, retrieval buckets, and any warnings.
 - **Errors:** Returns HTTP 500 if the template is missing, the retrieval search fails, or writing the note to the vault path fails. Also returns HTTP 403 (`PERMISSION_DENIED`) when the configured scope level is below 3 or the target path is outside `permissions.allowed_vault_paths`; the detail includes `scope_level`, `required_scope_level`, and `target_path`.
+
+### POST /routines/daily-debrief
+
+- **Purpose:** Generate the end-of-day debrief note by filling `docs/templates/daily-debrief.md`, sourcing the prior 24 hours of context and decisions, and persisting `vault/routines/daily/{{YYYY-MM-DD}}-debrief.md`.
+- **Implementation:** `bob/api/routes/routines.py` invokes `_run_routine` with the `daily-debrief` action to rewrite the template’s front matter `source` tag to `routine/daily-debrief`, inject project/date/language placeholders, and drive the vault write while collecting retrieval metadata.
+- **Request model:** `RoutineRequest` (`project`, `language`, `date`, `top_k`).
+- **Response model:** `RoutineResponse` (`routine`, `file_path`, `template`, `content`, `retrievals`, `warnings`).
+- **Behavior:** The handler runs `search` for two queries—`"recent context"` and `"decisions decided today"`, each constrained to the 24-hour window ending at the requested date—and converts the results into the `recent_context` and `decisions_today` retrieval buckets containing `Source` citations. Empty retrievals add warnings advising manual capture, and overwriting an existing note adds the configured warning message before the rendered template is written to the vault. The response returns the path, template, rendered content, retrievals, and any warnings.
+- **Errors:** HTTP 500 is returned when the template is missing, any search query fails, or writing the debrief note fails. HTTP 403 (`PERMISSION_DENIED`) is issued when `permissions.default_scope` is below 3 or the target path falls outside `permissions.allowed_vault_paths`; the detail object includes the offending path plus `scope_level`/`required_scope_level`.
 
 ### POST /routines/weekly-review
 
