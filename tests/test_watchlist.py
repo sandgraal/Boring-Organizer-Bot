@@ -62,3 +62,17 @@ def test_clear_watchlist(tmp_path):
     clear_watchlist()
 
     assert load_watchlist() == []
+
+
+def test_watchlist_handles_git_urls():
+    """Git URLs are stored and de-duplicated."""
+    url = "https://github.com/example/repo"
+    assert add_watchlist_entry(WatchlistEntry(path=url))
+    assert not add_watchlist_entry(WatchlistEntry(path=url))
+
+    entries = load_watchlist()
+    assert len(entries) == 1
+    assert entries[0].path == url
+
+    assert remove_watchlist_entry("https:/github.com/example/repo")
+    assert load_watchlist() == []

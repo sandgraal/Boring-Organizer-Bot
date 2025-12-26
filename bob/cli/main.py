@@ -217,7 +217,7 @@ def watchlist_group() -> None:
 
 
 @watchlist_group.command("add")
-@click.argument("path", type=click.Path(exists=True))
+@click.argument("path", type=str)
 @click.option(
     "--project",
     "-p",
@@ -232,7 +232,16 @@ def watchlist_group() -> None:
 )
 def watchlist_add(path: str, project: str | None, language: str | None) -> None:
     """Add a path to the watchlist."""
-    entry = WatchlistEntry(path=path, project=project, language=language)
+    from bob.ingest.git_docs import is_git_url, normalize_git_url
+
+    candidate = normalize_git_url(path)
+    if not is_git_url(candidate):
+        target_path = Path(candidate).expanduser()
+        if not target_path.exists():
+            raise click.UsageError(f"Path does not exist: {path}")
+        candidate = str(target_path)
+
+    entry = WatchlistEntry(path=candidate, project=project, language=language)
     if add_watchlist_entry(entry):
         console.print(f"[green]✓[/] Added [cyan]{path}[/] to the watchlist.")
     else:

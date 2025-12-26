@@ -9,11 +9,14 @@ from pathlib import Path
 
 import yaml
 
+from bob.ingest.git_docs import is_git_url, normalize_git_url
 DEFAULT_WATCHLIST_FILE = ".bob_watchlist.yaml"
 
 
 def _normalize_path(path: str) -> str:
     """Return a normalized absolute path for comparison."""
+    if is_git_url(path):
+        return normalize_git_url(path)
     resolved = Path(path).expanduser().resolve(strict=False)
     return str(resolved)
 
