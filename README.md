@@ -261,6 +261,7 @@ The API currently exposes the following local-only endpoints:
 - `POST /open` — Launch a suitable editor (or fallback instructions) for the requested file path and line.
 - `POST /feedback` — Capture Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer signals for the Fix Queue metrics.
 - `POST /notes/create` — Render a canonical template into an allowed vault path.
+- `POST /connectors/bookmarks/import`, `POST /connectors/highlights` — Import bookmarks and save manual highlights into `vault/manual-saves`.
 - `GET /settings`, `PUT /settings`, `POST /suggestions/{id}/dismiss` — Coach Mode preferences, cooldowns, and dismissal logging.
 
 Implementation details, request/response models, and example payloads live in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). 
@@ -272,7 +273,7 @@ Template-write APIs (implemented):
 
 Planned additions:
 
-- Fix Queue remediation flows, connector toggles, and richer lint guidance layered on top of the existing Routines/Health panels.
+- Fix Queue remediation flows, calendar connector toggles, and richer lint guidance layered on top of the existing Routines/Health panels.
 
 OpenAPI docs: `http://localhost:8080/docs`
 

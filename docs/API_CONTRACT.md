@@ -29,12 +29,14 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    13. [POST /routines/new-decision](#post-routinesnew-decision)
    14. [POST /routines/trip-debrief](#post-routinestrip-debrief)
    15. [POST /notes/create](#post-notescreate)
-   16. [GET /permissions](#get-permissions)
-   17. [GET /settings](#get-settings)
-   18. [PUT /settings](#put-settings)
-   19. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   20. [POST /feedback](#post-feedback)
-   21. [GET /health/fix-queue](#get-healthfix-queue)
+   16. [POST /connectors/bookmarks/import](#post-connectorsbookmarksimport)
+   17. [POST /connectors/highlights](#post-connectorshighlights)
+   18. [GET /permissions](#get-permissions)
+   19. [GET /settings](#get-settings)
+   20. [PUT /settings](#put-settings)
+   21. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   22. [POST /feedback](#post-feedback)
+   23. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -199,6 +201,24 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** Resolves templates from `docs/templates/`, fills `project`/`date`/`language` defaults plus any provided values, and writes to `target_path` (relative paths resolve under the configured vault). Scope and allowed-path checks mirror routine endpoints.
 - **Errors:** HTTP 400 for missing template/target path, 404 when the template does not exist, 403 for permission scope/path denials, and 500 for write failures.
 
+### POST /connectors/bookmarks/import
+
+- **Purpose:** Import a browser bookmarks HTML export and write each bookmark as a vault note.
+- **Implementation:** `bob/api/routes/connectors.py`.
+- **Request model:** `BookmarksImportRequest` with `source_path`, optional `project`, and optional `language`.
+- **Response model:** `BookmarksImportResponse` with `imported`, `created_paths`, and optional warnings for duplicate filenames.
+- **Behavior:** Parses the Netscape bookmarks export, writes notes under `vault/manual-saves/bookmarks/<project>/`, and enforces connector scope + allowed paths.
+- **Errors:** HTTP 400 for missing/invalid exports, HTTP 403 when the `browser_saves` connector is disabled or scope is below level 2, HTTP 500 for write failures.
+
+### POST /connectors/highlights
+
+- **Purpose:** Save a manual highlight note with optional source URL.
+- **Implementation:** `bob/api/routes/connectors.py`.
+- **Request model:** `HighlightCreateRequest` with `text`, optional `source_url`, optional `title`, and optional `project`/`language`/`date`.
+- **Response model:** `HighlightCreateResponse` with the created `file_path`.
+- **Behavior:** Writes notes under `vault/manual-saves/highlights/<project>/` and enforces connector scope + allowed paths.
+- **Errors:** HTTP 400 for empty highlight text, HTTP 403 when the `browser_saves` connector is disabled or scope is below level 2, HTTP 500 for write failures.
+
 ### GET /permissions
 
 - **Purpose:** Surface current permission scope and allowed vault paths for UI visibility.
@@ -348,6 +368,7 @@ Key models are defined in [`bob/api/schemas.py`](../bob/api/schemas.py). Example
 - `Source` carries `file_path`, `source_type`, `locator`, `similarity_score`, `project`, and optional Git metadata.
 - `RoutineRequest` / `RoutineResponse` cover all `/routines/*` actions: base fields (`project`, `language`, `date`, `top_k`) plus optional `slug`, `meeting_slug`, `meeting_date`, `participants`, `trip_name`, `trip_slug`, `decision_slug`, and `title`, and the rendered note path/content + retrieval buckets + warnings returned.
 - `NoteCreateRequest` / `NoteCreateResponse` capture template name, target path, placeholder values, and the rendered note content for manual template writes.
+- `BookmarksImportRequest` / `BookmarksImportResponse` and `HighlightCreateRequest` / `HighlightCreateResponse` capture connector imports and manual highlight saves.
 - `IndexRequest` / `IndexResponse` / `IndexProgress` capture job metadata, statuses, timestamps, and per-file errors.
 - `ProjectListResponse`, `DocumentListResponse`, and `DocumentInfo` provide project/document metadata for the UI.
 - `OpenRequest` / `OpenResponse`, `CoachSettings`, and `SuggestionDismissRequest` round out the coaching + editor flows.

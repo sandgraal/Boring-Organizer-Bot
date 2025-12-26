@@ -584,7 +584,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Add safe, explicit capture connectors without ambient surveillance.
 
-### Status: 🔜 Not Started
+### Status: 🔄 In Progress (bookmarks + highlights implemented; PDF annotations pending)
 
 ### Prerequisites
 
@@ -595,15 +595,15 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Bookmarks Import**
 
-   - [ ] Import browser HTML export
-   - [ ] Convert to local markdown files for indexing
-   - [ ] Preserve folder hierarchy as metadata
+   - [x] Import browser HTML export
+   - [x] Convert to local markdown files for indexing
+   - [x] Preserve folder hierarchy as metadata
 
 2. **Manual Highlights**
 
-   - [ ] "Save highlight to vault" action from UI
-   - [ ] Prompt for project + source URL
-   - [ ] Store highlight as a local note
+   - [x] "Save highlight to vault" action from UI
+   - [x] Prompt for project + source URL
+   - [x] Store highlight as a local note
 
 3. **PDF Annotation Import (Optional)**
    - [ ] Import highlights from local PDF reader exports
@@ -611,8 +611,8 @@ These are explicit non-goals to avoid scope creep:
 
 ### Acceptance Criteria
 
-- [ ] Bookmarks import creates local notes without network calls
-- [ ] Manual highlights are stored as local files and indexed
+- [x] Bookmarks import creates local notes without network calls
+- [x] Manual highlights are stored as local files and indexed
 - [ ] PDF annotations import is opt-in and best-effort
 
 ### Test Plan

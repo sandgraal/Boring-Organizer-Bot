@@ -2,7 +2,7 @@
 
 > Defines the routine entry points, templates, capture hygiene, feedback loops, and Coach Mode integration that make B.O.B a daily-use partner while honoring local-first constraints (manual triggers only, chunk → embed → store, metadata always includes project/date/language/source, docs limited to Markdown/PDF/recipes/notes/Git). All routines are built on the same retrieval pipeline that powers the Ask screen.
 
-> **Status:** In progress—routine endpoints and the UI Routines/Health pages are live, while lint-driven remediation and connector workflows remain on the roadmap (see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md) for the implemented stack).
+> **Status:** In progress—routine endpoints and the UI Routines/Health pages are live, browser-saves connectors (bookmarks/highlights) are implemented, while lint-driven remediation and calendar connectors remain on the roadmap (see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md) for the implemented stack).
 
 **Last Updated:** 2025-12-25
 
