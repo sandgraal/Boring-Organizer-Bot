@@ -78,6 +78,16 @@ Test how components work together.
 Aim for high test coverage but focus on critical paths.
 """)
 
+    # Additional document for another project
+    other_docs = temp_dir / "other-project"
+    other_docs.mkdir()
+    (other_docs / "other-details.md").write_text(
+        """# Other Project Details
+
+This document lives in a different project and introduces a unique search term: multi project token.
+"""
+    )
+
     old_timestamp = datetime(2020, 1, 1).timestamp()
     new_timestamp = datetime(2024, 1, 1).timestamp()
 
@@ -91,6 +101,7 @@ Aim for high test coverage but focus on critical paths.
 
     try:
         index_paths(paths=[docs], project="test-project", language="en")
+        index_paths(paths=[other_docs], project="other-project", language="en")
     finally:
         indexer_module.get_database = original_get_db
 
@@ -137,6 +148,35 @@ class TestSearch:
                 query="database design", project="nonexistent-project", top_k=5
             )
             assert len(results_empty) == 0
+        finally:
+            search_mod.get_database = original
+
+    def test_search_with_multiple_projects(self, indexed_docs: tuple[Path, Database]) -> None:
+        """Test that multiple project filters can be combined."""
+        search_mod = get_search_module()
+
+        _, test_db = indexed_docs
+
+        original = search_mod.get_database
+        search_mod.get_database = lambda: test_db
+
+        try:
+            # Search using multi-project filter should find the other-project doc
+            results_multi = search_mod.search(
+                query="multi project token",
+                projects=["test-project", "other-project"],
+                top_k=5,
+            )
+            assert len(results_multi) > 0
+            assert any(r.project == "other-project" for r in results_multi)
+
+            # Filtering by the first project only should not surface the other-project doc
+            results_single = search_mod.search(
+                query="multi project token",
+                project="test-project",
+                top_k=5,
+            )
+            assert all(r.project == "test-project" for r in results_single)
         finally:
             search_mod.get_database = original
 

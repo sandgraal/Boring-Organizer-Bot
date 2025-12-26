@@ -350,6 +350,7 @@ class Database:
         query_embedding: npt.NDArray[np.float32],
         limit: int = 5,
         project: str | None = None,
+        projects: list[str] | None = None,
         source_types: list[str] | None = None,
         date_after: datetime | None = None,
         date_before: datetime | None = None,
@@ -361,6 +362,7 @@ class Database:
             query_embedding: Query embedding vector.
             limit: Maximum number of results.
             project: Filter by project (optional).
+            projects: Filter by multiple projects (optional; overrides `project` if provided).
             source_types: Filter by source types (optional).
             date_after: Filter by documents after this date (optional).
             date_before: Filter by documents before this date (optional).
@@ -369,20 +371,46 @@ class Database:
         Returns:
             List of matching chunks with scores.
         """
+        def _normalize_projects(values: list[str] | None) -> list[str] | None:
+            if not values:
+                return None
+            filtered: list[str] = []
+            seen: set[str] = set()
+            for name in values:
+                if name and name not in seen:
+                    seen.add(name)
+                    filtered.append(name)
+            return filtered or None
+
+        raw_projects = projects or ([project] if project else None)
+        project_filters = _normalize_projects(raw_projects)
+
         if self.has_vec:
             return self._search_vec(
-                query_embedding, limit, project, source_types, date_after, date_before, language
+                query_embedding,
+                limit,
+                project_filters,
+                source_types,
+                date_after,
+                date_before,
+                language,
             )
         else:
             return self._search_fallback(
-                query_embedding, limit, project, source_types, date_after, date_before, language
+                query_embedding,
+                limit,
+                project_filters,
+                source_types,
+                date_after,
+                date_before,
+                language,
             )
 
     def _search_vec(
         self,
         query_embedding: npt.NDArray[np.float32],
         limit: int,
-        project: str | None,
+        projects: list[str] | None,
         source_types: list[str] | None,
         date_after: datetime | None,
         date_before: datetime | None,
@@ -392,9 +420,10 @@ class Database:
         conditions = []
         params: list[Any] = [query_embedding.tobytes()]
 
-        if project:
-            conditions.append("d.project = ?")
-            params.append(project)
+        if projects:
+            placeholders = ",".join("?" * len(projects))
+            conditions.append(f"d.project IN ({placeholders})")
+            params.extend(projects)
 
         if source_types:
             placeholders = ",".join("?" * len(source_types))
@@ -438,7 +467,7 @@ class Database:
         self,
         query_embedding: npt.NDArray[np.float32],
         limit: int,
-        project: str | None,
+        projects: list[str] | None,
         source_types: list[str] | None,
         date_after: datetime | None,
         date_before: datetime | None,
@@ -451,9 +480,10 @@ class Database:
         conditions = []
         params: list[Any] = []
 
-        if project:
-            conditions.append("d.project = ?")
-            params.append(project)
+        if projects:
+            placeholders = ",".join("?" * len(projects))
+            conditions.append(f"d.project IN ({placeholders})")
+            params.extend(projects)
 
         if source_types:
             placeholders = ",".join("?" * len(source_types))

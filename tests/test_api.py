@@ -272,8 +272,15 @@ class TestAskEndpoint:
         self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock
     ):
         """Ask endpoint accepts filter parameters."""
+        captured: dict[str, object | None] = {}
+
+        def fake_search(*, query, top_k, project=None, projects=None, **_kwargs):
+            captured["project"] = project
+            captured["projects"] = projects
+            return mock_search_results
+
         with (
-            patch("bob.api.routes.ask.search", return_value=mock_search_results),
+            patch("bob.api.routes.ask.search", side_effect=fake_search),
             patch("bob.api.routes.ask.get_database", return_value=mock_coach_db),
         ):
             response = client.post(
@@ -288,6 +295,8 @@ class TestAskEndpoint:
             )
 
         assert response.status_code == 200
+        assert captured["projects"] == ["test"]
+        assert captured["project"] == "test"
 
     def test_ask_source_includes_required_fields(
         self, client: TestClient, mock_search_results: list, mock_coach_db: MagicMock

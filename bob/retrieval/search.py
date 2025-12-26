@@ -89,6 +89,7 @@ def normalize_source_types(source_types: list[str] | None) -> list[str] | None:
 def search(
     query: str,
     project: str | None = None,
+    projects: list[str] | None = None,
     top_k: int | None = None,
     use_hybrid: bool | None = None,
     scoring_config: ScoringConfig | None = None,
@@ -106,7 +107,8 @@ def search(
 
     Args:
         query: Natural language query with optional syntax.
-        project: Filter by project (optional, overrides query syntax).
+        project: Filter by project (optional; used when `projects` is not provided).
+        projects: Filter by multiple projects (optional; overrides `project` when present).
         top_k: Number of results to return.
         use_hybrid: Enable hybrid scoring (vector + keyword matching).
             If None, uses config.search.hybrid_enabled setting.
@@ -123,11 +125,26 @@ def search(
     config = get_config()
     top_k = top_k or config.defaults.top_k
 
-    # Parse the query for advanced syntax
     parsed = parse_query(query)
 
-    # Use parsed project filter if no explicit project given
-    effective_project = project or parsed.project_filter
+    # Derive project filters: prefer explicit list, fallback to single project,
+    # and always include parsed project filters without duplicates.
+    project_candidates: list[str] = []
+    seen_projects: set[str] = set()
+
+    def _add_project(name: str | None) -> None:
+        if name and name not in seen_projects:
+            seen_projects.add(name)
+            project_candidates.append(name)
+
+    if projects:
+        for project_name in projects:
+            _add_project(project_name)
+    else:
+        _add_project(project)
+
+    _add_project(parsed.project_filter)
+    effective_projects = project_candidates or None
     normalized_types = normalize_source_types(source_types)
 
     # Determine if hybrid scoring should be used
@@ -160,7 +177,7 @@ def search(
     raw_results = db.search_similar(
         query_embedding,
         limit=fetch_limit,
-        project=effective_project,
+        projects=effective_projects,
         source_types=normalized_types,
         date_after=date_after,
         date_before=date_before,
