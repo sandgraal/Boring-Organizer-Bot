@@ -1957,6 +1957,13 @@
       return `<span class="citation" data-source="${num}" title="View source ${num}">${num}</span>`;
     });
 
+    const unsupported = response.audit?.unsupported_spans || [];
+    if (unsupported.length > 0) {
+      const warning =
+        '<div class="answer-unsupported-banner">⚠️ Unsupported text detected. See Audit for details.</div>';
+      answerHtml = `${warning}<div class="answer-unsupported-text">${answerHtml}</div>`;
+    }
+
     elements.answerText.innerHTML = answerHtml;
 
     // Render footer

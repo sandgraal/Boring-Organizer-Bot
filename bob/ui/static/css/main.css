@@ -773,6 +773,22 @@ code {
   line-height: 1.8;
 }
 
+.answer-unsupported-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  color: var(--color-warning);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.answer-unsupported-text {
+  background: var(--color-warning-light);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-md);
+}
+
 .answer-text .citation {
   display: inline-flex;
   align-items: center;
