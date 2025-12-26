@@ -49,7 +49,7 @@ Every answer must:
 
 ## Routines Roadmap
 
-B.O.B ships today with the Ask/Library/Indexing/Settings UI and the CLI/API surface described above. The multi-routine, fix-queue, and template-driven workflows are still in the plan stage. The actions and behaviors we intend to deliver are captured in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and include:
+B.O.B ships today with the Ask/Library/Indexing/Settings/Routines/Health UI and the CLI/API surface described above. The deeper lint-driven Fix Queue remediation, connector toggles, and automated coaching workflows are still in the plan stage. The actions and behaviors we intend to deliver are captured in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and include:
 
 - **Daily Check-in / End-of-Day Debrief** → structured daily notes seeded from `open_loops` and recent context.
 - **Meeting Prep / Debrief** → pre-flight bundles of agenda bullets, decisions, rejected options, and next actions with citations.
@@ -57,7 +57,7 @@ B.O.B ships today with the Ask/Library/Indexing/Settings UI and the CLI/API surf
 - **New Decision / Trip Debrief** → guided templates for decisions, learnings, checklist seeds, and reusable insights.
 - **Fix Queue** → health metrics, lint flags, and ingestion problems surfaced as prioritized tasks before optional-generation layers ship.
 
-The API now exposes template-driven endpoints for `POST /routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief`, each writing into the vault with citations, while the visual Routines/Fix Queue surfaces remain on the roadmap (see `docs/CURRENT_STATE.md` for the UI gaps).
+The API now exposes template-driven endpoints for `POST /routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief`, each writing into the vault with citations. The UI now includes Routines and Health panels to run these templates and review Fix Queue signals, while deeper remediation workflows remain on the roadmap (see `docs/CURRENT_STATE.md` for details).
 
 ## Modes
 
@@ -76,7 +76,7 @@ Coach Mode adds a separate **“Suggestions (Coach Mode)”** section while pres
 
 ## Knowledge Health & Fix Queue (current API + roadmap)
 
-At the moment, the main health insight is `GET /health`, which reports whether the server is running, the version, the database status, and how many documents are indexed. For richer telemetry (Fix Queue, ingestion errors, metadata gaps, repeated questions, stale decisions, coach-driven tasks) refer to the Fix Queue design in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and the data-metric goals in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). That roadmap also explains how each metric will feed a prioritized task list before optional generation features ship.
+The Health tab surfaces `GET /health` and `GET /health/fix-queue`, reporting whether the server is running, the version, indexed document counts, and failure signals that drive Fix Queue tasks. For deeper telemetry (ingestion errors, metadata gaps, repeated questions, stale decisions, coach-driven tasks) refer to the Fix Queue design in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and the data-metric goals in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md). That roadmap also explains how each metric will feed a prioritized task list before optional generation features ship.
 
 ## Quick Start
 
@@ -251,7 +251,7 @@ Template-write APIs (implemented):
 
 Planned additions:
 
-- Routines UI and Fix Queue dashboard — the API already writes the notes above, but the UI surface that drives/save these templates remains on the roadmap.
+- Fix Queue remediation flows, connector toggles, and richer lint guidance layered on top of the existing Routines/Health panels.
 
 OpenAPI docs: `http://localhost:8080/docs`
 
@@ -263,8 +263,8 @@ B.O.B includes a local UI designed to be **inspectable**:
 - **Library**: browse indexed documents, drill into chunks, view sources.
 - **Indexing**: dispatch indexing jobs via `/index` and monitor progress.
 - **Settings**: Coach Mode preferences and toggle state via `/settings`.
-- **Routines** (planned): one-click daily/meeting/weekly flows driven by the spec in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md).
-- **Health** (planned): Fix Queue metrics, ingestion insights, and stale-decision radars before optional generation layers ship.
+- **Routines**: one-click daily/meeting/weekly/decision/trip flows driven by the spec in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md).
+- **Health**: Fix Queue metrics, ingestion insights, and stale-decision radars before optional generation layers ship.
 
 All features work offline — no external network requests.
 

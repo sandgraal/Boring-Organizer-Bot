@@ -28,6 +28,34 @@
       description:
         "Highlight the week, flag stale decisions, and note actions for next week.",
     },
+    {
+      id: "meeting-prep",
+      label: "Meeting Prep",
+      cadence: "Meeting",
+      description:
+        "Pull recent decisions and open questions into an agenda-ready prep note.",
+    },
+    {
+      id: "meeting-debrief",
+      label: "Meeting Debrief",
+      cadence: "Meeting",
+      description:
+        "Capture decisions, rejected options, and next steps right after a meeting.",
+    },
+    {
+      id: "new-decision",
+      label: "New Decision",
+      cadence: "Ad hoc",
+      description:
+        "Document a fresh decision with cited evidence and conflicting context.",
+    },
+    {
+      id: "trip-debrief",
+      label: "Trip Debrief",
+      cadence: "Trip",
+      description:
+        "Turn travel notes into reusable lessons, checklists, and recipes.",
+    },
   ];
 
   const DEFAULT_ROUTINE_ID = ROUTINE_ACTIONS[0]?.id ?? null;
@@ -160,6 +188,18 @@
     elements.routineProjectOptions = document.getElementById("routine-project-options");
     elements.routineDateInput = document.getElementById("routine-date-input");
     elements.routineTopKInput = document.getElementById("routine-topk-input");
+    elements.routineMeetingSlug = document.getElementById("routine-meeting-slug");
+    elements.routineMeetingDate = document.getElementById("routine-meeting-date");
+    elements.routineMeetingParticipants = document.getElementById(
+      "routine-meeting-participants"
+    );
+    elements.routineDecisionTitle = document.getElementById(
+      "routine-decision-title"
+    );
+    elements.routineDecisionSlug = document.getElementById("routine-decision-slug");
+    elements.routineTripName = document.getElementById("routine-trip-name");
+    elements.routineTripSlug = document.getElementById("routine-trip-slug");
+    elements.routineFieldLabels = document.querySelectorAll(".routine-field");
     elements.routineStatus = document.getElementById("routine-status");
     elements.routineWarnings = document.getElementById("routine-warnings");
     elements.routinePreviewContent = document.getElementById("routine-preview-content");
@@ -363,9 +403,20 @@
     elements.routineActionsList.innerHTML = html.join("");
   }
 
+  function updateRoutineFieldVisibility(actionId) {
+    if (!elements.routineFieldLabels) return;
+    elements.routineFieldLabels.forEach((field) => {
+      const targets = field.dataset.routines || "";
+      const targetList = targets.split(/\s+/).filter(Boolean);
+      const isVisible = targetList.includes(actionId);
+      field.classList.toggle("hidden", !isVisible);
+    });
+  }
+
   function renderRoutineDetails() {
     const actionId = state.selectedRoutineId || DEFAULT_ROUTINE_ID;
     const action = getRoutineAction(actionId);
+    updateRoutineFieldVisibility(action?.id);
 
     if (elements.routinePreviewTitle) {
       elements.routinePreviewTitle.textContent =
@@ -468,6 +519,10 @@
       : "Run routine";
   }
 
+  function isRoutineFieldVisible(element) {
+    return element && !element.closest(".hidden");
+  }
+
   function buildRoutinePayload(overrides = {}) {
     const payload = { ...overrides };
     if (!("project" in payload)) {
@@ -486,6 +541,61 @@
       const topK = parseInt(elements.routineTopKInput?.value, 10);
       if (!Number.isNaN(topK) && topK > 0) {
         payload.top_k = topK;
+      }
+    }
+    if (!("meeting_slug" in payload) && isRoutineFieldVisible(elements.routineMeetingSlug)) {
+      const meetingSlug = elements.routineMeetingSlug?.value.trim();
+      if (meetingSlug) {
+        payload.meeting_slug = meetingSlug;
+      }
+    }
+    if (!("meeting_date" in payload) && isRoutineFieldVisible(elements.routineMeetingDate)) {
+      const meetingDate = elements.routineMeetingDate?.value;
+      if (meetingDate) {
+        payload.meeting_date = meetingDate;
+      }
+    }
+    if (
+      !("participants" in payload) &&
+      isRoutineFieldVisible(elements.routineMeetingParticipants)
+    ) {
+      const participantsRaw = elements.routineMeetingParticipants?.value || "";
+      const participants = participantsRaw
+        .split(",")
+        .map((entry) => entry.trim())
+        .filter(Boolean);
+      if (participants.length > 0) {
+        payload.participants = participants;
+      }
+    }
+    if (
+      !("title" in payload) &&
+      isRoutineFieldVisible(elements.routineDecisionTitle)
+    ) {
+      const decisionTitle = elements.routineDecisionTitle?.value.trim();
+      if (decisionTitle) {
+        payload.title = decisionTitle;
+      }
+    }
+    if (
+      !("decision_slug" in payload) &&
+      isRoutineFieldVisible(elements.routineDecisionSlug)
+    ) {
+      const decisionSlug = elements.routineDecisionSlug?.value.trim();
+      if (decisionSlug) {
+        payload.decision_slug = decisionSlug;
+      }
+    }
+    if (!("trip_name" in payload) && isRoutineFieldVisible(elements.routineTripName)) {
+      const tripName = elements.routineTripName?.value.trim();
+      if (tripName) {
+        payload.trip_name = tripName;
+      }
+    }
+    if (!("trip_slug" in payload) && isRoutineFieldVisible(elements.routineTripSlug)) {
+      const tripSlug = elements.routineTripSlug?.value.trim();
+      if (tripSlug) {
+        payload.trip_slug = tripSlug;
       }
     }
     return payload;

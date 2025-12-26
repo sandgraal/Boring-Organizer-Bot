@@ -25,9 +25,9 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - Static UI (`GET /`) + `/static/*` – `bob/api.app.create_app` mounts `bob/ui/static` and serves `bob/ui/index.html`.
 
 ## Web UI (`bob/ui/`)
-- Built as a 3-pane experience with navigation tabs (Ask, Library, Indexing, Settings), filter sidebar, answer + footer, suggestion list, and sources panel.
-- Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, and `settings` endpoints today.
-- Coach Mode toggle, source footer, and “not found”/error states are functional; the currently visible UI still does *not include the planned `/routines` or Fix Queue flows even though the API now exposes `/routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief`.
+- Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar, answer + footer, suggestion list, and sources panel.
+- Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, and `health/fix-queue` endpoints today.
+- Coach Mode toggle, source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks.
 
 ## Data & Quality Helpers
 - **Watchlist**: `.bob_watchlist.yaml` entries (via `bob.watchlist`) define repeated indexing targets so users can `bob index --watchlist`.
@@ -36,9 +36,9 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - **Evaluation suite**: `bob.eval.runner` computes recall/precision/MRR metrics, while `tests/` + CLI commands offer regression tooling out of the box.
 
 ## Known Gaps & Next Steps
-1. **Routines & Fix Queue** – The detailed workflow in `docs/ROUTINES_SPEC.md` guides the captures and citations. `/routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief` now write their canonical templates into `vault/routines/`, `vault/meetings/`, `vault/decisions/`, and `vault/trips/` with cited retrieval buckets, and `POST /feedback` feeds `GET /health/fix-queue`, but the Routines/Fix Queue UI panels and automated surfacing remain unimplemented.
+1. **Routines & Fix Queue depth** - The detailed workflow in `docs/ROUTINES_SPEC.md` guides the captures and citations. `/routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief` now write their canonical templates into `vault/routines/`, `vault/meetings/`, `vault/decisions/`, and `vault/trips/` with cited retrieval buckets, and `POST /feedback` feeds `GET /health/fix-queue`. The UI still lacks deeper lint-driven remediation and connector toggles beyond running routines.
 2. **Coach Mode UI integration** – The UI exposes a toggle and suggestions list, but coach suggestions are limited to explainers from `/ask` rather than actionable routine prompts until the Fix Queue landings ship.
 3. **Planner + decision lifecycle automation** – While the API now provides the individual routine endpoints, the orchestration that wires them into recurring planner flows, automatic decision superseding, and coach-driven nudges still awaits UI triggers and actionable Fix Queue guidance in `docs/IMPLEMENTATION_PLAN.md`.
-4. **Health dashboard** – A Fix Queue dashboard and ingestion telemetry are described in the implementation plan; `/health/fix-queue` now delivers the failure signals (not-found frequency, metadata gaps, repeated questions), but the UI surface is still pending.
+4. **Health dashboard follow-through** - A Fix Queue dashboard and ingestion telemetry are described in the implementation plan; `/health/fix-queue` now delivers the failure signals (not-found frequency, metadata gaps, repeated questions), but task remediation beyond running routines remains manual.
 
 This document should be update-first when anything in the CLI/API/UI surface changes; it drives PR descriptions so contributors can immediately see “what works vs. what still needs to be built.”
