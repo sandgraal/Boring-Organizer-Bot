@@ -201,6 +201,8 @@ class TestDatabaseOperations:
             language="",
             source_date=None,
         )
+        total = test_db.get_missing_metadata_total()
+        assert total >= 1
 
     def test_run_migration_add_column_if_not_exists(self, test_db, temp_dir):
         migration_file = Path(temp_dir) / "999_add_column.sql"
@@ -215,9 +217,6 @@ class TestDatabaseOperations:
             for row in test_db.conn.execute("PRAGMA table_info(documents)").fetchall()
         ]
         assert "test_flag" in columns
-
-        total = test_db.get_missing_metadata_total()
-        assert total >= 1
 
     def test_feedback_metrics_repeated_question_window(self, test_db):
         test_db.log_feedback(
