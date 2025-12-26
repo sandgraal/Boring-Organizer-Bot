@@ -33,9 +33,7 @@ def parse_duration_to_days(raw: str) -> int:
     """Parse a duration string into days (e.g., 90d, 6w, 6m, 1y)."""
     match = _DURATION_PATTERN.match(raw.strip())
     if not match:
-        raise click.UsageError(
-            "Invalid duration. Use formats like 90d, 6w, 6m, or 1y."
-        )
+        raise click.UsageError("Invalid duration. Use formats like 90d, 6w, 6m, or 1y.")
     value = int(match.group("value"))
     unit = (match.group("unit") or "d").lower()
     if value <= 0:
@@ -1320,9 +1318,7 @@ def mcp(host: str | None, port: int | None) -> None:
     config = get_config()
     target_host = host or config.mcp.host
     if target_host not in {"127.0.0.1", "localhost"}:
-        console.print(
-            f"[bold yellow]⚠️  Warning:[/] Binding MCP server to [cyan]{target_host}[/]"
-        )
+        console.print(f"[bold yellow]⚠️  Warning:[/] Binding MCP server to [cyan]{target_host}[/]")
         console.print("   This exposes the MCP server to your network. No auth is enabled.")
         console.print()
 

@@ -61,12 +61,8 @@ ISO_DATE_RE = re.compile(
 )
 SLASH_DATE_RE = re.compile(r"\b\d{4}/\d{2}/\d{2}\b")
 DOT_DATE_RE = re.compile(r"\b\d{4}\.\d{2}\.\d{2}\b")
-MONTH_NAME_RE = re.compile(
-    rf"\b(?:{'|'.join(MONTHS)})\s+\d{{1,2}},\s+\d{{4}}\b", re.IGNORECASE
-)
-DAY_MONTH_RE = re.compile(
-    rf"\b\d{{1,2}}\s+(?:{'|'.join(MONTHS)})\s+\d{{4}}\b", re.IGNORECASE
-)
+MONTH_NAME_RE = re.compile(rf"\b(?:{'|'.join(MONTHS)})\s+\d{{1,2}},\s+\d{{4}}\b", re.IGNORECASE)
+DAY_MONTH_RE = re.compile(rf"\b\d{{1,2}}\s+(?:{'|'.join(MONTHS)})\s+\d{{4}}\b", re.IGNORECASE)
 
 
 def extract_date_from_content(content: str) -> datetime | None:

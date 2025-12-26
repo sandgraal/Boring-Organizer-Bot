@@ -302,7 +302,7 @@ class HybridScorer:
             recency_scores = [1.0] * len(results)
 
         # Combine scores
-        scored_results: list[ScoredResult] = []
+        scored_results: list[tuple[float, ScoredResult]] = []
         for i, result in enumerate(results):
             v_score = normalized_vector[i]
             k_score = normalized_keyword[i]
@@ -315,21 +315,24 @@ class HybridScorer:
             final_score = min(1.0, base_score * r_score * metadata_boost)
 
             scored_results.append(
-                ScoredResult(
-                    chunk_id=result.get("id", 0),
-                    content=result.get("content", ""),
-                    vector_score=v_score,
-                    keyword_score=k_score,
-                    recency_score=r_score,
-                    final_score=final_score,
-                    metadata=result,
+                (
+                    metadata_boost,
+                    ScoredResult(
+                        chunk_id=result.get("id", 0),
+                        content=result.get("content", ""),
+                        vector_score=v_score,
+                        keyword_score=k_score,
+                        recency_score=r_score,
+                        final_score=final_score,
+                        metadata=result,
+                    ),
                 )
             )
 
         # Sort by final score (descending)
-        scored_results.sort(key=lambda x: x.final_score, reverse=True)
+        scored_results.sort(key=lambda x: (x[1].final_score, x[0]), reverse=True)
 
-        return scored_results
+        return [item[1] for item in scored_results]
 
     def _metadata_boost(
         self,

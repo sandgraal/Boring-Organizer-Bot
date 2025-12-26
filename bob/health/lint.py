@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from typing import Any
 
 import yaml
 
 from bob.config import Config
-
 
 REQUIRED_METADATA_FIELDS = ("project", "date", "language", "source")
 HEADING_PATTERN = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
@@ -29,9 +28,7 @@ class LintIssue:
 def collect_capture_lint_issues(config: Config, *, limit: int = 10) -> list[LintIssue]:
     """Scan allowed vault paths for capture hygiene issues."""
     vault_root = config.paths.vault.resolve()
-    allowed_dirs = _resolve_allowed_directories(
-        vault_root, config.permissions.allowed_vault_paths
-    )
+    allowed_dirs = _resolve_allowed_directories(vault_root, config.permissions.allowed_vault_paths)
 
     issues: list[LintIssue] = []
     for path in _collect_markdown_files(allowed_dirs):
@@ -113,9 +110,7 @@ def _lint_file(path: Path) -> list[LintIssue]:
                     code="missing_rationale",
                     file_path=path,
                     message=(
-                        "Decision capture missing "
-                        + " / ".join(missing_rationale)
-                        + " section(s)."
+                        "Decision capture missing " + " / ".join(missing_rationale) + " section(s)."
                     ),
                     priority=2,
                 )
@@ -130,27 +125,25 @@ def _lint_file(path: Path) -> list[LintIssue]:
                 )
             )
 
-    if _is_path_segment(path, "meetings"):
-        if "next actions" not in headings:
-            issues.append(
-                LintIssue(
-                    code="missing_next_actions",
-                    file_path=path,
-                    message="Meeting capture missing Next Actions section.",
-                    priority=3,
-                )
+    if _is_path_segment(path, "meetings") and "next actions" not in headings:
+        issues.append(
+            LintIssue(
+                code="missing_next_actions",
+                file_path=path,
+                message="Meeting capture missing Next Actions section.",
+                priority=3,
             )
+        )
 
-    if _is_path_segment(path, "trips"):
-        if "checklist seeds" not in headings:
-            issues.append(
-                LintIssue(
-                    code="missing_next_actions",
-                    file_path=path,
-                    message="Trip debrief missing Checklist Seeds section.",
-                    priority=3,
-                )
+    if _is_path_segment(path, "trips") and "checklist seeds" not in headings:
+        issues.append(
+            LintIssue(
+                code="missing_next_actions",
+                file_path=path,
+                message="Trip debrief missing Checklist Seeds section.",
+                priority=3,
             )
+        )
 
     return issues
 

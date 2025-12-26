@@ -193,9 +193,7 @@ class NoteCreateRequest(BaseModel):
     project: str | None = Field(None, description="Project context for the note")
     language: str | None = Field(None, description="ISO 639-1 language code for the note")
     date: DateType | None = Field(None, description="Date for the note (YYYY-MM-DD)")
-    values: dict[str, str] = Field(
-        default_factory=dict, description="Template placeholder values"
-    )
+    values: dict[str, str] = Field(default_factory=dict, description="Template placeholder values")
 
 
 class NoteCreateResponse(BaseModel):

@@ -81,29 +81,23 @@ def _format_permission_denial_details(metrics: dict[str, Any]) -> str:
     return f"{', '.join(parts)} {label}{window_note}"
 
 
-def _format_low_volume_details(
-    projects: list[dict[str, Any]], threshold: int
-) -> str:
+def _format_low_volume_details(projects: list[dict[str, Any]], threshold: int) -> str:
     """Describe low document coverage by project."""
     if not projects:
         return "No projects below minimum document count."
     preview = ", ".join(
-        f"{item['project'] or 'unknown'} ({item['document_count']})"
-        for item in projects[:3]
+        f"{item['project'] or 'unknown'} ({item['document_count']})" for item in projects[:3]
     )
     label = "project" if len(projects) == 1 else "projects"
     return f"{len(projects)} {label} under {threshold} docs: {preview}"
 
 
-def _format_low_hit_rate_details(
-    projects: list[dict[str, Any]], threshold: float
-) -> str:
+def _format_low_hit_rate_details(projects: list[dict[str, Any]], threshold: float) -> str:
     """Describe low retrieval hit rates by project."""
     if not projects:
         return "No projects below hit-rate threshold."
     preview = ", ".join(
-        f"{item['project']} ({item['hit_rate'] * 100:.0f}% hits)"
-        for item in projects[:3]
+        f"{item['project']} ({item['hit_rate'] * 100:.0f}% hits)" for item in projects[:3]
     )
     label = "project" if len(projects) == 1 else "projects"
     return f"{len(projects)} {label} below {threshold * 100:.0f}% hit rate: {preview}"
@@ -113,9 +107,7 @@ def _format_metadata_offenders_details(entries: list[dict[str, Any]]) -> str:
     """Describe top metadata offenders by file count."""
     if not entries:
         return "No metadata offenders detected."
-    preview = ", ".join(
-        f"{item['project']} ({item['count']})" for item in entries[:3]
-    )
+    preview = ", ".join(f"{item['project']} ({item['count']})" for item in entries[:3])
     label = "project" if len(entries) == 1 else "projects"
     return f"Top {label}: {preview}"
 
@@ -209,10 +201,7 @@ def _build_fix_queue_tasks(
         elif reason_code == "path":
             action = "allow_path"
             target = target_path
-            reason = (
-                f"Routine '{action_name}' tried to write outside allowed paths: "
-                f"{target_path}"
-            )
+            reason = f"Routine '{action_name}' tried to write outside allowed paths: {target_path}"
             priority = 3
         else:
             action = "review_permissions"
@@ -220,9 +209,9 @@ def _build_fix_queue_tasks(
             reason = f"Permission denial for '{action_name}' writing to {target_path}"
             priority = 3
 
-        task_id = hashlib.sha1(
-            f"{reason_code}:{action_name}:{target_path}".encode("utf-8")
-        ).hexdigest()[:10]
+        task_id = hashlib.sha1(f"{reason_code}:{action_name}:{target_path}".encode()).hexdigest()[
+            :10
+        ]
         tasks.append(
             FixQueueTask(
                 id=f"permission-{task_id}",
@@ -240,9 +229,7 @@ def _build_lint_tasks(lint_issues: list[LintIssue]) -> list[FixQueueTask]:
     """Create Fix Queue tasks from capture lint issues."""
     tasks: list[FixQueueTask] = []
     for issue in lint_issues:
-        task_hash = hashlib.sha1(
-            f"{issue.code}:{issue.file_path}".encode("utf-8")
-        ).hexdigest()[:10]
+        task_hash = hashlib.sha1(f"{issue.code}:{issue.file_path}".encode()).hexdigest()[:10]
         action = "fix_metadata" if issue.code == "missing_metadata" else "fix_capture"
         tasks.append(
             FixQueueTask(
@@ -328,16 +315,12 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         FailureSignal(
             name="low_indexed_volume",
             value=len(low_volume_projects),
-            details=_format_low_volume_details(
-                low_volume_projects, low_volume_threshold
-            ),
+            details=_format_low_volume_details(low_volume_projects, low_volume_threshold),
         ),
         FailureSignal(
             name="low_retrieval_hit_rate",
             value=len(low_hit_rate_projects),
-            details=_format_low_hit_rate_details(
-                low_hit_rate_projects, low_hit_rate_threshold
-            ),
+            details=_format_low_hit_rate_details(low_hit_rate_projects, low_hit_rate_threshold),
         ),
     ]
 

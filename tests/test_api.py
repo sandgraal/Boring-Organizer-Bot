@@ -160,9 +160,7 @@ class TestHealthFixQueueEndpoint:
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = metadata
         mock_db.get_missing_metadata_total.return_value = 1
-        mock_db.get_missing_metadata_counts.return_value = [
-            {"project": "docs", "count": 1}
-        ]
+        mock_db.get_missing_metadata_counts.return_value = [{"project": "docs", "count": 1}]
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
         mock_db.get_project_document_counts.return_value = [
             {"project": "docs", "document_count": 2}
@@ -179,12 +177,15 @@ class TestHealthFixQueueEndpoint:
             {"days": 180, "count": 1},
         ]
 
-        with patch(
-            "bob.api.routes.health.get_database",
-            return_value=mock_db,
-        ), patch(
-            "bob.api.routes.health.collect_capture_lint_issues",
-            return_value=lint_issues,
+        with (
+            patch(
+                "bob.api.routes.health.get_database",
+                return_value=mock_db,
+            ),
+            patch(
+                "bob.api.routes.health.collect_capture_lint_issues",
+                return_value=lint_issues,
+            ),
         ):
             response = client.get("/health/fix-queue", params={"project": "docs"})
 
@@ -192,16 +193,12 @@ class TestHealthFixQueueEndpoint:
         data = response.json()
         assert any(f["name"] == "not_found_frequency" for f in data["failure_signals"])
         assert any(f["name"] == "metadata_deficits" for f in data["failure_signals"])
-        assert any(
-            f["name"] == "metadata_top_offenders" for f in data["failure_signals"]
-        )
+        assert any(f["name"] == "metadata_top_offenders" for f in data["failure_signals"])
         assert any(f["name"] == "stale_notes" for f in data["failure_signals"])
         assert any(f["name"] == "stale_decisions" for f in data["failure_signals"])
         assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
         assert any(f["name"] == "low_indexed_volume" for f in data["failure_signals"])
-        assert any(
-            f["name"] == "low_retrieval_hit_rate" for f in data["failure_signals"]
-        )
+        assert any(f["name"] == "low_retrieval_hit_rate" for f in data["failure_signals"])
         assert len(data["tasks"]) == 5
         targets = [t["target"] for t in data["tasks"]]
         assert "/docs/notes.md" in targets
@@ -228,12 +225,15 @@ class TestHealthFixQueueEndpoint:
         mock_db.get_stale_document_buckets.return_value = []
         mock_db.get_stale_decision_buckets.return_value = []
 
-        with patch(
-            "bob.api.routes.health.get_database",
-            return_value=mock_db,
-        ), patch(
-            "bob.api.routes.health.collect_capture_lint_issues",
-            return_value=[],
+        with (
+            patch(
+                "bob.api.routes.health.get_database",
+                return_value=mock_db,
+            ),
+            patch(
+                "bob.api.routes.health.collect_capture_lint_issues",
+                return_value=[],
+            ),
         ):
             response = client.get("/health/fix-queue")
 

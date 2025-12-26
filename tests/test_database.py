@@ -1,7 +1,6 @@
 """Tests for the database module."""
 
 from datetime import datetime, timedelta
-
 from pathlib import Path
 
 from bob.db.database import compute_content_hash
@@ -213,8 +212,7 @@ class TestDatabaseOperations:
         test_db._run_migration(migration_file, 999)
 
         columns = [
-            row["name"]
-            for row in test_db.conn.execute("PRAGMA table_info(documents)").fetchall()
+            row["name"] for row in test_db.conn.execute("PRAGMA table_info(documents)").fetchall()
         ]
         assert "test_flag" in columns
 
@@ -262,9 +260,7 @@ class TestDatabaseOperations:
             source_date=recent_date,
         )
 
-        buckets = test_db.get_stale_document_buckets(
-            buckets_days=[90, 180], source_type="markdown"
-        )
+        buckets = test_db.get_stale_document_buckets(buckets_days=[90, 180], source_type="markdown")
         bucket_by_days = {item["days"]: item["count"] for item in buckets}
         assert bucket_by_days[90] >= 1
         assert bucket_by_days[180] >= 1

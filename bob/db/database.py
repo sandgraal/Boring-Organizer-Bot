@@ -157,9 +157,9 @@ class Database:
             for statement in statements:
                 statement = statement.strip()
                 if statement and "INSERT INTO schema_migrations" not in statement:
-                    statement = self._rewrite_add_column_if_not_exists(statement)
-                    if statement:
-                        self.conn.execute(statement)
+                    rewritten = self._rewrite_add_column_if_not_exists(statement)
+                    if rewritten:
+                        self.conn.execute(rewritten)
 
             # Check if already recorded
             cursor = self.conn.execute(
@@ -980,8 +980,7 @@ class Database:
             (limit,),
         )
         return [
-            {"project": row["project"], "count": int(row["count"])}
-            for row in cursor.fetchall()
+            {"project": row["project"], "count": int(row["count"])} for row in cursor.fetchall()
         ]
 
     def get_stale_document_buckets(

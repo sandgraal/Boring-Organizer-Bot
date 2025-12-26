@@ -53,8 +53,6 @@ class RoutineAction:
     placeholder_fn: PlaceholderFn | None = None
 
 
-
-
 def _resolve_date_after(target_date: date, offset: timedelta | None) -> datetime | None:
     """Return the lower datetime bound relative to the target date."""
     if offset is None:
