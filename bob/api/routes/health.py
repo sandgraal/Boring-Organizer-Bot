@@ -253,7 +253,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     metadata_total = db.get_missing_metadata_total(project=project)
     metadata_counts = db.get_missing_metadata_counts(project=project)
     permission_metrics = db.get_permission_denial_metrics(project=project)
-    lint_issues = collect_capture_lint_issues(config)
+    lint_issues = collect_capture_lint_issues(config, project=project)
     project_counts = db.get_project_document_counts(project=project)
     low_volume_threshold = config.health.low_volume_document_threshold
     low_volume_projects = [

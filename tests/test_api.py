@@ -185,7 +185,7 @@ class TestHealthFixQueueEndpoint:
             patch(
                 "bob.api.routes.health.collect_capture_lint_issues",
                 return_value=lint_issues,
-            ),
+            ) as mock_collect,
         ):
             response = client.get("/health/fix-queue", params={"project": "docs"})
 
@@ -212,6 +212,7 @@ class TestHealthFixQueueEndpoint:
         assert mock_db.get_search_history_stats.call_args.kwargs["project"] == "docs"
         assert mock_db.get_stale_document_buckets.call_args.kwargs["project"] == "docs"
         assert mock_db.get_stale_decision_buckets.call_args.kwargs["project"] == "docs"
+        assert mock_collect.call_args.kwargs["project"] == "docs"
 
     def test_fix_queue_priorities_favor_high_frequency(self, client: TestClient):
         metrics = {

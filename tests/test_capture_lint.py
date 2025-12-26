@@ -100,3 +100,48 @@ source: "routine/daily-checkin"
     assert meeting_path in paths
     assert trip_path in paths
     assert routine_path in paths
+
+
+def test_capture_lint_filters_by_project(tmp_path: Path) -> None:
+    vault = tmp_path / "vault"
+
+    alpha_path = vault / "decisions" / "decision-alpha.md"
+    _write(
+        alpha_path,
+        """---
+project: "alpha"
+date: "2025-01-01"
+language: "en"
+source: "template/decision"
+---
+# Decision Record
+
+### Decision
+- Summary:
+""",
+    )
+
+    beta_path = vault / "decisions" / "decision-beta.md"
+    _write(
+        beta_path,
+        """---
+project: "beta"
+date: "2025-01-02"
+language: "en"
+source: "template/decision"
+---
+# Decision Record
+
+### Decision
+- Summary:
+""",
+    )
+
+    config = Config(
+        paths=PathsConfig(vault=vault),
+        permissions=PermissionsConfig(allowed_vault_paths=["vault/decisions"]),
+    )
+
+    issues = collect_capture_lint_issues(config, limit=10, project="alpha")
+    assert issues
+    assert {issue.file_path for issue in issues} == {alpha_path}

@@ -25,14 +25,16 @@ class LintIssue:
     priority: int
 
 
-def collect_capture_lint_issues(config: Config, *, limit: int = 10) -> list[LintIssue]:
+def collect_capture_lint_issues(
+    config: Config, *, limit: int = 10, project: str | None = None
+) -> list[LintIssue]:
     """Scan allowed vault paths for capture hygiene issues."""
     vault_root = config.paths.vault.resolve()
     allowed_dirs = _resolve_allowed_directories(vault_root, config.permissions.allowed_vault_paths)
 
     issues: list[LintIssue] = []
     for path in _collect_markdown_files(allowed_dirs):
-        issues.extend(_lint_file(path))
+        issues.extend(_lint_file(path, project=project))
         if len(issues) >= limit:
             return issues[:limit]
     return issues
@@ -75,7 +77,7 @@ def _collect_markdown_files(allowed_dirs: list[Path]) -> list[Path]:
     return sorted(files)
 
 
-def _lint_file(path: Path) -> list[LintIssue]:
+def _lint_file(path: Path, *, project: str | None = None) -> list[LintIssue]:
     """Lint a single markdown file for missing metadata and sections."""
     try:
         content = path.read_text(encoding="utf-8")
@@ -84,6 +86,8 @@ def _lint_file(path: Path) -> list[LintIssue]:
 
     lines = content.splitlines()
     frontmatter = _parse_frontmatter(lines)
+    if project and not _frontmatter_project_matches(frontmatter, project):
+        return []
     headings = _collect_headings(lines)
     issues: list[LintIssue] = []
 
@@ -194,6 +198,14 @@ def _missing_metadata_fields(frontmatter: dict[str, Any]) -> list[str]:
         if isinstance(value, str) and not value.strip():
             missing.append(key)
     return missing
+
+
+def _frontmatter_project_matches(frontmatter: dict[str, Any], project: str) -> bool:
+    """Check whether frontmatter project matches the requested project."""
+    value = frontmatter.get("project")
+    if value is None:
+        return False
+    return str(value).strip() == project
 
 
 def _is_path_segment(path: Path, segment: str) -> bool:
