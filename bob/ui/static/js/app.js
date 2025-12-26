@@ -58,7 +58,64 @@
     },
   ];
 
+  const NOTE_TEMPLATES = [
+    {
+      id: "daily",
+      label: "Daily Check-in",
+      pathTemplate: "routines/daily/{{date}}.md",
+      fields: [],
+    },
+    {
+      id: "daily-debrief",
+      label: "End-of-Day Debrief",
+      pathTemplate: "routines/daily/{{date}}-debrief.md",
+      fields: [],
+    },
+    {
+      id: "weekly",
+      label: "Weekly Review",
+      pathTemplate: "routines/weekly/{{week}}.md",
+      fields: [
+        { key: "week_range", label: "Week range", type: "text", auto: "week_range" },
+      ],
+    },
+    {
+      id: "meeting",
+      label: "Meeting Capture",
+      pathTemplate: "meetings/{{project}}/meeting-{{date}}.md",
+      fields: [
+        { key: "meeting_date", label: "Meeting date", type: "date", auto: "date" },
+        { key: "participant_1", label: "Participant", type: "text" },
+      ],
+    },
+    {
+      id: "decision",
+      label: "Decision Record",
+      pathTemplate: "decisions/decision-{{date}}.md",
+      fields: [],
+    },
+    {
+      id: "trip",
+      label: "Trip Debrief",
+      pathTemplate: "trips/trip-{{date}}/debrief.md",
+      fields: [{ key: "trip_name", label: "Trip name", type: "text" }],
+    },
+    {
+      id: "experiment",
+      label: "Experiment Log",
+      pathTemplate: "experiments/experiment-{{date}}.md",
+      fields: [],
+    },
+    {
+      id: "recipe",
+      label: "Recipe",
+      pathTemplate: "recipes/recipe-{{date}}.md",
+      fields: [],
+    },
+  ];
+
   const DEFAULT_ROUTINE_ID = ROUTINE_ACTIONS[0]?.id ?? null;
+  const DEFAULT_NOTE_TEMPLATE_ID = NOTE_TEMPLATES[0]?.id ?? null;
 
   // State
   const state = {
@@ -77,6 +134,9 @@
     routineLoading: false,
     fixQueue: null,
     fixQueueLoading: false,
+    noteTemplateId: DEFAULT_NOTE_TEMPLATE_ID,
+    noteResultPath: null,
+    noteModalOpen: false,
   };
 
   const JOB_STORAGE_KEY = "bob_current_index_job";
@@ -94,6 +154,7 @@
     setupEventListeners();
     setupNavigation();
     await loadProjects();
+    setupNoteModal();
     await loadSettings();
     await restoreSavedJob();
     renderJobHistory();
@@ -225,6 +286,26 @@
     elements.settingsSaveBtn = document.getElementById("settings-save-btn");
     elements.settingsStatus = document.getElementById("settings-status");
 
+    // New note modal
+    elements.newNoteBtn = document.getElementById("new-note-btn");
+    elements.noteModal = document.getElementById("note-modal");
+    elements.noteModalClose = document.getElementById("note-modal-close");
+    elements.noteForm = document.getElementById("note-form");
+    elements.noteTemplate = document.getElementById("note-template");
+    elements.noteTemplateHint = document.getElementById("note-template-hint");
+    elements.noteTargetPath = document.getElementById("note-target-path");
+    elements.noteProject = document.getElementById("note-project");
+    elements.noteProjectOptions = document.getElementById("note-project-options");
+    elements.noteDate = document.getElementById("note-date");
+    elements.noteLanguage = document.getElementById("note-language");
+    elements.noteExtraFields = document.getElementById("note-extra-fields");
+    elements.noteCancelBtn = document.getElementById("note-cancel-btn");
+    elements.noteStatus = document.getElementById("note-status");
+    elements.noteResult = document.getElementById("note-result");
+    elements.noteResultPath = document.getElementById("note-result-path");
+    elements.noteResultWarnings = document.getElementById("note-result-warnings");
+    elements.noteOpenBtn = document.getElementById("note-open-btn");
+
     // Health page
     elements.failureSignalsList = document.getElementById("failure-signals-list");
     elements.fixQueueTasksList = document.getElementById("fixqueue-tasks-list");
@@ -270,6 +351,18 @@
     elements.runRoutineBtn?.addEventListener("click", handleRunSelectedRoutine);
     elements.refreshFixQueueBtn?.addEventListener("click", () => loadFixQueue(true));
     elements.fixQueueTasksList?.addEventListener("click", handleFixQueueTaskClick);
+
+    // New note modal
+    elements.newNoteBtn?.addEventListener("click", openNoteModal);
+    elements.noteModalClose?.addEventListener("click", closeNoteModal);
+    elements.noteCancelBtn?.addEventListener("click", closeNoteModal);
+    elements.noteModal?.addEventListener("click", handleNoteModalBackdrop);
+    elements.noteForm?.addEventListener("submit", handleNoteSubmit);
+    elements.noteTemplate?.addEventListener("change", handleNoteTemplateChange);
+    elements.noteDate?.addEventListener("change", handleNoteDateChange);
+    elements.noteProject?.addEventListener("input", updateNoteTemplateHint);
+    elements.noteOpenBtn?.addEventListener("click", handleOpenCreatedNote);
+    document.addEventListener("keydown", handleNoteModalKeydown);
 
     elements.clearHistoryBtn?.addEventListener("click", handleClearHistory);
   }
@@ -373,16 +466,357 @@
   }
 
   function renderProjectSuggestions() {
-    if (!elements.projectSuggestions) return;
-    elements.projectSuggestions.innerHTML = state.projects
+    const options = state.projects
       .map((project) => `<option value="${escapeHtml(project)}">`)
       .join("");
 
-    if (elements.routineProjectOptions) {
-      elements.routineProjectOptions.innerHTML = state.projects
-        .map((project) => `<option value="${escapeHtml(project)}">`)
-        .join("");
+    if (elements.projectSuggestions) {
+      elements.projectSuggestions.innerHTML = options;
     }
+
+    if (elements.routineProjectOptions) {
+      elements.routineProjectOptions.innerHTML = options;
+    }
+
+    if (elements.noteProjectOptions) {
+      elements.noteProjectOptions.innerHTML = options;
+    }
+  }
+
+  function setupNoteModal() {
+    if (!elements.noteTemplate) return;
+    renderNoteTemplateOptions();
+    if (state.noteTemplateId) {
+      elements.noteTemplate.value = state.noteTemplateId;
+    }
+    if (elements.noteDate && !elements.noteDate.value) {
+      elements.noteDate.value = formatDateLocal(new Date());
+    }
+    updateNoteTemplateUI(true);
+  }
+
+  function renderNoteTemplateOptions() {
+    if (!elements.noteTemplate) return;
+    elements.noteTemplate.innerHTML = NOTE_TEMPLATES.map(
+      (template) =>
+        `<option value="${escapeHtml(template.id)}">${escapeHtml(
+          template.label
+        )}</option>`
+    ).join("");
+  }
+
+  function openNoteModal() {
+    if (!elements.noteModal) return;
+    elements.noteModal.classList.remove("hidden");
+    elements.noteModal.setAttribute("aria-hidden", "false");
+    state.noteModalOpen = true;
+
+    if (elements.noteProject && !elements.noteProject.value) {
+      elements.noteProject.value = getSelectedProject() || "";
+    }
+    if (elements.noteDate && !elements.noteDate.value) {
+      elements.noteDate.value = formatDateLocal(new Date());
+    }
+    if (elements.noteLanguage && !elements.noteLanguage.value) {
+      elements.noteLanguage.value = "en";
+    }
+    updateNoteTemplateUI(false);
+    clearNoteStatus();
+    clearNoteResult();
+    elements.noteTargetPath?.focus();
+  }
+
+  function closeNoteModal() {
+    if (!elements.noteModal) return;
+    elements.noteModal.classList.add("hidden");
+    elements.noteModal.setAttribute("aria-hidden", "true");
+    state.noteModalOpen = false;
+  }
+
+  function handleNoteModalBackdrop(event) {
+    if (event.target === elements.noteModal) {
+      closeNoteModal();
+    }
+  }
+
+  function handleNoteModalKeydown(event) {
+    if (event.key === "Escape" && state.noteModalOpen) {
+      closeNoteModal();
+    }
+  }
+
+  function handleNoteTemplateChange() {
+    if (!elements.noteTemplate) return;
+    state.noteTemplateId = elements.noteTemplate.value;
+    updateNoteTemplateUI(true);
+  }
+
+  function handleNoteDateChange() {
+    updateNoteAutoFields();
+    updateNoteTemplateHint(false);
+  }
+
+  function updateNoteTemplateUI(updateTargetPath) {
+    const template = getNoteTemplate();
+    renderNoteExtraFields(template);
+    updateNoteAutoFields();
+    updateNoteTemplateHint(updateTargetPath);
+  }
+
+  function updateNoteTemplateHint(updateTargetPath) {
+    if (!elements.noteTemplateHint) return;
+    const template = getNoteTemplate();
+    const suggestion = buildNotePathSuggestion(template);
+    elements.noteTemplateHint.textContent = suggestion
+      ? `Suggested path: ${suggestion}`
+      : "";
+    if (elements.noteTargetPath) {
+      if (suggestion) {
+        elements.noteTargetPath.placeholder = suggestion;
+      }
+      if (updateTargetPath || !elements.noteTargetPath.value.trim()) {
+        elements.noteTargetPath.value = suggestion;
+      }
+    }
+  }
+
+  function renderNoteExtraFields(template) {
+    if (!elements.noteExtraFields) return;
+    if (!template || !template.fields || template.fields.length === 0) {
+      elements.noteExtraFields.innerHTML = "";
+      return;
+    }
+    elements.noteExtraFields.innerHTML = template.fields
+      .map((field) => {
+        const inputType = field.type || "text";
+        const inputClass = inputType === "date" ? "date-input" : "text-input";
+        return `
+          <div class="form-group">
+            <label class="filter-label" for="note-extra-${escapeHtml(field.key)}">
+              ${escapeHtml(field.label)}
+            </label>
+            <input
+              id="note-extra-${escapeHtml(field.key)}"
+              class="${inputClass}"
+              type="${escapeHtml(inputType)}"
+              data-note-key="${escapeHtml(field.key)}"
+              autocomplete="off"
+            />
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function updateNoteAutoFields() {
+    if (!elements.noteExtraFields) return;
+    const dateValue = getNoteDateValue();
+    const date = parseDateInput(dateValue);
+    const meetingDate = formatDateLocal(date);
+    const weekRange = getWeekRange(date);
+    const fields = elements.noteExtraFields.querySelectorAll("[data-note-key]");
+    fields.forEach((field) => {
+      const key = field.dataset.noteKey;
+      if (key === "meeting_date") {
+        setAutoFieldValue(field, meetingDate);
+      }
+      if (key === "week_range") {
+        setAutoFieldValue(field, weekRange);
+      }
+    });
+  }
+
+  function setAutoFieldValue(field, value) {
+    const previousAuto = field.dataset.autoValue;
+    if (!field.value || (previousAuto && field.value === previousAuto)) {
+      field.value = value;
+    }
+    field.dataset.autoValue = value;
+  }
+
+  function collectNoteExtraValues() {
+    if (!elements.noteExtraFields) return {};
+    const values = {};
+    elements.noteExtraFields
+      .querySelectorAll("[data-note-key]")
+      .forEach((field) => {
+        const key = field.dataset.noteKey;
+        const value = field.value?.trim();
+        if (key && value) {
+          values[key] = value;
+        }
+      });
+    return values;
+  }
+
+  function buildNotePathSuggestion(template) {
+    if (!template) return "";
+    const dateValue = getNoteDateValue();
+    const date = parseDateInput(dateValue);
+    const dateLabel = formatDateLocal(date);
+    const weekLabel = getIsoWeekLabel(date);
+    const projectValue =
+      elements.noteProject?.value || getSelectedProject() || "project";
+    const projectLabel = slugifyPathSegment(projectValue);
+
+    return (template.pathTemplate || "")
+      .replace("{{date}}", dateLabel)
+      .replace("{{week}}", weekLabel)
+      .replace("{{project}}", projectLabel);
+  }
+
+  function handleNoteSubmit(event) {
+    event.preventDefault();
+    if (!elements.noteTemplate || !elements.noteTargetPath) return;
+    const template = elements.noteTemplate.value;
+    const targetPath = elements.noteTargetPath.value.trim();
+    if (!targetPath) {
+      setNoteStatus("Target path is required to create a note.", "error");
+      return;
+    }
+
+    updateNoteAutoFields();
+    const values = collectNoteExtraValues();
+    if (template === "weekly" && !values.week_range) {
+      values.week_range = getWeekRange(parseDateInput(getNoteDateValue()));
+    }
+
+    const project = elements.noteProject?.value.trim();
+    const noteDate = elements.noteDate?.value;
+    const language = elements.noteLanguage?.value.trim();
+
+    const payload = {
+      template,
+      target_path: targetPath,
+      project: project || null,
+      date: noteDate || null,
+      language: language || null,
+      values,
+    };
+
+    submitNote(payload);
+  }
+
+  async function submitNote(payload) {
+    setNoteStatus("Creating note...", null);
+    const submitButton = elements.noteForm?.querySelector('button[type="submit"]');
+    submitButton?.setAttribute("disabled", "true");
+    try {
+      const response = await API.createNote(payload);
+      setNoteStatus("Note created.", "success");
+      setNoteResult(response);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to create note.";
+      setNoteStatus(message, "error");
+    } finally {
+      submitButton?.removeAttribute("disabled");
+    }
+  }
+
+  async function handleOpenCreatedNote() {
+    if (!state.noteResultPath) return;
+    try {
+      await API.openFile(state.noteResultPath);
+    } catch (err) {
+      console.error("Failed to open created note:", err);
+      alert(
+        `Could not open file: ${state.noteResultPath}\n\nYou can open it manually.`
+      );
+    }
+  }
+
+  function setNoteStatus(message, type) {
+    if (!elements.noteStatus) return;
+    elements.noteStatus.textContent = message;
+    elements.noteStatus.classList.remove("hidden", "success", "error");
+    if (type === "success") {
+      elements.noteStatus.classList.add("success");
+    } else if (type === "error") {
+      elements.noteStatus.classList.add("error");
+    }
+  }
+
+  function clearNoteStatus() {
+    if (!elements.noteStatus) return;
+    elements.noteStatus.classList.add("hidden");
+    elements.noteStatus.textContent = "";
+    elements.noteStatus.classList.remove("success", "error");
+  }
+
+  function setNoteResult(response) {
+    if (!elements.noteResult || !elements.noteResultPath) return;
+    state.noteResultPath = response.file_path;
+    elements.noteResultPath.textContent = response.file_path;
+    const warnings = response.warnings || [];
+    if (elements.noteResultWarnings) {
+      elements.noteResultWarnings.textContent = warnings.join(" ");
+    }
+    elements.noteResult.classList.remove("hidden");
+  }
+
+  function clearNoteResult() {
+    if (!elements.noteResult || !elements.noteResultPath) return;
+    state.noteResultPath = null;
+    elements.noteResultPath.textContent = "";
+    if (elements.noteResultWarnings) {
+      elements.noteResultWarnings.textContent = "";
+    }
+    elements.noteResult.classList.add("hidden");
+  }
+
+  function getNoteTemplate() {
+    const templateId = elements.noteTemplate?.value || state.noteTemplateId;
+    return NOTE_TEMPLATES.find((template) => template.id === templateId) || null;
+  }
+
+  function getNoteDateValue() {
+    return elements.noteDate?.value || formatDateLocal(new Date());
+  }
+
+  function parseDateInput(value) {
+    if (!value) return new Date();
+    const parts = value.split("-");
+    if (parts.length !== 3) return new Date();
+    const year = Number(parts[0]);
+    const month = Number(parts[1]) - 1;
+    const day = Number(parts[2]);
+    return new Date(year, month, day);
+  }
+
+  function formatDateLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function getIsoWeekLabel(date) {
+    const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = utcDate.getUTCDay() || 7;
+    utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+    const week = Math.ceil(((utcDate - yearStart) / 86400000 + 1) / 7);
+    return `${utcDate.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+  }
+
+  function getWeekRange(date) {
+    const day = (date.getDay() + 6) % 7;
+    const start = new Date(date);
+    start.setDate(date.getDate() - day);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return `${formatDateLocal(start)} - ${formatDateLocal(end)}`;
+  }
+
+  function slugifyPathSegment(value) {
+    const normalized = String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    return normalized || "project";
   }
 
   function getRoutineAction(actionId) {

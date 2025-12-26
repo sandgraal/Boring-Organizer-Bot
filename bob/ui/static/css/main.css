@@ -166,6 +166,12 @@ code {
   gap: var(--space-md);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
 .nav-link {
   padding: var(--space-sm) var(--space-md);
   color: var(--color-text-secondary);
@@ -1253,6 +1259,109 @@ code {
 .settings-status {
   font-size: 0.875rem;
   color: var(--color-text-secondary);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 10, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  z-index: 200;
+}
+
+.modal-card {
+  width: min(720px, 94vw);
+  max-height: 90vh;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--space-sm);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-md);
+}
+
+.note-hint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-top: var(--space-xs);
+}
+
+.note-status {
+  padding: var(--space-sm);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-sidebar);
+  font-size: 0.875rem;
+}
+
+.note-status.success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.note-status.error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.note-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-sidebar);
+}
+
+.note-result-path {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-text);
+  margin-left: var(--space-xs);
+}
+
+.note-result-warnings {
+  font-size: 0.8rem;
+  color: var(--color-warning);
 }
 
 /* Buttons */

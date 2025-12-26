@@ -26,6 +26,11 @@
           <a href="#settings" class="nav-link" data-page="settings">Settings</a>
           <a href="#health" class="nav-link" data-page="health">Health</a>
         </nav>
+        <div class="header-actions">
+          <button id="new-note-btn" class="btn btn-primary btn-sm" type="button">
+            New note
+          </button>
+        </div>
       </header>
 
       <!-- Main Content -->
@@ -627,6 +632,87 @@
           </div>
         </div>
       </main>
+
+      <div id="note-modal" class="modal hidden" aria-hidden="true">
+        <div
+          class="modal-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="note-modal-title"
+        >
+          <div class="modal-header">
+            <h3 id="note-modal-title">New note</h3>
+            <button id="note-modal-close" class="btn btn-secondary btn-sm" type="button">
+              Close
+            </button>
+          </div>
+          <form id="note-form" class="modal-body">
+            <div class="form-group">
+              <label class="filter-label" for="note-template">Template</label>
+              <select id="note-template" class="select-input"></select>
+              <p id="note-template-hint" class="note-hint"></p>
+            </div>
+            <div class="form-group">
+              <label class="filter-label" for="note-target-path">Target path</label>
+              <input
+                id="note-target-path"
+                class="text-input"
+                type="text"
+                placeholder="vault-relative path (e.g., routines/daily/2025-01-01.md)"
+                autocomplete="off"
+              />
+              <p class="note-hint">
+                Relative paths resolve under your configured vault directory.
+              </p>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="filter-label" for="note-project">Project</label>
+                <input
+                  id="note-project"
+                  class="text-input"
+                  type="text"
+                  list="note-project-options"
+                  autocomplete="off"
+                />
+                <datalist id="note-project-options"></datalist>
+              </div>
+              <div class="form-group">
+                <label class="filter-label" for="note-date">Date</label>
+                <input id="note-date" class="date-input" type="date" />
+              </div>
+              <div class="form-group">
+                <label class="filter-label" for="note-language">Language</label>
+                <input
+                  id="note-language"
+                  class="text-input"
+                  type="text"
+                  value="en"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <div id="note-extra-fields" class="form-grid"></div>
+            <div class="modal-actions">
+              <button class="btn btn-primary" type="submit">Create note</button>
+              <button id="note-cancel-btn" class="btn btn-secondary" type="button">
+                Cancel
+              </button>
+            </div>
+            <div id="note-status" class="note-status hidden"></div>
+            <div id="note-result" class="note-result hidden">
+              <div>
+                <strong>Saved to:</strong>
+                <span id="note-result-path" class="note-result-path"></span>
+              </div>
+              <div id="note-result-warnings" class="note-result-warnings"></div>
+              <button id="note-open-btn" class="btn btn-secondary btn-sm" type="button">
+                Open note
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <script src="/static/js/api.js"></script>

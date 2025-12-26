@@ -188,6 +188,17 @@ const API = {
       body: JSON.stringify(payload || {}),
     });
   },
+
+  /**
+   * Create a note from a canonical template.
+   * @param {Object} payload - Note creation request body.
+   */
+  async createNote(payload) {
+    return this.request("/notes/create", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 /**
