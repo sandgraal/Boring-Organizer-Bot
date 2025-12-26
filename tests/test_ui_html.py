@@ -44,3 +44,12 @@ def test_locator_format_handles_section_and_line() -> None:
     js = Path("bob/ui/static/js/app.js").read_text(encoding="utf-8")
     assert 'case "section"' in js
     assert 'case "line"' in js
+
+
+def test_connectors_controls_exist() -> None:
+    """Settings include connector import controls."""
+    html = Path("bob/ui/index.html").read_text(encoding="utf-8")
+    assert 'id="connectors-bookmarks-path"' in html
+    assert 'id="connectors-bookmarks-import-btn"' in html
+    assert 'id="connectors-highlight-text"' in html
+    assert 'id="connectors-highlight-save-btn"' in html

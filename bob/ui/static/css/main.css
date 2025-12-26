@@ -1318,6 +1318,20 @@ code {
   color: var(--color-text-secondary);
 }
 
+.connector-status {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-sm);
+}
+
+.connector-status.success {
+  color: var(--color-success);
+}
+
+.connector-status.error {
+  color: var(--color-error);
+}
+
 .settings-hint {
   font-size: 0.85rem;
   color: var(--color-text-secondary);

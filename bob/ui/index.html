@@ -668,6 +668,113 @@
                   <div id="permissions-connectors" class="pill-list"></div>
                 </div>
               </div>
+              <div class="settings-card">
+                <h3>Connectors</h3>
+                <p class="settings-hint">
+                  Import bookmarks and save highlights (requires browser_saves and scope
+                  level 2+).
+                </p>
+                <div id="connectors-availability" class="connector-status"></div>
+                <h4>Bookmarks Import</h4>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-bookmarks-path"
+                    >Bookmarks HTML path</label
+                  >
+                  <input
+                    id="connectors-bookmarks-path"
+                    class="text-input"
+                    type="text"
+                    placeholder="~/Downloads/bookmarks.html"
+                  />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-bookmarks-project"
+                    >Project</label
+                  >
+                  <input
+                    id="connectors-bookmarks-project"
+                    class="text-input"
+                    type="text"
+                    placeholder="main"
+                  />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-bookmarks-language"
+                    >Language</label
+                  >
+                  <input
+                    id="connectors-bookmarks-language"
+                    class="text-input"
+                    type="text"
+                    placeholder="en"
+                  />
+                </div>
+                <button
+                  id="connectors-bookmarks-import-btn"
+                  class="btn btn-secondary"
+                >
+                  Import bookmarks
+                </button>
+                <div
+                  id="connectors-bookmarks-status"
+                  class="connector-status"
+                ></div>
+                <h4>Save Highlight</h4>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-highlight-text"
+                    >Highlight text</label
+                  >
+                  <textarea
+                    id="connectors-highlight-text"
+                    class="text-input"
+                    rows="4"
+                    placeholder="Paste the highlight text here"
+                  ></textarea>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-highlight-url"
+                    >Source URL</label
+                  >
+                  <input
+                    id="connectors-highlight-url"
+                    class="text-input"
+                    type="text"
+                    placeholder="https://example.com/article"
+                  />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-highlight-project"
+                    >Project</label
+                  >
+                  <input
+                    id="connectors-highlight-project"
+                    class="text-input"
+                    type="text"
+                    placeholder="main"
+                  />
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="connectors-highlight-language"
+                    >Language</label
+                  >
+                  <input
+                    id="connectors-highlight-language"
+                    class="text-input"
+                    type="text"
+                    placeholder="en"
+                  />
+                </div>
+                <button
+                  id="connectors-highlight-save-btn"
+                  class="btn btn-secondary"
+                >
+                  Save highlight
+                </button>
+                <div
+                  id="connectors-highlight-status"
+                  class="connector-status"
+                ></div>
+              </div>
               <button id="settings-save-btn" class="btn btn-primary">
                 Save Settings
               </button>

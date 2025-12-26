@@ -219,6 +219,28 @@ const API = {
       body: JSON.stringify(payload),
     });
   },
+
+  /**
+   * Import bookmarks from a browser export file.
+   * @param {Object} payload - Bookmarks import request body.
+   */
+  async importBookmarks(payload) {
+    return this.request("/connectors/bookmarks/import", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Save a manual highlight note.
+   * @param {Object} payload - Highlight request body.
+   */
+  async saveHighlight(payload) {
+    return this.request("/connectors/highlights", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
 };
 
 /**

@@ -297,6 +297,44 @@
     elements.permissionsPaths = document.getElementById("permissions-paths");
     elements.permissionsConnectors = document.getElementById("permissions-connectors");
 
+    // Connector actions
+    elements.connectorsAvailability = document.getElementById(
+      "connectors-availability"
+    );
+    elements.connectorsBookmarksPath = document.getElementById(
+      "connectors-bookmarks-path"
+    );
+    elements.connectorsBookmarksProject = document.getElementById(
+      "connectors-bookmarks-project"
+    );
+    elements.connectorsBookmarksLanguage = document.getElementById(
+      "connectors-bookmarks-language"
+    );
+    elements.connectorsBookmarksImportBtn = document.getElementById(
+      "connectors-bookmarks-import-btn"
+    );
+    elements.connectorsBookmarksStatus = document.getElementById(
+      "connectors-bookmarks-status"
+    );
+    elements.connectorsHighlightText = document.getElementById(
+      "connectors-highlight-text"
+    );
+    elements.connectorsHighlightUrl = document.getElementById(
+      "connectors-highlight-url"
+    );
+    elements.connectorsHighlightProject = document.getElementById(
+      "connectors-highlight-project"
+    );
+    elements.connectorsHighlightLanguage = document.getElementById(
+      "connectors-highlight-language"
+    );
+    elements.connectorsHighlightSaveBtn = document.getElementById(
+      "connectors-highlight-save-btn"
+    );
+    elements.connectorsHighlightStatus = document.getElementById(
+      "connectors-highlight-status"
+    );
+
     // New note modal
     elements.newNoteBtn = document.getElementById("new-note-btn");
     elements.noteModal = document.getElementById("note-modal");
@@ -356,6 +394,14 @@
 
     // Settings save
     elements.settingsSaveBtn?.addEventListener("click", handleSettingsSave);
+    elements.connectorsBookmarksImportBtn?.addEventListener(
+      "click",
+      handleBookmarksImport
+    );
+    elements.connectorsHighlightSaveBtn?.addEventListener(
+      "click",
+      handleHighlightSave
+    );
 
     elements.routineActionsList?.addEventListener(
       "click",
@@ -1512,6 +1558,7 @@
       "No connectors configured.",
       false
     );
+    updateConnectorAvailability();
   }
 
   function renderPermissionsError() {
@@ -1527,6 +1574,7 @@
       "Unavailable",
       false
     );
+    updateConnectorAvailability();
   }
 
   function renderPermissionsList(container, items, emptyMessage, useMono) {
@@ -1552,6 +1600,52 @@
     return Object.entries(connectors).map(
       ([name, enabled]) => `${name}: ${enabled ? "on" : "off"}`
     );
+  }
+
+  function setConnectorStatus(element, message, type) {
+    if (!element) return;
+    element.textContent = message || "";
+    element.classList.remove("success", "error");
+    if (type === "success") {
+      element.classList.add("success");
+    } else if (type === "error") {
+      element.classList.add("error");
+    }
+  }
+
+  function updateConnectorAvailability() {
+    const enabled =
+      state.permissions?.enabled_connectors?.browser_saves === true;
+    const scopeLevel = Number(state.permissions?.default_scope || 0);
+    const scopeOk = scopeLevel >= 2;
+    const available = enabled && scopeOk;
+    if (elements.connectorsAvailability) {
+      if (available) {
+        setConnectorStatus(
+          elements.connectorsAvailability,
+          "Connectors are enabled.",
+          "success"
+        );
+      } else if (!enabled) {
+        setConnectorStatus(
+          elements.connectorsAvailability,
+          "Enable browser_saves in bob.yaml to use connectors.",
+          "error"
+        );
+      } else {
+        setConnectorStatus(
+          elements.connectorsAvailability,
+          "Raise permission scope to level 2 or higher to use connectors.",
+          "error"
+        );
+      }
+    }
+    if (elements.connectorsBookmarksImportBtn) {
+      elements.connectorsBookmarksImportBtn.disabled = !available;
+    }
+    if (elements.connectorsHighlightSaveBtn) {
+      elements.connectorsHighlightSaveBtn.disabled = !available;
+    }
   }
 
   /**
@@ -1587,6 +1681,107 @@
       if (elements.settingsStatus) {
         elements.settingsStatus.textContent = "Failed to save settings.";
       }
+    }
+  }
+
+  async function handleBookmarksImport(event) {
+    event.preventDefault();
+    if (!elements.connectorsBookmarksPath) return;
+
+    const sourcePath = elements.connectorsBookmarksPath.value.trim();
+    if (!sourcePath) {
+      setConnectorStatus(
+        elements.connectorsBookmarksStatus,
+        "Bookmarks path is required.",
+        "error"
+      );
+      return;
+    }
+
+    const project =
+      elements.connectorsBookmarksProject?.value.trim() ||
+      state.projects[0] ||
+      "main";
+    const language =
+      elements.connectorsBookmarksLanguage?.value.trim() || "en";
+
+    setConnectorStatus(
+      elements.connectorsBookmarksStatus,
+      "Importing bookmarks...",
+      null
+    );
+    elements.connectorsBookmarksImportBtn?.setAttribute("disabled", "true");
+
+    try {
+      const response = await API.importBookmarks({
+        source_path: sourcePath,
+        project: project || null,
+        language: language || null,
+      });
+      const warnings = response.warnings || [];
+      const warningNote =
+        warnings.length > 0 ? ` Warnings: ${warnings.join(" ")}` : "";
+      setConnectorStatus(
+        elements.connectorsBookmarksStatus,
+        `Imported ${response.imported || 0} bookmarks.${warningNote}`,
+        "success"
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to import bookmarks.";
+      setConnectorStatus(elements.connectorsBookmarksStatus, message, "error");
+    } finally {
+      updateConnectorAvailability();
+    }
+  }
+
+  async function handleHighlightSave(event) {
+    event.preventDefault();
+    if (!elements.connectorsHighlightText) return;
+
+    const text = elements.connectorsHighlightText.value.trim();
+    if (!text) {
+      setConnectorStatus(
+        elements.connectorsHighlightStatus,
+        "Highlight text is required.",
+        "error"
+      );
+      return;
+    }
+
+    const sourceUrl = elements.connectorsHighlightUrl?.value.trim() || null;
+    const project =
+      elements.connectorsHighlightProject?.value.trim() ||
+      state.projects[0] ||
+      "main";
+    const language =
+      elements.connectorsHighlightLanguage?.value.trim() || "en";
+
+    setConnectorStatus(
+      elements.connectorsHighlightStatus,
+      "Saving highlight...",
+      null
+    );
+    elements.connectorsHighlightSaveBtn?.setAttribute("disabled", "true");
+
+    try {
+      const response = await API.saveHighlight({
+        text,
+        source_url: sourceUrl,
+        project: project || null,
+        language: language || null,
+      });
+      setConnectorStatus(
+        elements.connectorsHighlightStatus,
+        `Highlight saved to ${response.file_path}.`,
+        "success"
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to save highlight.";
+      setConnectorStatus(elements.connectorsHighlightStatus, message, "error");
+    } finally {
+      updateConnectorAvailability();
     }
   }
 
