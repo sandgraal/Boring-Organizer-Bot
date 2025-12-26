@@ -436,7 +436,11 @@
   async function loadProjects() {
     try {
       const response = await API.getProjects();
-      state.projects = response.projects || [];
+      const rawProjects = response.projects || [];
+      const normalized = rawProjects
+        .map((project) => normalizeProjectName(project))
+        .filter(Boolean);
+      state.projects = Array.from(new Set(normalized));
       renderProjectFilters();
       renderLibraryProjectOptions();
     } catch (err) {
@@ -444,6 +448,15 @@
       elements.projectFilters.innerHTML =
         '<div class="loading-placeholder">Failed to load</div>';
     }
+  }
+
+  function normalizeProjectName(project) {
+    if (!project) return null;
+    if (typeof project === "string") return project;
+    if (typeof project === "object" && project.name) {
+      return String(project.name);
+    }
+    return null;
   }
 
   /**
