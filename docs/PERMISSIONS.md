@@ -40,12 +40,14 @@ permissions:
     - vault/decisions
     - vault/trips
     - vault/meetings
+    - vault/experiments
+    - vault/recipes
     - vault/manual-saves
 ```
 
  - `default_scope` drives the initial experience (read-only vs template writes); the Fix Queue surfaces denials so you can raise it only when you trust the destination paths.
  - `enabled_connectors` is reserved for future connector endpoints; it is not enforced by the current API surface.
-- `allowed_vault_paths` lists the directories (routines, decisions, trips, meetings, manual saves) that routine template writes may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
+- `allowed_vault_paths` lists the directories (routines, decisions, trips, meetings, experiments, recipes, manual saves) that routine template writes may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
 
 ## Enforcement & UI
 

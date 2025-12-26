@@ -181,6 +181,8 @@ permissions:
     - vault/decisions
     - vault/trips
     - vault/meetings
+    - vault/experiments
+    - vault/recipes
     - vault/manual-saves
 
 # MCP server configuration (agent interoperability)

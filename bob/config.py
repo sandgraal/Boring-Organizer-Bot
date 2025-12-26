@@ -131,6 +131,8 @@ class PermissionsConfig(BaseModel):
             "vault/decisions",
             "vault/trips",
             "vault/meetings",
+            "vault/experiments",
+            "vault/recipes",
             "vault/manual-saves",
         ],
         description="Directories that template writes may target",
