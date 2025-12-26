@@ -32,7 +32,13 @@ def get_parser(path: Path) -> Parser | None:
         Parser instance or None if no parser found.
     """
     ext = path.suffix.lower()
-    return _parsers.get(ext)
+    parser = _parsers.get(ext)
+    if parser is not None:
+        return parser
+    for candidate in set(_parsers.values()):
+        if candidate.can_parse(path):
+            return candidate
+    return None
 
 
 def init_parsers() -> None:

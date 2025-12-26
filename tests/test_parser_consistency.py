@@ -253,8 +253,7 @@ steps:
         )
 
         parser = get_parser(recipe_file)
-        if parser is None:
-            pytest.skip("Recipe parser not available")
+        assert parser is not None
 
         doc = parser.parse(recipe_file)
 
