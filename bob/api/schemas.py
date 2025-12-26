@@ -239,6 +239,10 @@ class FixQueueTask(BaseModel):
         description="What the UI should do (e.g., fix_metadata, fix_capture, run_routine)",
     )
     target: str = Field(..., description="Target path, routine, or question text")
+    project: str | None = Field(
+        None,
+        description="Project context for the task when applicable",
+    )
     reason: str = Field(..., description="Why the task exists")
     priority: int = Field(..., description="Priority bucket (1=highest, 5=lowest)")
 

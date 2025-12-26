@@ -993,11 +993,11 @@ class Database:
 
         repeated_cursor = self.conn.execute(
             f"""
-            SELECT question, COUNT(*) as count
+            SELECT question, project, COUNT(*) as count
             FROM feedback_log
             {base_filters}
             AND datetime(created_at) >= datetime('now', '-{int(window_hours)} hours')
-            GROUP BY question
+            GROUP BY question, project
             HAVING count > 1
             ORDER BY count DESC
             LIMIT 5
@@ -1005,7 +1005,11 @@ class Database:
             params,
         )
         repeated = [
-            {"question": row["question"], "count": int(row["count"])}
+            {
+                "question": row["question"],
+                "project": row["project"],
+                "count": int(row["count"]),
+            }
             for row in repeated_cursor.fetchall()
         ]
 

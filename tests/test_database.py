@@ -293,6 +293,28 @@ class TestDatabaseOperations:
         metrics = test_db.get_feedback_metrics(window_hours=1)
         assert metrics["repeated_questions"] == []
 
+    def test_feedback_metrics_repeated_question_includes_project(self, test_db):
+        test_db.log_feedback(
+            question="Repeated question?",
+            project="docs",
+            answer_id=None,
+            feedback_reason="didnt_answer",
+        )
+        test_db.log_feedback(
+            question="Repeated question?",
+            project="docs",
+            answer_id=None,
+            feedback_reason="didnt_answer",
+        )
+
+        metrics = test_db.get_feedback_metrics(window_hours=48)
+        assert any(
+            entry["question"] == "Repeated question?"
+            and entry["project"] == "docs"
+            and entry["count"] == 2
+            for entry in metrics["repeated_questions"]
+        )
+
     def test_stale_document_buckets(self, test_db):
         old_date = datetime.now() - timedelta(days=200)
         recent_date = datetime.now() - timedelta(days=10)

@@ -121,7 +121,9 @@ class TestHealthFixQueueEndpoint:
             "total": 10,
             "counts": {"didnt_answer": 3},
             "not_found_frequency": 0.3,
-            "repeated_questions": [{"question": "Where is the API?", "count": 2}],
+            "repeated_questions": [
+                {"question": "Where is the API?", "project": "docs", "count": 2}
+            ],
         }
         metadata = [
             {
@@ -225,6 +227,14 @@ class TestHealthFixQueueEndpoint:
         assert "/vault/decisions/decision-01.md" in targets
         assert "routines/weekly-review" in targets
         assert targets.count("docs") == 2
+        assert any(
+            task["target"] == "routines/daily-checkin" and task["project"] == "docs"
+            for task in data["tasks"]
+        )
+        assert any(
+            task["target"] == "Where is the API?" and task["project"] == "docs"
+            for task in data["tasks"]
+        )
         assert mock_db.get_documents_missing_metadata.call_args.kwargs["project"] == "docs"
         assert mock_db.get_missing_metadata_total.call_args.kwargs["project"] == "docs"
         assert mock_db.get_missing_metadata_counts.call_args.kwargs["project"] == "docs"
@@ -239,7 +249,9 @@ class TestHealthFixQueueEndpoint:
             "total": 10,
             "counts": {"didnt_answer": 9},
             "not_found_frequency": 0.9,
-            "repeated_questions": [{"question": "Where is the API?", "count": 5}],
+            "repeated_questions": [
+                {"question": "Where is the API?", "project": "docs", "count": 5}
+            ],
         }
         permission_metrics = {"total": 0, "counts": {}, "recent": [], "window_hours": 48}
         mock_db = MagicMock()
@@ -276,6 +288,7 @@ class TestHealthFixQueueEndpoint:
         )
         assert not_found_task["priority"] == 1
         assert repeated_task["priority"] == 1
+        assert repeated_task["project"] == "docs"
 
 
 class TestAskEndpoint:

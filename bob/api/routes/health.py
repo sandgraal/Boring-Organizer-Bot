@@ -196,6 +196,7 @@ def _build_fix_queue_tasks(
                 id=task_id,
                 action="run_routine",
                 target="routines/daily-checkin",
+                project=project,
                 reason=(
                     f"{freq * 100:.1f}% of feedback entries "
                     f"from {project_label} were 'didn't answer'"
@@ -211,6 +212,7 @@ def _build_fix_queue_tasks(
                 id=f"metadata-{deficit['document_id']}-{idx}",
                 action="fix_metadata",
                 target=deficit["source_path"],
+                project=deficit.get("project") or project,
                 reason=f"Missing metadata fields: {missing}",
                 priority=3,
             )
@@ -218,11 +220,13 @@ def _build_fix_queue_tasks(
 
     for repeated in metrics.get("repeated_questions", []):
         hashed = hashlib.sha1(repeated["question"].encode("utf-8")).hexdigest()[:10]
+        repeated_project = repeated.get("project") or project
         tasks.append(
             FixQueueTask(
                 id=f"repeat-{hashed}",
                 action="run_routine",
                 target=repeated["question"],
+                project=repeated_project,
                 reason=f"Question repeated {repeated['count']} times in the last 48h",
                 priority=_priority_from_count(repeated["count"]),
             )
@@ -267,6 +271,7 @@ def _build_fix_queue_tasks(
                 id=f"permission-{task_id}",
                 action=action,
                 target=target,
+                project=denial.get("project") or project,
                 reason=reason,
                 priority=priority,
             )
@@ -316,6 +321,7 @@ def _build_staleness_task(
         id=task_id,
         action="run_routine",
         target="routines/weekly-review",
+        project=project,
         reason=reason,
         priority=_priority_from_count(max(notes_count, decisions_count)),
     )
@@ -342,6 +348,7 @@ def _build_indexing_tasks(
                 id=task_id,
                 action="open_indexing",
                 target=project,
+                project=project,
                 reason=(
                     f"Project '{project}' has only {doc_count} documents "
                     f"(threshold {low_volume_threshold})."
@@ -365,6 +372,7 @@ def _build_indexing_tasks(
                 id=task_id,
                 action="open_indexing",
                 target=project,
+                project=project,
                 reason=(
                     f"Project '{project}' has {hit_rate * 100:.0f}% retrieval hit rate "
                     f"(threshold {low_hit_rate_threshold * 100:.0f}%)."
@@ -396,6 +404,7 @@ def _build_ingestion_tasks(errors: list[dict[str, Any]]) -> list[FixQueueTask]:
                 id=f"ingest-{task_hash}",
                 action="open_file",
                 target=path,
+                project=error.get("project"),
                 reason=reason,
                 priority=_priority_for_ingestion_error(error_type),
             )

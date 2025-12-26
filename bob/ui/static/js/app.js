@@ -1209,12 +1209,16 @@
     elements.fixQueueTasksList.innerHTML = sortedTasks
       .map((task) => {
         const actionButton = getFixQueueActionButton(task);
+        const projectMeta = task.project
+          ? `<span>Project: ${escapeHtml(task.project)}</span>`
+          : "";
         return `
           <div class="fixqueue-task-card">
             <div><strong>${escapeHtml(task.reason)}</strong></div>
             <div class="fixqueue-task-meta">
               <span>Action: ${escapeHtml(task.action)}</span>
               <span>Target: ${escapeHtml(task.target)}</span>
+              ${projectMeta}
               <span class="priority-badge">P${escapeHtml(
                 String(task.priority)
               )}</span>
@@ -1229,18 +1233,21 @@
   }
 
   function getFixQueueActionButton(task) {
+    const projectAttr = task.project
+      ? `data-fixqueue-project="${escapeHtml(task.project)}"`
+      : "";
     const routineTarget = extractRoutineIdFromTarget(task.target);
     if (task.action === "run_routine" && routineTarget) {
       return `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-run="${escapeHtml(
         task.target
-      )}">
+      )}" ${projectAttr}>
          Run routine
        </button>`;
     }
     if (task.action === "run_routine") {
       return `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-query="${escapeHtml(
         task.target
-      )}">
+      )}" ${projectAttr}>
          Run query
        </button>`;
     }
@@ -1258,7 +1265,7 @@
     if (task.action === "open_indexing") {
       return `<button type="button" class="btn btn-secondary btn-sm" data-fixqueue-indexing="${escapeHtml(
         task.target
-      )}">
+      )}" ${projectAttr}>
          Open indexing
        </button>`;
     }
@@ -1269,8 +1276,9 @@
     const runButton = event.target.closest("[data-fixqueue-run]");
     if (runButton) {
       const target = runButton.dataset.fixqueueRun;
+      const project = runButton.dataset.fixqueueProject || null;
       if (target) {
-        handleFixQueueRun(target);
+        handleFixQueueRun(target, project);
       }
       return;
     }
@@ -1278,8 +1286,9 @@
     const queryButton = event.target.closest("[data-fixqueue-query]");
     if (queryButton) {
       const target = queryButton.dataset.fixqueueQuery;
+      const project = queryButton.dataset.fixqueueProject || null;
       if (target) {
-        handleFixQueueQuery(target);
+        handleFixQueueQuery(target, project);
       }
       return;
     }
@@ -1287,10 +1296,11 @@
     const indexButton = event.target.closest("[data-fixqueue-indexing]");
     if (indexButton) {
       const target = indexButton.dataset.fixqueueIndexing;
+      const project = indexButton.dataset.fixqueueProject || null;
       if (target) {
-        handleFixQueueIndexing(target);
+        handleFixQueueIndexing(target, project);
       } else {
-        handleFixQueueIndexing("");
+        handleFixQueueIndexing("", project);
       }
       return;
     }
@@ -1303,21 +1313,23 @@
     }
   }
 
-  function handleFixQueueIndexing(target) {
+  function handleFixQueueIndexing(target, projectOverride = null) {
     navigateTo("indexing");
+    const project = projectOverride || target;
     if (elements.indexProject) {
-      elements.indexProject.value = target && target !== "unknown" ? target : "";
+      elements.indexProject.value = project && project !== "unknown" ? project : "";
     }
     elements.indexPath?.focus();
   }
 
-  async function handleFixQueueRun(target) {
+  async function handleFixQueueRun(target, project = null) {
     const actionId = extractRoutineIdFromTarget(target);
     if (!actionId) {
       setRoutineStatus("Cannot map Fix Queue task to a routine.", "error");
       return;
     }
-    await executeRoutine(actionId);
+    const overrides = project ? { project } : {};
+    await executeRoutine(actionId, overrides);
     loadFixQueue(true);
   }
 
@@ -1332,12 +1344,16 @@
     }
   }
 
-  async function handleFixQueueQuery(target) {
+  async function handleFixQueueQuery(target, project = null) {
     navigateTo("ask");
     if (elements.queryInput) {
       elements.queryInput.value = target;
     }
-    await submitAsk({ query: target, filters: getAskFilters(), showAnyway: false });
+    const filters = getAskFilters();
+    if (project) {
+      filters.projects = [project];
+    }
+    await submitAsk({ query: target, filters, showAnyway: false });
   }
 
   function extractRoutineIdFromTarget(target) {
