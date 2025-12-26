@@ -921,6 +921,18 @@ class Database:
             )
         return results
 
+    def get_missing_metadata_total(self) -> int:
+        """Return total count of documents missing required metadata."""
+        cursor = self.conn.execute(
+            """
+            SELECT COUNT(*) as count
+            FROM documents
+            WHERE source_date IS NULL OR source_date = ''
+               OR project = '' OR language = ''
+            """
+        )
+        return int(cursor.fetchone()[0])
+
     def get_missing_metadata_counts(self, *, limit: int = 5) -> list[dict[str, Any]]:
         """Return top projects with missing metadata by file count."""
         cursor = self.conn.execute(

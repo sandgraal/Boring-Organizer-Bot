@@ -159,6 +159,7 @@ class TestHealthFixQueueEndpoint:
         mock_db = MagicMock()
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = metadata
+        mock_db.get_missing_metadata_total.return_value = 1
         mock_db.get_missing_metadata_counts.return_value = [
             {"project": "docs", "count": 1}
         ]
@@ -219,6 +220,7 @@ class TestHealthFixQueueEndpoint:
         mock_db = MagicMock()
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = []
+        mock_db.get_missing_metadata_total.return_value = 0
         mock_db.get_missing_metadata_counts.return_value = []
         mock_db.get_permission_denial_metrics.return_value = permission_metrics
         mock_db.get_project_document_counts.return_value = []

@@ -263,6 +263,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     config = get_config()
     metrics = db.get_feedback_metrics(project=project)
     metadata_deficits = db.get_documents_missing_metadata()
+    metadata_total = db.get_missing_metadata_total()
     metadata_counts = db.get_missing_metadata_counts()
     permission_metrics = db.get_permission_denial_metrics(project=project)
     lint_issues = collect_capture_lint_issues(config)
@@ -296,7 +297,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         ),
         FailureSignal(
             name="metadata_deficits",
-            value=len(metadata_deficits),
+            value=metadata_total,
             details="Documents missing source_date/project/language metadata",
         ),
         FailureSignal(

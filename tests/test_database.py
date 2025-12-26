@@ -190,6 +190,19 @@ class TestDatabaseOperations:
         assert counts[0]["project"] == "unknown"
         assert counts[0]["count"] >= 1
 
+    def test_missing_metadata_total(self, test_db):
+        test_db.insert_document(
+            source_path="/missing-total.md",
+            source_type="markdown",
+            project="",
+            content_hash="missing-total",
+            language="",
+            source_date=None,
+        )
+
+        total = test_db.get_missing_metadata_total()
+        assert total >= 1
+
     def test_feedback_metrics_repeated_question_window(self, test_db):
         test_db.log_feedback(
             question="Repeated question?",
