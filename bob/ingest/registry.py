@@ -34,7 +34,8 @@ def get_parser(path: Path) -> Parser | None:
     ext = path.suffix.lower()
     parser = _parsers.get(ext)
     if parser is not None:
-        return parser
+        if parser.can_parse(path):
+            return parser
     for candidate in set(_parsers.values()):
         if candidate.can_parse(path):
             return candidate

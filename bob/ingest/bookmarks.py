@@ -168,4 +168,14 @@ class BookmarksParser(Parser):
         )
 
     def can_parse(self, path: Path) -> bool:
-        return path.suffix.lower() in self.extensions
+        if path.suffix.lower() not in self.extensions:
+            return False
+        try:
+            with path.open(encoding="utf-8", errors="ignore") as handle:
+                snippet = handle.read(4096)
+        except OSError:
+            return False
+        lowered = snippet.lower()
+        return BOOKMARKS_SIGNATURE in snippet or (
+            "bookmark" in lowered and "<dl" in lowered and "<a" in lowered
+        )
