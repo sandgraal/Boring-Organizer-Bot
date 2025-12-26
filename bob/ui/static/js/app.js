@@ -190,6 +190,9 @@
     elements.outdatedWarningContainer = document.getElementById(
       "outdated-warning-container"
     );
+    elements.answerFeedback = document.getElementById("answer-feedback");
+    elements.feedbackButtons = document.getElementById("feedback-buttons");
+    elements.feedbackStatus = document.getElementById("feedback-status");
     elements.coachToggle = document.getElementById("coach-toggle");
     elements.coachModeStatus = document.getElementById("coach-mode-status");
     elements.coachSuggestions = document.getElementById("coach-suggestions");
@@ -330,6 +333,7 @@
       tab.addEventListener("click", handleSidebarTabClick)
     );
     elements.copyReportBtn?.addEventListener("click", handleCopyReport);
+    elements.feedbackButtons?.addEventListener("click", handleFeedbackClick);
 
     // Library filters
     elements.libraryProjectFilter?.addEventListener(
@@ -1825,6 +1829,9 @@
     if (elements.coachSuggestionsList) {
       elements.coachSuggestionsList.innerHTML = "";
     }
+    setFeedbackVisible(false);
+    setFeedbackButtonsEnabled(false);
+    setFeedbackStatus("");
     setCopyReportEnabled(false);
   }
 
@@ -1911,6 +1918,9 @@
     // Render sources
     renderSources(response.sources);
     renderAudit(response.audit);
+    setFeedbackVisible(true);
+    setFeedbackButtonsEnabled(true);
+    setFeedbackStatus("");
 
     // Add citation click handlers
     document.querySelectorAll(".citation").forEach((el) => {
@@ -1947,8 +1957,78 @@
 
     renderSources([]);
     renderAudit(null);
+    setFeedbackVisible(true);
+    setFeedbackButtonsEnabled(true);
+    setFeedbackStatus("");
     elements.answerContent.classList.remove("hidden");
     setCopyReportEnabled(true);
+  }
+
+  function setFeedbackVisible(visible) {
+    if (!elements.answerFeedback) return;
+    elements.answerFeedback.classList.toggle("hidden", !visible);
+  }
+
+  function setFeedbackButtonsEnabled(enabled) {
+    if (!elements.feedbackButtons) return;
+    elements.feedbackButtons
+      .querySelectorAll("button")
+      .forEach((button) => (button.disabled = !enabled));
+  }
+
+  function setFeedbackStatus(message, type = null) {
+    if (!elements.feedbackStatus) return;
+    if (!message) {
+      elements.feedbackStatus.textContent = "";
+      elements.feedbackStatus.classList.add("hidden");
+      elements.feedbackStatus.classList.remove("error");
+      return;
+    }
+    elements.feedbackStatus.textContent = message;
+    elements.feedbackStatus.classList.remove("hidden");
+    elements.feedbackStatus.classList.toggle("error", type === "error");
+  }
+
+  function getFeedbackProject() {
+    const response = state.lastAsk?.response;
+    const fromSource = response?.sources?.find((source) => source.project)?.project;
+    if (fromSource) return fromSource;
+    const fromFilters = state.lastAsk?.filters?.projects?.[0];
+    if (fromFilters) return fromFilters;
+    return getSelectedProject();
+  }
+
+  async function handleFeedbackClick(event) {
+    const button = event.target.closest("[data-feedback]");
+    if (!button) return;
+
+    const reason = button.dataset.feedback;
+    const question = state.lastAsk?.query || elements.queryInput?.value.trim();
+    if (!reason || !question) return;
+
+    const response = state.lastAsk?.response;
+    const retrievedSourceIds = (response?.sources || [])
+      .map((source) => source.chunk_id)
+      .filter((id) => Number.isInteger(id));
+    const project = getFeedbackProject();
+
+    setFeedbackButtonsEnabled(false);
+    setFeedbackStatus("Sending feedback...");
+
+    try {
+      await API.submitFeedback({
+        question,
+        project: project || null,
+        answer_id: response?.answer_id || null,
+        feedback_reason: reason,
+        retrieved_source_ids: retrievedSourceIds,
+      });
+      setFeedbackStatus("Thanks for the feedback.");
+    } catch (err) {
+      console.error("Failed to send feedback:", err);
+      setFeedbackStatus("Unable to send feedback.", "error");
+      setFeedbackButtonsEnabled(true);
+    }
   }
 
   /**
@@ -2273,6 +2353,9 @@
     elements.sourcesList.innerHTML =
       '<div class="sources-empty"><p>No sources found.</p></div>';
     renderAudit(null);
+    setFeedbackVisible(false);
+    setFeedbackButtonsEnabled(false);
+    setFeedbackStatus("");
     setCopyReportEnabled(false);
   }
 
@@ -2284,6 +2367,9 @@
     elements.errorState.classList.remove("hidden");
     renderSources([]);
     renderAudit(null);
+    setFeedbackVisible(false);
+    setFeedbackButtonsEnabled(false);
+    setFeedbackStatus("");
     setCopyReportEnabled(false);
   }
 

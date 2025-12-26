@@ -198,6 +198,17 @@ const API = {
   },
 
   /**
+   * Submit feedback for an answer.
+   * @param {Object} payload - Feedback request body.
+   */
+  async submitFeedback(payload) {
+    return this.request("/feedback", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
    * Create a note from a canonical template.
    * @param {Object} payload - Note creation request body.
    */
