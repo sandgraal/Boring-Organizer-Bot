@@ -1378,6 +1378,26 @@ class TestDocumentsEndpoint:
 
         assert response.status_code == 200
 
+    def test_documents_normalizes_source_type_filter(
+        self, client: TestClient, mock_database: MagicMock
+    ):
+        """Documents endpoint normalizes source type aliases."""
+        mock_count_cursor = MagicMock()
+        mock_count_cursor.fetchone.return_value = (0,)
+
+        mock_docs_cursor = MagicMock()
+        mock_docs_cursor.fetchall.return_value = []
+
+        mock_database.conn.execute.side_effect = [mock_count_cursor, mock_docs_cursor]
+
+        with patch("bob.api.routes.documents.get_database", return_value=mock_database):
+            response = client.get("/documents?source_type=docx")
+
+        assert response.status_code == 200
+        count_call = mock_database.conn.execute.call_args_list[0]
+        params = count_call.args[1]
+        assert params == ["word"]
+
     def test_documents_pagination(self, client: TestClient, mock_database: MagicMock):
         """Documents endpoint supports pagination."""
         mock_count_cursor = MagicMock()

@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query
 
 from bob.api.schemas import DocumentInfo, DocumentListResponse
 from bob.db.database import get_database
+from bob.retrieval.search import normalize_source_types
 
 router = APIRouter()
 
@@ -42,9 +43,15 @@ def list_documents(
         conditions.append("project = ?")
         params.append(project)
 
+    normalized_source_type = None
     if source_type:
+        normalized = normalize_source_types([source_type])
+        if normalized:
+            normalized_source_type = normalized[0]
+
+    if normalized_source_type:
         conditions.append("source_type = ?")
-        params.append(source_type)
+        params.append(normalized_source_type)
 
     where_clause = " AND ".join(conditions) if conditions else "1=1"
 
