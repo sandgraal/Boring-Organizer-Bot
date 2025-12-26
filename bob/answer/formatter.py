@@ -110,6 +110,17 @@ def format_locator(result: SearchResult) -> str:
     elif loc_type == "section":
         return f"section: {locator.get('section', '')}"
 
+    elif loc_type == "line":
+        start = locator.get("start_line") or locator.get("line")
+        end = locator.get("end_line")
+        line_label = f"{start}-{end}" if end else f"{start}"
+        git_file = locator.get("git_file")
+        git_commit = locator.get("git_commit")
+        if git_file:
+            commit_label = f":{git_commit}" if git_commit else ""
+            return f"{git_file}{commit_label} lines {line_label}"
+        return f"lines {line_label}"
+
     else:
         return str(locator)
 

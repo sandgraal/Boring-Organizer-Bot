@@ -103,6 +103,30 @@ class TestFormatLocator:
         assert "Data" in formatted
         assert "100 rows" in formatted
 
+    def test_line_locator_with_git_context(self):
+        result = SearchResult(
+            chunk_id=1,
+            content="test",
+            score=0.9,
+            source_path="repo/README.md",
+            source_type="git",
+            locator_type="line",
+            locator_value={
+                "start_line": 2,
+                "end_line": 4,
+                "git_file": "README.md",
+                "git_commit": "abcd123",
+            },
+            project="test",
+            source_date=None,
+            git_repo=None,
+            git_commit=None,
+        )
+        formatted = format_locator(result)
+        assert "README.md" in formatted
+        assert "abcd123" in formatted
+        assert "lines 2-4" in formatted
+
 
 class TestFormatAnswerPlain:
     """Tests for plain text answer formatting."""
