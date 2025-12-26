@@ -2095,6 +2095,31 @@
   /**
    * Render Coach Mode suggestions.
    */
+  function buildCoachActionButton(suggestion, selectedProject) {
+    const action = suggestion.action;
+    if (!action) return "";
+    const target = suggestion.target || "";
+    const labels = {
+      run_query: "Run query",
+      open_indexing: "Open indexing",
+      open_health: "Open health",
+      open_settings: "Open settings",
+      open_file: "Open file",
+    };
+    const label = labels[action] || "Run action";
+    const targetAttr = target
+      ? `data-coach-target="${escapeHtml(target)}"`
+      : "";
+    const projectAttr = selectedProject
+      ? `data-coach-project="${escapeHtml(selectedProject)}"`
+      : "";
+    return `<button type="button" class="btn btn-secondary btn-sm coach-action" data-coach-action="${escapeHtml(
+      action
+    )}" ${targetAttr} ${projectAttr}>
+        ${label}
+      </button>`;
+  }
+
   function renderCoachSuggestions(response) {
     if (!elements.coachSuggestions || !elements.coachSuggestionsList) return;
 
@@ -2139,6 +2164,10 @@
               Run routine
             </button>`
           : "";
+        const actionButton = buildCoachActionButton(
+          suggestion,
+          selectedProject || ""
+        );
         return `
           <li class="coach-suggestion-item">
             <div class="coach-suggestion-text">${escapeHtml(
@@ -2159,6 +2188,7 @@
             </div>
             <div class="coach-suggestion-actions">
               ${routineButton}
+              ${actionButton}
               <button class="btn btn-secondary btn-sm coach-dismiss" data-id="${
                 suggestion.id
               }" data-type="${suggestion.type}" data-project="${escapeHtml(
@@ -2201,6 +2231,39 @@
           const overrides = project ? { project } : {};
           navigateTo("routines");
           await executeRoutine(actionId, overrides);
+        });
+      });
+
+    elements.coachSuggestions
+      .querySelectorAll(".coach-action")
+      .forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const action = btn.dataset.coachAction;
+          if (!action) return;
+          const target = btn.dataset.coachTarget || "";
+          const project = btn.dataset.coachProject || null;
+          if (action === "run_query") {
+            await handleFixQueueQuery(target, project);
+            return;
+          }
+          if (action === "open_indexing") {
+            handleFixQueueIndexing(target, project);
+            return;
+          }
+          if (action === "open_file") {
+            if (target) {
+              await handleFixQueueOpen(target);
+            }
+            return;
+          }
+          if (action === "open_health") {
+            navigateTo("health");
+            await loadFixQueue(true);
+            return;
+          }
+          if (action === "open_settings") {
+            navigateTo("settings");
+          }
         });
       });
 

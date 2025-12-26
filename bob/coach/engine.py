@@ -27,6 +27,8 @@ class SuggestionCandidate:
     why: str
     hypothesis: bool
     routine_action: str | None = None
+    action: str | None = None
+    target: str | None = None
     citations: list[Source] | None = None
 
 
@@ -115,17 +117,19 @@ def _health_suggestion_candidates(
             candidates.append(
                 (
                     _priority_from_count(count),
-                    SuggestionCandidate(
-                        suggestion_type="health_repeated_questions",
-                        text=(
-                            f'The question "{question}" was asked {count} times in the last 48h. '
-                            "Capture a decision or note so it is easier to retrieve."
-                        ),
-                        why="Repeated questions indicate a coverage gap.",
-                        hypothesis=True,
+                SuggestionCandidate(
+                    suggestion_type="health_repeated_questions",
+                    text=(
+                        f'The question "{question}" was asked {count} times in the last 48h. '
+                        "Capture a decision or note so it is easier to retrieve."
                     ),
-                )
+                    why="Repeated questions indicate a coverage gap.",
+                    hypothesis=True,
+                    action="run_query",
+                    target=question,
+                ),
             )
+        )
 
     metadata_total = db.get_missing_metadata_total(project=project)
     if metadata_total > 0:
@@ -140,6 +144,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Health metrics show missing metadata fields.",
                     hypothesis=True,
+                    action="open_health",
                 ),
             )
         )
@@ -158,6 +163,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Routine writes were blocked by current scope or path rules.",
                     hypothesis=True,
+                    action="open_settings",
                 ),
             )
         )
@@ -183,6 +189,8 @@ def _health_suggestion_candidates(
                     ),
                     why="Health metrics show low indexed volume.",
                     hypothesis=True,
+                    action="open_indexing",
+                    target=project_label,
                 ),
             )
         )
@@ -217,6 +225,8 @@ def _health_suggestion_candidates(
                     ),
                     why="Recent searches returned few results.",
                     hypothesis=True,
+                    action="open_indexing",
+                    target=project_label,
                 ),
             )
         )
@@ -266,6 +276,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Indexing errors reduce coverage.",
                     hypothesis=True,
+                    action="open_health",
                 ),
             )
         )
@@ -391,6 +402,8 @@ def generate_coach_suggestions(
                 why=candidate.why,
                 hypothesis=candidate.hypothesis,
                 routine_action=candidate.routine_action,
+                action=candidate.action,
+                target=candidate.target,
                 citations=candidate.citations,
             )
         )
@@ -435,6 +448,8 @@ def generate_coach_suggestions(
                     why=candidate.why,
                     hypothesis=candidate.hypothesis,
                     routine_action=candidate.routine_action,
+                    action=candidate.action,
+                    target=candidate.target,
                     citations=candidate.citations,
                 )
             )

@@ -116,6 +116,11 @@ class CoachSuggestion(BaseModel):
     routine_action: str | None = Field(
         None, description="Optional routine action id (e.g., daily-checkin)"
     )
+    action: str | None = Field(
+        None,
+        description="Optional action id (open_indexing, run_query, open_health, open_settings, open_file)",
+    )
+    target: str | None = Field(None, description="Optional action target (project, query, path)")
     citations: list[Source] | None = None
 
 

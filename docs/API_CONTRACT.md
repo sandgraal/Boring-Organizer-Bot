@@ -344,7 +344,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 Key models are defined in [`bob/api/schemas.py`](../bob/api/schemas.py). Examples:
 
 - `AskRequest` / `AskResponse` describe filters, top-k, Coach Mode overrides, source metadata, and the mandatory footer.
-- `CoachSuggestion` includes optional `routine_action` values (for example, `daily-checkin` or `weekly-review`) so the UI can trigger routines directly from Coach Mode suggestions.
+- `CoachSuggestion` includes optional `routine_action` values (for example, `daily-checkin` or `weekly-review`) so the UI can trigger routines directly from Coach Mode suggestions, plus optional `action`/`target` fields for non-routine flows (indexing, settings, health, or query re-runs).
 - `Source` carries `file_path`, `source_type`, `locator`, `similarity_score`, `project`, and optional Git metadata.
 - `RoutineRequest` / `RoutineResponse` cover all `/routines/*` actions: base fields (`project`, `language`, `date`, `top_k`) plus optional `slug`, `meeting_slug`, `meeting_date`, `participants`, `trip_name`, `trip_slug`, `decision_slug`, and `title`, and the rendered note path/content + retrieval buckets + warnings returned.
 - `NoteCreateRequest` / `NoteCreateResponse` capture template name, target path, placeholder values, and the rendered note content for manual template writes.
