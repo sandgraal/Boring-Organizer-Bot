@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sqlite3
 import threading
 from collections.abc import Iterator
@@ -156,7 +157,9 @@ class Database:
             for statement in statements:
                 statement = statement.strip()
                 if statement and "INSERT INTO schema_migrations" not in statement:
-                    self.conn.execute(statement)
+                    statement = self._rewrite_add_column_if_not_exists(statement)
+                    if statement:
+                        self.conn.execute(statement)
 
             # Check if already recorded
             cursor = self.conn.execute(
@@ -183,6 +186,34 @@ class Database:
         except sqlite3.OperationalError:
             # Table might already exist or vec0 not available
             pass
+
+    def _rewrite_add_column_if_not_exists(self, statement: str) -> str | None:
+        """Handle unsupported ADD COLUMN IF NOT EXISTS syntax in SQLite."""
+        pattern = re.compile(
+            r"^ALTER TABLE\s+(?P<table>\S+)\s+ADD COLUMN IF NOT EXISTS\s+"
+            r"(?P<column>\S+)\s+(?P<definition>.+)$",
+            re.IGNORECASE | re.DOTALL,
+        )
+        match = pattern.match(statement)
+        if not match:
+            return statement
+
+        table_token = match.group("table")
+        column_token = match.group("column")
+        definition = match.group("definition").strip()
+
+        table_name = table_token.strip('"`[]')
+        column_name = column_token.strip('"`[]')
+
+        if self._column_exists(table_name, column_name):
+            return None
+
+        return f"ALTER TABLE {table_token} ADD COLUMN {column_token} {definition}"
+
+    def _column_exists(self, table: str, column: str) -> bool:
+        """Check if a column exists on a table."""
+        cursor = self.conn.execute(f"PRAGMA table_info({table})")
+        return any(row["name"] == column for row in cursor.fetchall())
 
     # Document operations
 

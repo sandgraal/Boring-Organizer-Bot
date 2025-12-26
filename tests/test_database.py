@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta
 
+from pathlib import Path
+
 from bob.db.database import compute_content_hash
 
 
@@ -199,6 +201,20 @@ class TestDatabaseOperations:
             language="",
             source_date=None,
         )
+
+    def test_run_migration_add_column_if_not_exists(self, test_db, temp_dir):
+        migration_file = Path(temp_dir) / "999_add_column.sql"
+        migration_file.write_text(
+            "ALTER TABLE documents ADD COLUMN IF NOT EXISTS test_flag INTEGER NOT NULL DEFAULT 0;"
+        )
+
+        test_db._run_migration(migration_file, 999)
+
+        columns = [
+            row["name"]
+            for row in test_db.conn.execute("PRAGMA table_info(documents)").fetchall()
+        ]
+        assert "test_flag" in columns
 
         total = test_db.get_missing_metadata_total()
         assert total >= 1
