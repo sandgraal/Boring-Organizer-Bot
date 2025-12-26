@@ -2102,7 +2102,7 @@
   /**
    * Render Coach Mode suggestions.
    */
-  function buildCoachActionButton(suggestion, selectedProject) {
+  function buildCoachActionButton(suggestion, suggestionProject) {
     const action = suggestion.action;
     if (!action) return "";
     const target = suggestion.target || "";
@@ -2117,7 +2117,7 @@
     const targetAttr = target
       ? `data-coach-target="${escapeHtml(target)}"`
       : "";
-    let projectValue = selectedProject || "";
+    let projectValue = suggestionProject || "";
     if (action === "open_indexing" && target) {
       projectValue = target;
     }
@@ -2167,17 +2167,18 @@
         const hypothesis = suggestion.hypothesis
           ? '<span class="coach-hypothesis">Hypothesis</span>'
           : "";
+        const suggestionProject = suggestion.project || selectedProject || "";
         const routineAction = suggestion.routine_action;
         const routineButton = routineAction
           ? `<button type="button" class="btn btn-primary btn-sm coach-run" data-routine="${escapeHtml(
               routineAction
-            )}" data-project="${escapeHtml(selectedProject || "")}">
+            )}" data-project="${escapeHtml(suggestionProject)}">
               Run routine
             </button>`
           : "";
         const actionButton = buildCoachActionButton(
           suggestion,
-          selectedProject || ""
+          suggestionProject
         );
         return `
           <li class="coach-suggestion-item">
@@ -2203,7 +2204,7 @@
               <button class="btn btn-secondary btn-sm coach-dismiss" data-id="${
                 suggestion.id
               }" data-type="${suggestion.type}" data-project="${escapeHtml(
-                selectedProject || ""
+                suggestionProject
               )}">
                 Dismiss
               </button>

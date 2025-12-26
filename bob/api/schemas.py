@@ -113,6 +113,7 @@ class CoachSuggestion(BaseModel):
     text: str
     why: str
     hypothesis: bool = False
+    project: str | None = Field(None, description="Optional project context for actions")
     routine_action: str | None = Field(
         None, description="Optional routine action id (e.g., daily-checkin)"
     )

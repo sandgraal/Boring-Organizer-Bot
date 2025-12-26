@@ -104,10 +104,10 @@ def ask_query(request: AskRequest) -> AskResponse:
             db=db,
             override_cooldown=request.coach_show_anyway,
         )
-        project_key = project or "all"
         for suggestion in suggestions:
+            suggestion_project = suggestion.project or project or "all"
             db.log_coach_suggestion(
-                project=project_key,
+                project=suggestion_project,
                 suggestion_type=suggestion.type,
                 suggestion_fingerprint=suggestion.id,
                 was_shown=True,
@@ -150,10 +150,10 @@ def ask_query(request: AskRequest) -> AskResponse:
         db=db,
         override_cooldown=request.coach_show_anyway,
     )
-    project_key = project or "all"
     for suggestion in suggestions:
+        suggestion_project = suggestion.project or project or "all"
         db.log_coach_suggestion(
-            project=project_key,
+            project=suggestion_project,
             suggestion_type=suggestion.type,
             suggestion_fingerprint=suggestion.id,
             was_shown=True,

@@ -26,6 +26,7 @@ class SuggestionCandidate:
     text: str
     why: str
     hypothesis: bool
+    project: str | None = None
     routine_action: str | None = None
     action: str | None = None
     target: str | None = None
@@ -59,6 +60,7 @@ def _coverage_suggestion(project: str | None, why: str) -> SuggestionCandidate:
         text=text,
         why=why,
         hypothesis=True,
+        project=project,
         routine_action=ROUTINE_FOR_COVERAGE,
         citations=None,
     )
@@ -103,6 +105,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Feedback logs show unanswered questions.",
                     hypothesis=True,
+                    project=project,
                     routine_action=ROUTINE_FOR_COVERAGE,
                 ),
             )
@@ -114,28 +117,35 @@ def _health_suggestion_candidates(
         question = str(top.get("question") or "").strip()
         count = int(top.get("count", 0))
         if question and count > 1:
+            project_value = top.get("project") if isinstance(top, dict) else None
             candidates.append(
                 (
                     _priority_from_count(count),
-                SuggestionCandidate(
-                    suggestion_type="health_repeated_questions",
-                    text=(
-                        f'The question "{question}" was asked {count} times in the last 48h. '
-                        "Capture a decision or note so it is easier to retrieve."
+                    SuggestionCandidate(
+                        suggestion_type="health_repeated_questions",
+                        text=(
+                            f'The question "{question}" was asked {count} times in the last 48h. '
+                            "Capture a decision or note so it is easier to retrieve."
+                        ),
+                        why="Repeated questions indicate a coverage gap.",
+                        hypothesis=True,
+                        project=str(project_value).strip() if project_value else None,
+                        action="run_query",
+                        target=question,
                     ),
-                    why="Repeated questions indicate a coverage gap.",
-                    hypothesis=True,
-                    action="run_query",
-                    target=question,
-                ),
+                )
             )
-        )
 
     metadata_total = db.get_missing_metadata_total(project=project)
     if metadata_total > 0:
         metadata_deficits = db.get_documents_missing_metadata(limit=1, project=project)
         metadata_target = (
             str(metadata_deficits[0].get("source_path")) if metadata_deficits else ""
+        )
+        metadata_project = (
+            str(metadata_deficits[0].get("project")).strip()
+            if metadata_deficits and metadata_deficits[0].get("project")
+            else None
         )
         metadata_action = "open_file" if metadata_target else "open_health"
         candidates.append(
@@ -149,6 +159,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Health metrics show missing metadata fields.",
                     hypothesis=True,
+                    project=metadata_project or project,
                     action=metadata_action,
                     target=metadata_target or None,
                 ),
@@ -169,6 +180,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Routine writes were blocked by current scope or path rules.",
                     hypothesis=True,
+                    project=project,
                     action="open_settings",
                 ),
             )
@@ -195,6 +207,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Health metrics show low indexed volume.",
                     hypothesis=True,
+                    project=project_label if project_label != "unknown" else None,
                     action="open_indexing",
                     target=project_label,
                 ),
@@ -231,6 +244,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Recent searches returned few results.",
                     hypothesis=True,
+                    project=project_label if project_label != "unknown" else None,
                     action="open_indexing",
                     target=project_label,
                 ),
@@ -259,6 +273,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Health metrics show items older than the staleness thresholds.",
                     hypothesis=True,
+                    project=project,
                     routine_action=ROUTINE_FOR_STALENESS,
                 ),
             )
@@ -273,8 +288,10 @@ def _health_suggestion_candidates(
     if ingestion_total > 0:
         ingestion_recent = ingestion_metrics.get("recent", []) if ingestion_metrics else []
         ingestion_target = ""
+        ingestion_project = None
         if ingestion_recent:
             ingestion_target = str(ingestion_recent[0].get("source_path") or "")
+            ingestion_project = ingestion_recent[0].get("project")
         ingestion_action = "open_file" if ingestion_target else "open_health"
         candidates.append(
             (
@@ -287,6 +304,9 @@ def _health_suggestion_candidates(
                     ),
                     why="Indexing errors reduce coverage.",
                     hypothesis=True,
+                    project=str(ingestion_project).strip()
+                    if ingestion_project
+                    else project,
                     action=ingestion_action,
                     target=ingestion_target or None,
                 ),
@@ -313,12 +333,15 @@ def _select_staleness_citations(sources: Iterable[Source]) -> list[Source]:
     return list(sources)[:1]
 
 
-def _staleness_suggestion(sources: list[Source]) -> SuggestionCandidate:
+def _staleness_suggestion(
+    sources: list[Source], project: str | None
+) -> SuggestionCandidate:
     return SuggestionCandidate(
         suggestion_type="staleness",
         text="Consider re-checking this topic before acting on the answer.",
         why="Date confidence is LOW based on older source dates.",
         hypothesis=False,
+        project=project,
         routine_action=ROUTINE_FOR_STALENESS,
         citations=_select_staleness_citations(sources),
     )
@@ -335,7 +358,9 @@ def _decision_without_rationale_sources(sources: list[Source]) -> list[Source]:
     return matches
 
 
-def _capture_hygiene_suggestion(sources: list[Source]) -> SuggestionCandidate:
+def _capture_hygiene_suggestion(
+    sources: list[Source], project: str | None
+) -> SuggestionCandidate:
     citations = sources[:2]
     return SuggestionCandidate(
         suggestion_type="capture_hygiene",
@@ -345,6 +370,7 @@ def _capture_hygiene_suggestion(sources: list[Source]) -> SuggestionCandidate:
         ),
         why="Multiple Decision sections appear without a Rationale line in the cited snippets.",
         hypothesis=False,
+        project=project,
         citations=citations,
     )
 
@@ -375,10 +401,10 @@ def generate_coach_suggestions(
                 _coverage_suggestion(project, f"Fewer than {MIN_CITED_CHUNKS} sources were cited.")
             )
         if overall_confidence == "LOW":
-            candidates.append(_staleness_suggestion(sources))
+            candidates.append(_staleness_suggestion(sources, project))
         decision_without_rationale = _decision_without_rationale_sources(sources)
         if len(decision_without_rationale) >= 2:
-            candidates.append(_capture_hygiene_suggestion(decision_without_rationale))
+            candidates.append(_capture_hygiene_suggestion(decision_without_rationale, project))
 
     # Gate: only coverage suggestions when evidence is thin or not found.
     if not_found or len(sources) < MIN_CITED_CHUNKS:
@@ -394,8 +420,9 @@ def generate_coach_suggestions(
     seen: set[str] = set()
     routine_actions: set[str] = set()
     for candidate in candidates:
+        candidate_project = candidate.project or project_key
         if not override_cooldown and db.is_suggestion_type_in_cooldown(
-            project=project_key,
+            project=candidate_project,
             suggestion_type=candidate.suggestion_type,
             cooldown_days=cooldown_days,
         ):
@@ -413,6 +440,7 @@ def generate_coach_suggestions(
                 text=candidate.text,
                 why=candidate.why,
                 hypothesis=candidate.hypothesis,
+                project=candidate.project,
                 routine_action=candidate.routine_action,
                 action=candidate.action,
                 target=candidate.target,
@@ -441,8 +469,9 @@ def generate_coach_suggestions(
                 break
             if candidate.routine_action and candidate.routine_action in routine_actions:
                 continue
+            candidate_project = candidate.project or project_key
             if not override_cooldown and db.is_suggestion_type_in_cooldown(
-                project=project_key,
+                project=candidate_project,
                 suggestion_type=candidate.suggestion_type,
                 cooldown_days=cooldown_days,
             ):
@@ -459,6 +488,7 @@ def generate_coach_suggestions(
                     text=candidate.text,
                     why=candidate.why,
                     hypothesis=candidate.hypothesis,
+                    project=candidate.project,
                     routine_action=candidate.routine_action,
                     action=candidate.action,
                     target=candidate.target,
