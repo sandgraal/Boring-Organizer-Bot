@@ -49,7 +49,7 @@ Every answer must:
 
 ## Routines Roadmap
 
-B.O.B ships today with the Ask/Library/Indexing/Settings/Routines/Health UI and the CLI/API surface described above. The deeper lint-driven Fix Queue remediation, connector toggles, and automated coaching workflows are still in the plan stage. The actions and behaviors we intend to deliver are captured in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and include:
+B.O.B ships today with the Ask/Library/Indexing/Settings/Routines/Health UI and the CLI/API surface described above. The deeper lint-driven Fix Queue remediation and connector toggles are still in the plan stage, while Coach Mode now adds health-driven suggestions. The actions and behaviors we intend to deliver are captured in [`docs/ROUTINES_SPEC.md`](docs/ROUTINES_SPEC.md) and include:
 
 - **Daily Check-in / End-of-Day Debrief** → structured daily notes seeded from `open_loops` and recent context.
 - **Meeting Prep / Debrief** → pre-flight bundles of agenda bullets, decisions, rejected options, and next actions with citations.

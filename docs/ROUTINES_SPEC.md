@@ -106,13 +106,13 @@ The Fix Queue screen lists tasks and lets the user run the associated routine (e
 
 ## Coach Mode Integration
 
-Coach Mode routine suggestions are planned but not implemented yet. When added, they should follow this rule:
+Coach Mode routine suggestions now surface health-driven signals (feedback gaps, staleness, low coverage, permissions, ingestion errors) and follow these rules:
 
 1. Evidence-backed suggestions cite the retrieval context (e.g., “Five open decisions lack final context; run a New Decision capture” with citations to the open decision notes).
 2. When evidence is thin, the suggestion is labeled **Hypothesis** (e.g., “You have three repeated questions about trip planning; consider running Trip Debrief”).
 3. The routine tag in Coach Mode links directly to the `/routines/<action>` endpoint so the user can execute the workflow from the suggestion.
 
-Planned: Coach Mode will surface Fix Queue metrics, inviting the user to resolve lint flags, ingest missing sources, or run a routine that writes to the vault while respecting permission scopes (see `docs/PERMISSIONS.md`).
+Planned: Coach Mode will surface lint-driven suggestions with citations and deeper Fix Queue remediation guidance (metadata fixes, capture lint, connector toggles) while respecting permission scopes (see `docs/PERMISSIONS.md`).
 
 ---
 
