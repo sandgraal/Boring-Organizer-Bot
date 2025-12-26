@@ -97,6 +97,7 @@ def search(
     date_after: datetime | None = None,
     date_before: datetime | None = None,
     language: str | None = None,
+    log_search: bool = True,
 ) -> list[SearchResult]:
     """Search the knowledge base for relevant chunks.
 
@@ -199,6 +200,7 @@ def search(
         for scored in scored_results[:top_k]:
             row = scored.metadata
             hybrid_results.append(_row_to_search_result(row, scored.final_score))
+        _log_search_activity(db, query, effective_projects, hybrid_results, log_search)
         return hybrid_results
 
     # Standard vector-only scoring
@@ -208,7 +210,24 @@ def search(
         score = max(0.0, 1.0 - distance)
         results.append(_row_to_search_result(row, score))
 
+    _log_search_activity(db, query, effective_projects, results, log_search)
     return results
+
+
+def _log_search_activity(
+    db: Any,
+    query: str,
+    effective_projects: list[str] | None,
+    results: list[SearchResult],
+    log_search: bool,
+) -> None:
+    """Persist search history when enabled."""
+    if not log_search:
+        return
+    project_label = None
+    if effective_projects and len(effective_projects) == 1:
+        project_label = effective_projects[0]
+    db.log_search(query=query, project=project_label, results_count=len(results))
 
 
 def _row_to_search_result(row: dict[str, Any], score: float) -> SearchResult:

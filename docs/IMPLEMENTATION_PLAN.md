@@ -478,8 +478,8 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Coverage Metrics**
 
-   - [ ] Low indexed volume per project
-   - [ ] Low retrieval hit rate per project
+   - [x] Low indexed volume per project
+   - [x] Low retrieval hit rate per project
 
 2. **Metadata Hygiene**
 

@@ -227,11 +227,11 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 ### GET /health/fix-queue
 
-- **Purpose:** Provide the health dashboard and Fix Queue with failure signals (not-found frequency, metadata deficits, repeated questions, permission denials) plus actionable tasks derived from those signals.
-- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)`, `db.get_documents_missing_metadata()`, and `db.get_permission_denial_metrics(project)` to build `FixQueueResponse`.
+- **Purpose:** Provide the health dashboard and Fix Queue with failure signals (not-found frequency, metadata deficits, repeated questions, permission denials, low indexed volume, low retrieval hit rate) plus actionable tasks derived from those signals.
+- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)`, `db.get_documents_missing_metadata()`, `db.get_permission_denial_metrics(project)`, `db.get_project_document_counts()`, and `db.get_search_history_stats(...)` to build `FixQueueResponse`.
 - **Response model:** `FixQueueResponse` with `failure_signals` (instances of `FailureSignal`) and `tasks` (instances of `FixQueueTask`).
 - **Behavior:** 
-  - `failure_signals` include `not_found_frequency`, `metadata_deficits`, `repeated_questions`, and `permission_denials`, each with counts/details that the UI can render directly.
+  - `failure_signals` include `not_found_frequency`, `metadata_deficits`, `repeated_questions`, `permission_denials`, `low_indexed_volume`, and `low_retrieval_hit_rate`, each with counts/details that the UI can render directly.
   - `tasks` are prioritized actions such as `run_routine` for high not-found ratios, `fix_metadata` for documents missing `source_date`/`project`/`language`, and `run_routine` for repeated queries (question text is the target).
   - Capture lint issues generate `fix_capture` tasks that point at the offending vault note paths with a reason describing the missing sections or metadata.
   - Permission denials create `raise_scope` (target `permissions.default_scope`) and `allow_path` (target is the blocked path) tasks.
@@ -260,6 +260,16 @@ After the background thread finishes, the job status moves to `completed` or `fa
       "name": "permission_denials",
       "value": 1,
       "details": "1 scope denials in the last 168h"
+    },
+    {
+      "name": "low_indexed_volume",
+      "value": 1,
+      "details": "1 project under 5 docs: docs (2)"
+    },
+    {
+      "name": "low_retrieval_hit_rate",
+      "value": 1,
+      "details": "1 project below 40% hit rate: docs (20% hits)"
     }
   ],
   "tasks": [

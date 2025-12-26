@@ -75,6 +75,15 @@ class SearchConfig(BaseModel):
     recency_half_life_days: int = 180
 
 
+class HealthConfig(BaseModel):
+    """Health dashboard thresholds."""
+
+    low_volume_document_threshold: int = 5
+    low_hit_rate_threshold: float = 0.4
+    search_window_hours: int = 168
+    min_searches_for_rate: int = 5
+
+
 class PathsConfig(BaseModel):
     """Paths configuration."""
 
@@ -167,6 +176,7 @@ class Config(BaseSettings):
     defaults: DefaultsConfig = Field(default_factory=DefaultsConfig)
     date_confidence: DateConfidenceConfig = Field(default_factory=DateConfidenceConfig)
     search: SearchConfig = Field(default_factory=SearchConfig)
+    health: HealthConfig = Field(default_factory=HealthConfig)
     paths: PathsConfig = Field(default_factory=PathsConfig)
     permissions: PermissionsConfig = Field(default_factory=PermissionsConfig)
     git_docs: GitDocsConfig = Field(default_factory=GitDocsConfig)

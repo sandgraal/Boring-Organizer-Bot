@@ -623,6 +623,80 @@ class Database:
             "has_vec": self.has_vec,
         }
 
+    def get_project_document_counts(self) -> list[dict[str, Any]]:
+        """Return document counts grouped by project."""
+        cursor = self.conn.execute(
+            """
+            SELECT project, COUNT(*) as count
+            FROM documents
+            GROUP BY project
+            ORDER BY count ASC
+            """
+        )
+        return [
+            {"project": row["project"], "document_count": int(row["count"])}
+            for row in cursor.fetchall()
+        ]
+
+    def log_search(
+        self,
+        *,
+        query: str,
+        project: str | None,
+        results_count: int,
+    ) -> None:
+        """Record search activity for coverage metrics."""
+        not_found = 1 if results_count == 0 else 0
+        with self.transaction():
+            self.conn.execute(
+                """
+                INSERT INTO search_history (
+                    query,
+                    project,
+                    results_count,
+                    not_found
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (query, project, int(results_count), not_found),
+            )
+
+    def get_search_history_stats(
+        self,
+        *,
+        window_hours: int = 168,
+        min_count: int = 1,
+    ) -> list[dict[str, Any]]:
+        """Summarize search hit rates per project."""
+        window = f"-{int(window_hours)} hours"
+        cursor = self.conn.execute(
+            """
+            SELECT COALESCE(NULLIF(project, ''), 'all') as project,
+                   COUNT(*) as total,
+                   SUM(not_found) as not_found
+            FROM search_history
+            WHERE datetime(searched_at) >= datetime('now', ?)
+            GROUP BY COALESCE(NULLIF(project, ''), 'all')
+            HAVING COUNT(*) >= ?
+            ORDER BY total DESC
+            """,
+            (window, min_count),
+        )
+        stats: list[dict[str, Any]] = []
+        for row in cursor.fetchall():
+            total = int(row["total"])
+            not_found = int(row["not_found"] or 0)
+            hit_rate = (total - not_found) / total if total else 0.0
+            stats.append(
+                {
+                    "project": row["project"],
+                    "total": total,
+                    "not_found": not_found,
+                    "hit_rate": hit_rate,
+                }
+            )
+        return stats
+
     def log_feedback(
         self,
         *,

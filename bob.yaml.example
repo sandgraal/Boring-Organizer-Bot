@@ -83,6 +83,20 @@ search:
   recency_boost_enabled: false
   recency_half_life_days: 180  # Score halves every N days old
 
+# Health dashboard thresholds
+health:
+  # Projects with fewer documents than this are flagged
+  low_volume_document_threshold: 5
+
+  # Flag projects with a hit rate below this threshold
+  low_hit_rate_threshold: 0.4
+
+  # Lookback window for search hit rate calculations
+  search_window_hours: 168
+
+  # Minimum number of searches before calculating hit rate
+  min_searches_for_rate: 5
+
 # Paths configuration
 paths:
   # Directories to ignore during indexing

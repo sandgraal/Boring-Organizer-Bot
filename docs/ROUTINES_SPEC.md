@@ -83,6 +83,8 @@ Failure metrics collected locally include:
 
 - **Not found frequency** per project (percentage of feedback entries labeled `didnt_answer`). 
 - **Missing metadata counts** (documents missing `source_date`, `project`, or `language`). 
+- **Low indexed volume** per project (document counts below the health threshold).
+- **Low retrieval hit rate** per project (recent searches returning zero results).
 - **Repeated questions** (same query text >1 within rolling 48 hours). 
 - **Permission denials** (scope/path blocks on `/routines/*` writes).
 - **Capture lint issues** (missing rationale, rejected options, metadata, or next actions) from vault notes.

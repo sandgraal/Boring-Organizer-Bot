@@ -36,6 +36,7 @@ class TestDatabaseOperations:
         assert "chunks" in tables
         assert "decisions" in tables
         assert "permission_denials" in tables
+        assert "search_history" in tables
         assert "schema_migrations" in tables
 
     def test_insert_document(self, test_db):
@@ -124,6 +125,24 @@ class TestDatabaseOperations:
         stats_all = test_db.get_stats()
         assert stats_all["document_count"] == 2
 
+    def test_project_document_counts(self, test_db):
+        test_db.insert_document(
+            source_path="/a.md",
+            source_type="markdown",
+            project="alpha",
+            content_hash="a",
+        )
+        test_db.insert_document(
+            source_path="/b.md",
+            source_type="markdown",
+            project="beta",
+            content_hash="b",
+        )
+
+        counts = test_db.get_project_document_counts()
+        project_names = {entry["project"] for entry in counts}
+        assert {"alpha", "beta"} <= project_names
+
     def test_permission_denial_metrics(self, test_db):
         test_db.log_permission_denial(
             action_name="daily-checkin",
@@ -143,6 +162,16 @@ class TestDatabaseOperations:
         denial = metrics["recent"][0]
         assert denial["action_name"] == "daily-checkin"
         assert denial["reason_code"] == "scope"
+
+    def test_search_history_stats(self, test_db):
+        test_db.log_search(query="missing answer", project="docs", results_count=0)
+        test_db.log_search(query="found answer", project="docs", results_count=2)
+
+        stats = test_db.get_search_history_stats(window_hours=1, min_count=1)
+        record = next(item for item in stats if item["project"] == "docs")
+        assert record["total"] == 2
+        assert record["not_found"] == 1
+        assert record["hit_rate"] == 0.5
 
 
 class TestDecisionStorage:

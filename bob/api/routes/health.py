@@ -81,6 +81,34 @@ def _format_permission_denial_details(metrics: dict[str, Any]) -> str:
     return f"{', '.join(parts)} {label}{window_note}"
 
 
+def _format_low_volume_details(
+    projects: list[dict[str, Any]], threshold: int
+) -> str:
+    """Describe low document coverage by project."""
+    if not projects:
+        return "No projects below minimum document count."
+    preview = ", ".join(
+        f"{item['project'] or 'unknown'} ({item['document_count']})"
+        for item in projects[:3]
+    )
+    label = "project" if len(projects) == 1 else "projects"
+    return f"{len(projects)} {label} under {threshold} docs: {preview}"
+
+
+def _format_low_hit_rate_details(
+    projects: list[dict[str, Any]], threshold: float
+) -> str:
+    """Describe low retrieval hit rates by project."""
+    if not projects:
+        return "No projects below hit-rate threshold."
+    preview = ", ".join(
+        f"{item['project']} ({item['hit_rate'] * 100:.0f}% hits)"
+        for item in projects[:3]
+    )
+    label = "project" if len(projects) == 1 else "projects"
+    return f"{len(projects)} {label} below {threshold * 100:.0f}% hit rate: {preview}"
+
+
 def _build_fix_queue_tasks(
     metrics: dict[str, Any],
     metadata_deficits: list[dict[str, Any]],
@@ -206,10 +234,24 @@ def _build_lint_tasks(lint_issues: list[LintIssue]) -> list[FixQueueTask]:
 def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     """Return Fix Queue signals and tasks derived from failure metrics."""
     db = get_database()
+    config = get_config()
     metrics = db.get_feedback_metrics(project=project)
     metadata_deficits = db.get_documents_missing_metadata()
     permission_metrics = db.get_permission_denial_metrics(project=project)
-    lint_issues = collect_capture_lint_issues(get_config())
+    lint_issues = collect_capture_lint_issues(config)
+    project_counts = db.get_project_document_counts()
+    low_volume_threshold = config.health.low_volume_document_threshold
+    low_volume_projects = [
+        item for item in project_counts if item["document_count"] < low_volume_threshold
+    ]
+    search_stats = db.get_search_history_stats(
+        window_hours=config.health.search_window_hours,
+        min_count=config.health.min_searches_for_rate,
+    )
+    low_hit_rate_threshold = config.health.low_hit_rate_threshold
+    low_hit_rate_projects = [
+        item for item in search_stats if item["hit_rate"] < low_hit_rate_threshold
+    ]
 
     failure_signals = [
         FailureSignal(
@@ -234,6 +276,20 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
             name="permission_denials",
             value=permission_metrics.get("total", 0),
             details=_format_permission_denial_details(permission_metrics),
+        ),
+        FailureSignal(
+            name="low_indexed_volume",
+            value=len(low_volume_projects),
+            details=_format_low_volume_details(
+                low_volume_projects, low_volume_threshold
+            ),
+        ),
+        FailureSignal(
+            name="low_retrieval_hit_rate",
+            value=len(low_hit_rate_projects),
+            details=_format_low_hit_rate_details(
+                low_hit_rate_projects, low_hit_rate_threshold
+            ),
         ),
     ]
 

@@ -169,7 +169,7 @@ def run_evaluation(
         from bob.retrieval import search
 
         def default_search(query: str) -> list[int]:
-            results = search(query=query, top_k=k)
+            results = search(query=query, top_k=k, log_search=False)
             return [r.chunk_id for r in results]
 
         search_fn = default_search
