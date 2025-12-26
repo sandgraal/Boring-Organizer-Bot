@@ -114,6 +114,9 @@ health:
 
 # Paths configuration
 paths:
+  # Skip files larger than this size (MB)
+  max_file_size_mb: 50
+
   # Directories to ignore during indexing
   ignore:
     - node_modules

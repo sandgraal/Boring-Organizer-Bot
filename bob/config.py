@@ -92,6 +92,7 @@ class HealthConfig(BaseModel):
 class PathsConfig(BaseModel):
     """Paths configuration."""
 
+    max_file_size_mb: int = 50
     ignore: list[str] = Field(
         default_factory=lambda: [
             "node_modules",

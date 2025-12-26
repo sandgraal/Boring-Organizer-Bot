@@ -117,6 +117,25 @@ def index_file(
         logger.debug(f"No parser for {path}")
         return {"chunks": 0, "skipped": 1, "documents": 0}
 
+    max_size_mb = get_config().paths.max_file_size_mb
+    if max_size_mb > 0:
+        try:
+            file_size = path.stat().st_size
+        except OSError as exc:
+            logger.warning("Unable to read size for %s: %s", path, exc)
+        else:
+            max_bytes = max_size_mb * 1024 * 1024
+            if file_size > max_bytes:
+                db.log_ingestion_error(
+                    source_path=str(path),
+                    source_type=_resolve_source_type(path, parser),
+                    project=project,
+                    error_type="oversize",
+                    error_message=f"File exceeds {max_size_mb} MB size limit.",
+                )
+                logger.warning("Skipping %s: exceeds %s MB size limit", path, max_size_mb)
+                return {"chunks": 0, "skipped": 0, "documents": 0, "errors": 1}
+
     # Parse the document
     try:
         parsed = parser.parse(path)

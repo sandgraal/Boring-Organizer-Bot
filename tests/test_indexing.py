@@ -215,6 +215,36 @@ Content in section two.
         finally:
             indexer_module.get_database = original_get_db
 
+    def test_index_skips_oversize_file(self, temp_dir: Path, test_db: Database) -> None:
+        """Oversize files are logged and not indexed."""
+        from bob.config import get_config
+        from bob.index import index_paths
+        from bob.index import indexer as indexer_module
+
+        test_file = temp_dir / "big.md"
+        test_file.write_text("word " * 300000)
+
+        config = get_config()
+        config.paths.max_file_size_mb = 1
+
+        original_get_db = indexer_module.get_database
+        indexer_module.get_database = lambda: test_db
+
+        try:
+            stats = index_paths(
+                paths=[test_file],
+                project="test-project",
+                language="en",
+            )
+
+            assert stats["documents"] == 0
+            assert stats["errors"] == 1
+
+            metrics = test_db.get_ingestion_error_metrics(window_hours=1, limit=5)
+            assert metrics["counts"]["oversize"] == 1
+        finally:
+            indexer_module.get_database = original_get_db
+
     def test_index_ignores_patterns(self, temp_dir: Path, test_db: Database) -> None:
         """Test that ignored patterns are skipped."""
         from bob.index import index_paths

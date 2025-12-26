@@ -495,7 +495,7 @@ These are explicit non-goals to avoid scope creep:
 
    - [x] PDFs with no text
    - [x] Parse errors logged during indexing
-   - [ ] Oversized files
+   - [x] Oversized files
    - [x] Recent failures list with file paths
 
 5. **Fix Queue**
