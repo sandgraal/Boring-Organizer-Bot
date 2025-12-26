@@ -224,7 +224,7 @@ def _build_fix_queue_tasks(
         tasks.append(
             FixQueueTask(
                 id=f"repeat-{hashed}",
-                action="run_routine",
+                action="run_query",
                 target=repeated["question"],
                 project=repeated_project,
                 reason=f"Question repeated {repeated['count']} times in the last 48h",

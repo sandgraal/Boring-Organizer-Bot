@@ -236,7 +236,7 @@ class FixQueueTask(BaseModel):
     id: str
     action: str = Field(
         ...,
-        description="What the UI should do (e.g., fix_metadata, fix_capture, run_routine)",
+        description="What the UI should do (e.g., fix_metadata, fix_capture, run_routine, run_query)",
     )
     target: str = Field(..., description="Target path, routine, or question text")
     project: str | None = Field(

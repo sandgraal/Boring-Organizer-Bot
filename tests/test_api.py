@@ -231,10 +231,11 @@ class TestHealthFixQueueEndpoint:
             task["target"] == "routines/daily-checkin" and task["project"] == "docs"
             for task in data["tasks"]
         )
-        assert any(
-            task["target"] == "Where is the API?" and task["project"] == "docs"
-            for task in data["tasks"]
+        repeated_task = next(
+            task for task in data["tasks"] if task["target"] == "Where is the API?"
         )
+        assert repeated_task["project"] == "docs"
+        assert repeated_task["action"] == "run_query"
         assert mock_db.get_documents_missing_metadata.call_args.kwargs["project"] == "docs"
         assert mock_db.get_missing_metadata_total.call_args.kwargs["project"] == "docs"
         assert mock_db.get_missing_metadata_counts.call_args.kwargs["project"] == "docs"
@@ -289,6 +290,7 @@ class TestHealthFixQueueEndpoint:
         assert not_found_task["priority"] == 1
         assert repeated_task["priority"] == 1
         assert repeated_task["project"] == "docs"
+        assert repeated_task["action"] == "run_query"
 
 
 class TestAskEndpoint:

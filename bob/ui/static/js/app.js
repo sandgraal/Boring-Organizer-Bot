@@ -1264,6 +1264,13 @@
          Run routine
        </button>`;
     }
+    if (task.action === "run_query") {
+      return `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-query="${escapeHtml(
+        task.target
+      )}" ${projectAttr}>
+         Run query
+       </button>`;
+    }
     if (task.action === "run_routine") {
       return `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-query="${escapeHtml(
         task.target

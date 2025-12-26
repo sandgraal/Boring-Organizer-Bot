@@ -95,12 +95,12 @@ Failure metrics collected locally include:
 A runner converts these metrics into prioritized Fix Queue tasks (returned by `GET /health/fix-queue` and shown on the Fix Queue panel). Each task includes:
 
 - `id`: stable identifier.
-- `action`: `fix_metadata`, `fix_capture`, `run_routine`, `raise_scope`, `allow_path`, or `review_permissions`.
+- `action`: `fix_metadata`, `fix_capture`, `run_routine`, `run_query`, `raise_scope`, `allow_path`, or `review_permissions`.
 - `target`: file path or routine name.
 - `reason`: human-readable explanation of the signal (e.g., not-found frequency or missing metadata).
 - `priority`: derived from error severity and frequency.
 
-Permission-denial tasks include `raise_scope` targets for blocked scope levels and `allow_path` targets for denied vault paths; repeated-question tasks surface the question text as the `target`. Lint tasks use `fix_capture` and point to the offending note path.
+Permission-denial tasks include `raise_scope` targets for blocked scope levels and `allow_path` targets for denied vault paths; repeated-question tasks surface the question text as the `target` with `action: run_query`. Lint tasks use `fix_capture` and point to the offending note path.
 
 The Fix Queue screen lists tasks and lets the user run the associated routine (e.g., “Daily Check-in” for a not-found spike). Lint/metadata tasks include one-click open actions; permission/path/scope actions remain listed without remediation. Tasks tied to Coach Mode and routines surface before optional Generation improvements, ensuring the system remains grounded.
 

@@ -243,7 +243,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** 
   - `failure_signals` include `not_found_frequency`, `metadata_deficits`, `metadata_top_offenders`, `stale_notes`, `stale_decisions`, `repeated_questions`, `permission_denials`, `low_indexed_volume`, and `low_retrieval_hit_rate`, each with counts/details that the UI can render directly.
   - `failure_signals` now also include `ingestion_errors`, summarizing parse/no-text failures with recent file previews.
-  - `tasks` are prioritized actions such as `run_routine` for high not-found ratios, `fix_metadata` for documents missing `source_date`/`project`/`language`, and `run_routine` for repeated queries (question text is the target).
+  - `tasks` are prioritized actions such as `run_routine` for high not-found ratios, `fix_metadata` for documents missing `source_date`/`project`/`language`, and `run_query` for repeated queries (question text is the target).
   - `tasks` include an optional `project` field when a failure signal is project-specific, so the UI can scope routines and queries.
   - Capture lint issues generate `fix_capture` tasks that point at the offending vault note paths with a reason describing the missing sections or metadata.
   - Permission denials create `raise_scope` (target `permissions.default_scope`) and `allow_path` (target is the blocked path) tasks.
@@ -322,7 +322,7 @@ After the background thread finishes, the job status moves to `completed` or `fa
     },
     {
       "id": "repeat-abcdef",
-      "action": "run_routine",
+      "action": "run_query",
       "target": "Where is the API?",
       "project": "docs",
       "reason": "Question repeated 2 times in the last 48h",
