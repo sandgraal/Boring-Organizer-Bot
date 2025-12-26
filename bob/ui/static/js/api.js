@@ -71,6 +71,7 @@ const API = {
           types: filters.types || null,
           date_after: filters.dateAfter || null,
           date_before: filters.dateBefore || null,
+          language: filters.language || null,
         },
         top_k: topK,
         coach_mode_enabled: coachModeEnabled,

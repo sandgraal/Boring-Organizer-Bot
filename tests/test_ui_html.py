@@ -25,3 +25,9 @@ def test_fix_queue_query_action_hook_exists() -> None:
     js = Path("bob/ui/static/js/app.js").read_text(encoding="utf-8")
     assert "data-fixqueue-query" in js
     assert "handleFixQueueQuery" in js
+
+
+def test_language_filter_markup_exists() -> None:
+    """Ask filters include a language input."""
+    html = Path("bob/ui/index.html").read_text(encoding="utf-8")
+    assert 'id="language-filter"' in html

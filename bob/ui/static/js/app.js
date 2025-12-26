@@ -1622,12 +1622,15 @@
 
     const dateAfter = document.getElementById("date-after")?.value || null;
     const dateBefore = document.getElementById("date-before")?.value || null;
+    const language =
+      document.getElementById("language-filter")?.value.trim() || null;
 
     return {
       projects: projects.length > 0 ? projects : null,
       types: types.length > 0 ? types : null,
       dateAfter,
       dateBefore,
+      language,
     };
   }
 
