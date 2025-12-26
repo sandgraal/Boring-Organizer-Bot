@@ -1212,6 +1212,13 @@
          Run routine
        </button>`;
     }
+    if (task.action === "run_routine") {
+      return `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-query="${escapeHtml(
+        task.target
+      )}">
+         Run query
+       </button>`;
+    }
     if (task.action === "fix_metadata" || task.action === "fix_capture") {
       return `<button type="button" class="btn btn-secondary btn-sm" data-fixqueue-open="${escapeHtml(
         task.target
@@ -1228,6 +1235,15 @@
       const target = runButton.dataset.fixqueueRun;
       if (target) {
         handleFixQueueRun(target);
+      }
+      return;
+    }
+
+    const queryButton = event.target.closest("[data-fixqueue-query]");
+    if (queryButton) {
+      const target = queryButton.dataset.fixqueueQuery;
+      if (target) {
+        handleFixQueueQuery(target);
       }
       return;
     }
@@ -1259,6 +1275,14 @@
         `Could not open file: ${target}\n\nYou can manually navigate to this file.`
       );
     }
+  }
+
+  async function handleFixQueueQuery(target) {
+    navigateTo("ask");
+    if (elements.queryInput) {
+      elements.queryInput.value = target;
+    }
+    await submitAsk({ query: target, filters: getAskFilters(), showAnyway: false });
   }
 
   function extractRoutineIdFromTarget(target) {

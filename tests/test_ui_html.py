@@ -14,3 +14,10 @@ def test_new_note_modal_markup_exists() -> None:
     assert 'id="note-template"' in html
     assert 'id="note-target-path"' in html
     assert 'id="note-project-options"' in html
+
+
+def test_fix_queue_query_action_hook_exists() -> None:
+    """Fix Queue supports rerunning repeated question tasks."""
+    js = Path("bob/ui/static/js/app.js").read_text(encoding="utf-8")
+    assert "data-fixqueue-query" in js
+    assert "handleFixQueueQuery" in js
