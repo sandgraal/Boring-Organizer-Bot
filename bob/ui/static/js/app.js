@@ -133,6 +133,8 @@
     elements.coachSuggestionsList = document.getElementById(
       "coach-suggestions-list"
     );
+    elements.copyReportBtn = document.getElementById("copy-report-btn");
+    elements.copyReportStatus = document.getElementById("copy-report-status");
     elements.notFoundState = document.getElementById("not-found-state");
     elements.notFoundQuery = document.getElementById("not-found-query");
     elements.errorState = document.getElementById("error-state");
@@ -240,6 +242,7 @@
     elements.sidebarTabs?.forEach((tab) =>
       tab.addEventListener("click", handleSidebarTabClick)
     );
+    elements.copyReportBtn?.addEventListener("click", handleCopyReport);
 
     // Library filters
     elements.libraryProjectFilter?.addEventListener(
@@ -1030,6 +1033,7 @@
         coachModeEnabled,
         showAnyway
       );
+      state.lastAsk = { query, filters, response };
 
       if (response.footer?.not_found) {
         renderNotFoundResponse(response, query);
@@ -1084,6 +1088,87 @@
       .classList.toggle("hidden", !loading);
   }
 
+  function setCopyReportEnabled(enabled) {
+    if (!elements.copyReportBtn) return;
+    elements.copyReportBtn.disabled = !enabled;
+  }
+
+  function showCopyReportStatus(message) {
+    if (!elements.copyReportStatus) return;
+    elements.copyReportStatus.textContent = message;
+    elements.copyReportStatus.classList.remove("hidden");
+    setTimeout(() => {
+      elements.copyReportStatus?.classList.add("hidden");
+    }, 2000);
+  }
+
+  async function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const success = document.execCommand("copy");
+    textarea.remove();
+    return success;
+  }
+
+  function buildReport(query, response) {
+    const lines = [];
+    lines.push(`Question: ${query}`);
+    if (response.footer?.not_found) {
+      lines.push(response.footer?.not_found_message || "Not found in sources.");
+    } else {
+      lines.push(`Answer: ${response.answer || ""}`);
+    }
+
+    lines.push("");
+    lines.push("Sources:");
+    const sources = response.sources || [];
+    if (sources.length === 0) {
+      lines.push("  None");
+    } else {
+      sources.forEach((source, index) => {
+        const locator = formatLocator(source.locator);
+        const date = source.date || "Unknown date";
+        lines.push(`  ${index + 1}. [${source.file_path}] ${locator}`);
+        lines.push(
+          `     Date: ${date} | Confidence: ${source.date_confidence || "UNKNOWN"}`
+        );
+        if (source.may_be_outdated) {
+          lines.push("     NOTE: This may be outdated");
+        }
+      });
+    }
+
+    lines.push("");
+    lines.push(`Date Confidence: ${response.footer?.date_confidence || "UNKNOWN"}`);
+    if (response.footer?.may_be_outdated) {
+      lines.push(
+        `Outdated Sources: ${response.footer?.outdated_source_count || 0}`
+      );
+    }
+
+    const audit = response.audit;
+    if (audit && audit.retrieved && audit.retrieved.length > 0) {
+      lines.push("");
+      lines.push("Audit:");
+      const usedIds = (audit.used || []).map((chunk) => `#${chunk.rank}`);
+      const retrievedIds = (audit.retrieved || []).map((chunk) => `#${chunk.rank}`);
+      lines.push(`  Used: ${usedIds.join(", ") || "None"}`);
+      lines.push(`  Retrieved: ${retrievedIds.join(", ") || "None"}`);
+    }
+
+    return lines.join("\n");
+  }
+
   /**
    * Hide all answer states.
    */
@@ -1096,6 +1181,7 @@
     if (elements.coachSuggestionsList) {
       elements.coachSuggestionsList.innerHTML = "";
     }
+    setCopyReportEnabled(false);
   }
 
   /**
@@ -1174,6 +1260,7 @@
 
     // Show answer
     elements.answerContent.classList.remove("hidden");
+    setCopyReportEnabled(true);
   }
 
   /**
@@ -1192,6 +1279,7 @@
     renderSources([]);
     renderAudit(null);
     elements.answerContent.classList.remove("hidden");
+    setCopyReportEnabled(true);
   }
 
   /**
@@ -1304,6 +1392,25 @@
       filters: state.lastAsk.filters,
       showAnyway: true,
     });
+  }
+
+  /**
+   * Handle "Copy as report" action.
+   */
+  async function handleCopyReport() {
+    if (!state.lastAsk || !state.lastAsk.response) {
+      showCopyReportStatus("No report available");
+      return;
+    }
+
+    const report = buildReport(state.lastAsk.query, state.lastAsk.response);
+    try {
+      const success = await copyToClipboard(report);
+      showCopyReportStatus(success ? "Copied" : "Copy failed");
+    } catch (err) {
+      console.error("Failed to copy report:", err);
+      showCopyReportStatus("Copy failed");
+    }
   }
 
   /**
@@ -1473,6 +1580,7 @@
     elements.sourcesList.innerHTML =
       '<div class="sources-empty"><p>No sources found.</p></div>';
     renderAudit(null);
+    setCopyReportEnabled(false);
   }
 
   /**
@@ -1483,6 +1591,7 @@
     elements.errorState.classList.remove("hidden");
     renderSources([]);
     renderAudit(null);
+    setCopyReportEnabled(false);
   }
 
   /**

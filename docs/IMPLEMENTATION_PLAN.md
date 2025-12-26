@@ -427,16 +427,16 @@ These are explicit non-goals to avoid scope creep:
 
 3. **Copy as Report**
 
-   - [ ] Export answer + sources in a clean, shareable format
-   - [ ] Optional inclusion of retrieved/used lists
-   - [ ] Preserve locators and date confidence
+   - [x] Export answer + sources in a clean, shareable format
+   - [x] Optional inclusion of retrieved/used lists
+   - [x] Preserve locators and date confidence
 
 ### Acceptance Criteria
 
 - [x] Audit panel shows top-k retrieved chunks and scores
 - [x] Used chunks are clearly labeled and linked to citations
 - [ ] Unsupported claims never appear unmarked in the answer
-- [ ] "Copy as report" output is consistent and citation-complete
+- [x] "Copy as report" output is consistent and citation-complete
 
 ### Test Plan
 
@@ -459,7 +459,7 @@ These are explicit non-goals to avoid scope creep:
 - [x] Audit payload returned in /ask
 - [x] UI panel shows retrieved vs used chunks
 - [ ] Unsupported claims are blocked or marked
-- [ ] Report export works offline
+- [x] Report export works offline
 
 ---
 
