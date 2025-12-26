@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from bob.api.app import create_app
 from bob.config import Config
+from bob.health.lint import LintIssue
 from bob.retrieval.search import SearchResult
 
 
@@ -145,6 +147,14 @@ class TestHealthFixQueueEndpoint:
             ],
             "window_hours": 168,
         }
+        lint_issues = [
+            LintIssue(
+                code="missing_rationale",
+                file_path=Path("/vault/decisions/decision-01.md"),
+                message="Decision capture missing Context section.",
+                priority=2,
+            )
+        ]
         mock_db = MagicMock()
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = metadata
@@ -153,6 +163,9 @@ class TestHealthFixQueueEndpoint:
         with patch(
             "bob.api.routes.health.get_database",
             return_value=mock_db,
+        ), patch(
+            "bob.api.routes.health.collect_capture_lint_issues",
+            return_value=lint_issues,
         ):
             response = client.get("/health/fix-queue", params={"project": "docs"})
 
@@ -161,11 +174,12 @@ class TestHealthFixQueueEndpoint:
         assert any(f["name"] == "not_found_frequency" for f in data["failure_signals"])
         assert any(f["name"] == "metadata_deficits" for f in data["failure_signals"])
         assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
-        assert len(data["tasks"]) == 4
+        assert len(data["tasks"]) == 5
         targets = [t["target"] for t in data["tasks"]]
         assert "/docs/notes.md" in targets
         assert "Where is the API?" in targets
         assert "permissions.default_scope" in targets
+        assert "/vault/decisions/decision-01.md" in targets
 
 
 class TestAskEndpoint:

@@ -51,14 +51,14 @@ Templates can contain placeholder variables (project, date) that the API expands
 
 ### Capture Hygiene Rules (Lint)
 
-Lint rules are planned but not implemented yet. When implemented, they will flag:
+Lint rules are implemented and scan allowed vault paths before Fix Queue tasks are assembled. They flag:
 
 - `missing_rationale`: Decision captures without a `Context` or `Evidence` section.
 - `missing_rejected_options`: Decision captures lacking any rejected alternatives or reasons.
 - `missing_metadata`: Notes missing required metadata fields (`project`, `date`, `language`, `source`).
 - `missing_next_actions`: Meetings or debriefs without `Next Actions` or `Checklist Seeds`.
 
-Lint output will be surfaced in the Fix Queue and in Coach Mode suggestions (the latter only when Coach Mode is enabled) with explicit citations to the offending file so the user can jump directly to the section and fix it.
+Lint output is surfaced in the Fix Queue (and later Coach Mode suggestions) with the note path and issue reason so the user can jump directly to the file and fix it.
 
 ## Feedback Loop & Fix Queue
 
@@ -85,18 +85,19 @@ Failure metrics collected locally include:
 - **Missing metadata counts** (documents missing `source_date`, `project`, or `language`). 
 - **Repeated questions** (same query text >1 within rolling 48 hours). 
 - **Permission denials** (scope/path blocks on `/routines/*` writes).
+- **Capture lint issues** (missing rationale, rejected options, metadata, or next actions) from vault notes.
 
 ### Fix Queue Generation Rule
 
 A runner converts these metrics into prioritized Fix Queue tasks (returned by `GET /health/fix-queue` and shown on the Fix Queue panel). Each task includes:
 
 - `id`: stable identifier.
-- `action`: `fix_metadata`, `run_routine`, `raise_scope`, `allow_path`, or `review_permissions`.
+- `action`: `fix_metadata`, `fix_capture`, `run_routine`, `raise_scope`, `allow_path`, or `review_permissions`.
 - `target`: file path or routine name.
 - `reason`: human-readable explanation of the signal (e.g., not-found frequency or missing metadata).
 - `priority`: derived from error severity and frequency.
 
-Permission-denial tasks include `raise_scope` targets for blocked scope levels and `allow_path` targets for denied vault paths; repeated-question tasks surface the question text as the `target`.
+Permission-denial tasks include `raise_scope` targets for blocked scope levels and `allow_path` targets for denied vault paths; repeated-question tasks surface the question text as the `target`. Lint tasks use `fix_capture` and point to the offending note path.
 
 The Fix Queue screen lists tasks and lets the user run the associated routine (e.g., “Daily Check-in” for a not-found spike). Metadata/path/scope actions are listed but not yet wired to one-click remediation. Tasks tied to Coach Mode and routines surface before optional Generation improvements, ensuring the system remains grounded.
 

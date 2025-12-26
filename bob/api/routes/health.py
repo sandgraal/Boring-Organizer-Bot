@@ -8,7 +8,9 @@ from typing import Any
 from fastapi import APIRouter
 
 from bob.api.schemas import FailureSignal, FixQueueResponse, FixQueueTask
+from bob.config import get_config
 from bob.db.database import get_database
+from bob.health.lint import LintIssue, collect_capture_lint_issues
 
 router = APIRouter()
 
@@ -168,6 +170,26 @@ def _build_fix_queue_tasks(
     return tasks
 
 
+def _build_lint_tasks(lint_issues: list[LintIssue]) -> list[FixQueueTask]:
+    """Create Fix Queue tasks from capture lint issues."""
+    tasks: list[FixQueueTask] = []
+    for issue in lint_issues:
+        task_hash = hashlib.sha1(
+            f"{issue.code}:{issue.file_path}".encode("utf-8")
+        ).hexdigest()[:10]
+        action = "fix_metadata" if issue.code == "missing_metadata" else "fix_capture"
+        tasks.append(
+            FixQueueTask(
+                id=f"lint-{issue.code}-{task_hash}",
+                action=action,
+                target=str(issue.file_path),
+                reason=issue.message,
+                priority=issue.priority,
+            )
+        )
+    return tasks
+
+
 @router.get("/health/fix-queue", response_model=FixQueueResponse)
 def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     """Return Fix Queue signals and tasks derived from failure metrics."""
@@ -175,6 +197,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     metrics = db.get_feedback_metrics(project=project)
     metadata_deficits = db.get_documents_missing_metadata()
     permission_metrics = db.get_permission_denial_metrics(project=project)
+    lint_issues = collect_capture_lint_issues(get_config())
 
     failure_signals = [
         FailureSignal(
@@ -205,4 +228,5 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     tasks = _build_fix_queue_tasks(
         metrics, metadata_deficits, project, permission_metrics.get("recent", [])
     )
+    tasks.extend(_build_lint_tasks(lint_issues))
     return FixQueueResponse(failure_signals=failure_signals, tasks=tasks)

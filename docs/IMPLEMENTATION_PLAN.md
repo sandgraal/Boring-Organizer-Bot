@@ -333,7 +333,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Turn B.O.B into a daily-use partner by shipping guided routine actions, canonical templates with linting, safe deep access, a metrics-powered Fix Queue, and Coach Mode guidance that keeps the experience grounded in the local chunk → embed → store pipeline (metadata always includes project, date, language, source).
 
-### Status: 🔄 In Progress (routine endpoints + UI pages + feedback/fix-queue signals implemented; lint/connectors/coach integration pending)
+### Status: 🔄 In Progress (routine endpoints + UI pages + feedback/fix-queue signals implemented; lint implemented; connectors/coach integration pending)
 
 ### Prerequisites
 
@@ -351,8 +351,8 @@ These are explicit non-goals to avoid scope creep:
 
 2. **Capture hygiene linting**
 
-   - Planned: lint rules for missing rationale, rejected options, metadata, and next actions will surface in Fix Queue cards and Coach Mode (with evidence citations).
-   - Planned: lint output will feed Fix Queue prioritization alongside feedback signals.
+   - Implemented: lint rules for missing rationale, rejected options, metadata, and next actions surface in Fix Queue tasks with file paths; Coach Mode surfacing remains planned.
+   - Implemented: lint output feeds Fix Queue task lists alongside feedback and permission signals.
 
 3. **Safe deep access via permissions**
 
@@ -362,7 +362,7 @@ These are explicit non-goals to avoid scope creep:
 4. **Feedback loop & Fix Queue**
 
    - Every answer renders feedback controls (Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer) that call `POST /feedback` and log `{question, timestamp, project, retrieved_source_ids, answer_id, feedback_reason}` locally.
-   - `GET /health/fix-queue` currently derives tasks from not-found feedback frequency, repeated questions, missing metadata, and permission denials.
+   - `GET /health/fix-queue` currently derives tasks from not-found feedback frequency, repeated questions, missing metadata, permission denials, and capture lint issues.
 
 5. **Coach Mode integration**
 
@@ -371,9 +371,9 @@ These are explicit non-goals to avoid scope creep:
 ### Acceptance Criteria
 
 - Routine APIs (`POST /routines/daily-checkin`, `.../meeting-prep`, `.../meeting-debrief`, `.../weekly-review`, `.../new-decision`, `.../trip-debrief`) are documented, return cited retrieval context, and respect scope/path checks.
-- Templates in `docs/templates/` are used by routines; lint runner and `POST /notes/create` remain planned.
+- Templates in `docs/templates/` are used by routines; lint runner feeds Fix Queue tasks and `POST /notes/create` remains planned.
 - Permission levels prevent unauthorized writes; connector flows remain opt-in and unimplemented until their endpoints exist.
-- Feedback controls call `POST /feedback`, logging the local schema, and `GET /health`/`GET /health/fix-queue` expose not-found frequency, repeated questions, metadata deficits, and permission denials.
+- Feedback controls call `POST /feedback`, logging the local schema, and `GET /health`/`GET /health/fix-queue` expose not-found frequency, repeated questions, metadata deficits, permission denials, and capture lint issues.
 - Coach Mode routine suggestions remain planned with citations and cooldowns.
 
 ### Test Plan
