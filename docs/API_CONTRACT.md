@@ -218,13 +218,14 @@ After the background thread finishes, the job status moves to `completed` or `fa
 
 ### GET /health/fix-queue
 
-- **Purpose:** Provide the health dashboard and Fix Queue with failure signals (not-found frequency, metadata deficits, repeated questions) plus actionable tasks derived from those signals.
-- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)` and `db.get_documents_missing_metadata()` to build `FixQueueResponse`.
+- **Purpose:** Provide the health dashboard and Fix Queue with failure signals (not-found frequency, metadata deficits, repeated questions, permission denials) plus actionable tasks derived from those signals.
+- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)`, `db.get_documents_missing_metadata()`, and `db.get_permission_denial_metrics(project)` to build `FixQueueResponse`.
 - **Response model:** `FixQueueResponse` with `failure_signals` (instances of `FailureSignal`) and `tasks` (instances of `FixQueueTask`).
 - **Behavior:** 
-  - `failure_signals` include `not_found_frequency`, `metadata_deficits`, and `repeated_questions`, each with counts/details that the UI can render directly.
+  - `failure_signals` include `not_found_frequency`, `metadata_deficits`, `repeated_questions`, and `permission_denials`, each with counts/details that the UI can render directly.
   - `tasks` are prioritized actions such as `run_routine` for high not-found ratios, `fix_metadata` for documents missing `source_date`/`project`/`language`, and `run_routine` for repeated queries (question text is the target).
-  - Task IDs are deterministic (`not-found-<project>`, `metadata-<doc>-<index>`, `repeat-<hash>`) so that UI state can track dismissals or completions.
+  - Permission denials create `raise_scope` (target `permissions.default_scope`) and `allow_path` (target is the blocked path) tasks.
+  - Task IDs are deterministic (`not-found-<project>`, `metadata-<doc>-<index>`, `repeat-<hash>`, `permission-<hash>`) so that UI state can track dismissals or completions.
 - **Example response:**
 
 ```json
@@ -244,6 +245,11 @@ After the background thread finishes, the job status moves to `completed` or `fa
       "name": "repeated_questions",
       "value": 1,
       "details": "Repeated queries observed over the past 48 hours"
+    },
+    {
+      "name": "permission_denials",
+      "value": 1,
+      "details": "1 scope denials in the last 168h"
     }
   ],
   "tasks": [
@@ -266,6 +272,13 @@ After the background thread finishes, the job status moves to `completed` or `fa
       "action": "run_routine",
       "target": "Where is the API?",
       "reason": "Question repeated 2 times in the last 48h",
+      "priority": 2
+    },
+    {
+      "id": "permission-7ac1c2d9",
+      "action": "raise_scope",
+      "target": "permissions.default_scope",
+      "reason": "Routine 'daily-checkin' blocked at scope 2; requires 3 for /vault/routines/daily/2025-01-01.md",
       "priority": 2
     }
   ]

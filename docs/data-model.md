@@ -18,7 +18,7 @@ B.O.B uses SQLite as its primary database, with optional sqlite-vec for vector s
                       └─────────────┘
 ```
 
-Additional tables support health, evaluation, and Coach Mode (see below).
+Additional tables support feedback and Coach Mode; planned health/eval tables are marked below.
 
 ## Tables
 
@@ -108,9 +108,9 @@ Extracted decisions stored for decision-aware search and CLI output.
 | confidence    | REAL    | Extraction confidence                |
 | extracted_at  | TEXT    | Extraction timestamp                 |
 
-### index_runs
+### index_runs (planned)
 
-Stores indexing job metadata for health dashboards and audit.
+Planned; not created by current migrations.
 
 | Column        | Type    | Description                         |
 | ------------- | ------- | ----------------------------------- |
@@ -124,9 +124,9 @@ Stores indexing job metadata for health dashboards and audit.
 | files_indexed | INTEGER | Successfully indexed files          |
 | files_failed  | INTEGER | Failed files                        |
 
-### ingestion_errors
+### ingestion_errors (planned)
 
-Stores per-file ingestion failures for health dashboards and fix queues.
+Planned; not created by current migrations.
 
 | Column        | Type    | Description                          |
 | ------------- | ------- | ------------------------------------ |
@@ -139,9 +139,9 @@ Stores per-file ingestion failures for health dashboards and fix queues.
 | created_at    | TEXT    | Error timestamp                      |
 | resolved_at   | TEXT    | Resolution timestamp (optional)      |
 
-### eval_runs
+### eval_runs (planned)
 
-Stores evaluation run metadata for regression tracking.
+Planned; not created by current migrations.
 
 | Column        | Type    | Description                          |
 | ------------- | ------- | ------------------------------------ |
@@ -153,9 +153,9 @@ Stores evaluation run metadata for regression tracking.
 | config_hash   | TEXT    | Hash of retrieval config             |
 | baseline      | INTEGER | 1 if baseline run                    |
 
-### eval_results
+### eval_results (planned)
 
-Stores per-question metrics and drift data.
+Planned; not created by current migrations.
 
 | Column          | Type    | Description                           |
 | --------------- | ------- | ------------------------------------- |
@@ -180,6 +180,36 @@ Optional analytics table.
 | results_count | INTEGER | Number of results |
 | not_found     | INTEGER | 1 if no sources   |
 | searched_at   | TEXT    | Timestamp         |
+
+### feedback_log
+
+Inline feedback signals for Fix Queue aggregation.
+
+| Column              | Type    | Description                                 |
+| ------------------- | ------- | ------------------------------------------- |
+| id                  | INTEGER | Primary key                                 |
+| question            | TEXT    | Original user query                         |
+| project             | TEXT    | Project context (optional)                  |
+| answer_id           | TEXT    | Answer identifier (optional)                |
+| feedback_reason     | TEXT    | helpful, wrong_source, outdated, too_long, didnt_answer |
+| retrieved_source_ids | TEXT   | JSON array of chunk IDs                     |
+| created_at          | TEXT    | Timestamp                                   |
+
+### permission_denials
+
+Permission denials for routine writes (Fix Queue diagnostics).
+
+| Column               | Type    | Description                                |
+| -------------------- | ------- | ------------------------------------------ |
+| id                   | INTEGER | Primary key                                |
+| action_name          | TEXT    | Routine name                               |
+| project              | TEXT    | Project context (optional)                 |
+| target_path          | TEXT    | Target file path                           |
+| reason_code          | TEXT    | scope, path, or other                        |
+| scope_level          | INTEGER | Current scope level (if applicable)        |
+| required_scope_level | INTEGER | Required scope level (if applicable)       |
+| allowed_paths        | TEXT    | JSON array of allowed paths (if applicable) |
+| created_at           | TEXT    | Timestamp                                  |
 
 ### user_settings
 
@@ -226,9 +256,8 @@ Migrations are stored in `bob/db/migrations/` as SQL files:
 - `001_initial_schema.sql` - Core tables
 - `002_vector_index.sql` - Vector search setup
 - `003_coach_mode.sql` - Coach Mode settings and cooldown log
-- `004_decision_lifecycle.sql` - Decision status expansion and superseded_at
-- `005_health_dashboard.sql` - index_runs and ingestion_errors
-- `006_eval_runs.sql` - eval_runs and eval_results
+- `004_feedback_log.sql` - Feedback log for Fix Queue metrics
+- `005_permission_denials.sql` - Permission denial log for Fix Queue metrics
 
 Run migrations with:
 

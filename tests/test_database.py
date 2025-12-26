@@ -35,6 +35,7 @@ class TestDatabaseOperations:
         assert "documents" in tables
         assert "chunks" in tables
         assert "decisions" in tables
+        assert "permission_denials" in tables
         assert "schema_migrations" in tables
 
     def test_insert_document(self, test_db):
@@ -122,6 +123,26 @@ class TestDatabaseOperations:
 
         stats_all = test_db.get_stats()
         assert stats_all["document_count"] == 2
+
+    def test_permission_denial_metrics(self, test_db):
+        test_db.log_permission_denial(
+            action_name="daily-checkin",
+            project="docs",
+            target_path="/vault/routines/daily/2025-01-01.md",
+            reason_code="scope",
+            scope_level=2,
+            required_scope_level=3,
+            allowed_paths=["/vault/routines"],
+        )
+
+        metrics = test_db.get_permission_denial_metrics()
+
+        assert metrics["total"] == 1
+        assert metrics["counts"]["scope"] == 1
+        assert len(metrics["recent"]) == 1
+        denial = metrics["recent"][0]
+        assert denial["action_name"] == "daily-checkin"
+        assert denial["reason_code"] == "scope"
 
 
 class TestDecisionStorage:

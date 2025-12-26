@@ -41,10 +41,37 @@ def _priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) -
     return bucket
 
 
+def _format_permission_denial_details(metrics: dict[str, Any]) -> str:
+    """Describe permission denials in a compact sentence."""
+    total = metrics.get("total", 0)
+    if total == 0:
+        return "No permission denials recorded."
+
+    counts = metrics.get("counts", {})
+    window_hours = metrics.get("window_hours")
+    scope_count = counts.get("scope", 0)
+    path_count = counts.get("path", 0)
+    parts = []
+    if scope_count:
+        parts.append(f"{scope_count} scope")
+    if path_count:
+        parts.append(f"{path_count} path")
+    if not parts:
+        parts.append("unknown")
+
+    window_note = ""
+    if window_hours is not None:
+        window_note = f" in the last {window_hours}h"
+
+    label = "denial" if total == 1 else "denials"
+    return f"{', '.join(parts)} {label}{window_note}"
+
+
 def _build_fix_queue_tasks(
     metrics: dict[str, Any],
     metadata_deficits: list[dict[str, Any]],
     project: str | None,
+    permission_denials: list[dict[str, Any]],
 ) -> list[FixQueueTask]:
     """Create Fix Queue tasks from health signals."""
     tasks: list[FixQueueTask] = []
@@ -91,6 +118,53 @@ def _build_fix_queue_tasks(
             )
         )
 
+    seen_permission_tasks: set[tuple[str, str, str]] = set()
+    for denial in permission_denials:
+        reason_code = denial.get("reason_code", "unknown")
+        target_path = denial.get("target_path", "unknown")
+        action_name = denial.get("action_name", "routine")
+        scope_level = denial.get("scope_level")
+        required_scope = denial.get("required_scope_level")
+        task_key = (reason_code, action_name, target_path)
+        if task_key in seen_permission_tasks:
+            continue
+        seen_permission_tasks.add(task_key)
+
+        if reason_code == "scope":
+            action = "raise_scope"
+            target = "permissions.default_scope"
+            reason = (
+                f"Routine '{action_name}' blocked at scope {scope_level}; "
+                f"requires {required_scope} for {target_path}"
+            )
+            priority = 2
+        elif reason_code == "path":
+            action = "allow_path"
+            target = target_path
+            reason = (
+                f"Routine '{action_name}' tried to write outside allowed paths: "
+                f"{target_path}"
+            )
+            priority = 3
+        else:
+            action = "review_permissions"
+            target = target_path
+            reason = f"Permission denial for '{action_name}' writing to {target_path}"
+            priority = 3
+
+        task_id = hashlib.sha1(
+            f"{reason_code}:{action_name}:{target_path}".encode("utf-8")
+        ).hexdigest()[:10]
+        tasks.append(
+            FixQueueTask(
+                id=f"permission-{task_id}",
+                action=action,
+                target=target,
+                reason=reason,
+                priority=priority,
+            )
+        )
+
     return tasks
 
 
@@ -100,6 +174,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     db = get_database()
     metrics = db.get_feedback_metrics(project=project)
     metadata_deficits = db.get_documents_missing_metadata()
+    permission_metrics = db.get_permission_denial_metrics(project=project)
 
     failure_signals = [
         FailureSignal(
@@ -120,7 +195,14 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
             value=len(metrics.get("repeated_questions", [])),
             details="Repeated queries observed over the past 48 hours",
         ),
+        FailureSignal(
+            name="permission_denials",
+            value=permission_metrics.get("total", 0),
+            details=_format_permission_denial_details(permission_metrics),
+        ),
     ]
 
-    tasks = _build_fix_queue_tasks(metrics, metadata_deficits, project)
+    tasks = _build_fix_queue_tasks(
+        metrics, metadata_deficits, project, permission_metrics.get("recent", [])
+    )
     return FixQueueResponse(failure_signals=failure_signals, tasks=tasks)

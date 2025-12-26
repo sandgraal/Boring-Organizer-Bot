@@ -82,10 +82,11 @@ Every answer pane includes five feedback buttons: **Helpful**, **Wrong or missin
 
 Failure metrics collected locally include:
 
-- **Not found frequency** per project (percentage of queries with `footer.not_found`).
+- **Not found frequency** per project (percentage of queries with `footer.not_found`). 
 - **PDFs with no text / ingestion errors** (counts grouped by error type). 
 - **Missing metadata counts** (per metadata field, per project). 
 - **Repeated questions** (same query text >1 within rolling 48 hours) so discoverability issues surface.
+- **Permission denials** (scope/path blocks on `/routines/*` writes) so Fix Queue can recommend scope or path fixes.
 
 ### Fix Queue Generation Rule
 
@@ -96,6 +97,8 @@ A runner converts these metrics, lint findings, and feedback spikes into priorit
 - `target`: file path or routine name.
 - `reason`: e.g., `missing_metadata`, `not_found_spike`, `decisions_without_rationale`.
 - `priority`: derived from error severity and frequency.
+
+Permission-denial tasks include `raise_scope` targets for blocked scope levels and `allow_path` targets for denied vault paths.
 
 The Fix Queue screen lets the user run the associated routine (e.g., “Create a New Decision note” for a missing rationale task) or re-index a path. Tasks tied to Coach Mode and routines surface before optional Generation improvements, ensuring the system remains grounded.
 

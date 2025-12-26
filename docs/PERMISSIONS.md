@@ -52,15 +52,15 @@ permissions:
 - Routine endpoints (`/routines/*`) check `permissions.default_scope` and `permissions.allowed_vault_paths`. Insufficient scope or disallowed paths return `PERMISSION_DENIED` with the offending target path.
 - Connector endpoints (`/connectors/*`) and `POST /notes/create` are not implemented yet, so no permission enforcement exists for them today.
 - The UI does not currently gate write buttons or expose connector toggles based on permission scope.
-- Permission denials are not yet recorded in an audit log or surfaced in Fix Queue metrics.
+- Permission denials are logged to `permission_denials` and surfaced in Fix Queue failure signals and tasks (`GET /health/fix-queue`).
 
 ## Tests
 
-No permission-specific tests exist yet. Planned coverage includes:
+Permission logging coverage includes:
 
-- `tests/test_permissions.py` — Level 0 blocks writes; Level 3 allows template writes to allowed paths only.
-- `tests/test_routines_end_to_end.py` — Routine endpoints enforce scope + allowed paths.
-- `tests/test_connectors.py` — Connector opt-ins and logs once connector endpoints are implemented.
+- `tests/test_api.py` — Routine endpoints log scope/path denials.
+- `tests/test_database.py` — Permission denial metrics aggregation.
+- Planned: `tests/test_permissions.py` and `tests/test_connectors.py` once connector endpoints are implemented.
 
 ## Agent Policy
 

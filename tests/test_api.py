@@ -128,9 +128,27 @@ class TestHealthFixQueueEndpoint:
                 "missing_fields": ["source_date"],
             }
         ]
+        permission_metrics = {
+            "total": 1,
+            "counts": {"scope": 1},
+            "recent": [
+                {
+                    "action_name": "daily-checkin",
+                    "project": "docs",
+                    "target_path": "/vault/routines/daily/2025-01-01.md",
+                    "reason_code": "scope",
+                    "scope_level": 2,
+                    "required_scope_level": 3,
+                    "allowed_paths": ["/vault/routines"],
+                    "created_at": "2025-12-25T00:00:00Z",
+                }
+            ],
+            "window_hours": 168,
+        }
         mock_db = MagicMock()
         mock_db.get_feedback_metrics.return_value = metrics
         mock_db.get_documents_missing_metadata.return_value = metadata
+        mock_db.get_permission_denial_metrics.return_value = permission_metrics
 
         with patch(
             "bob.api.routes.health.get_database",
@@ -142,10 +160,12 @@ class TestHealthFixQueueEndpoint:
         data = response.json()
         assert any(f["name"] == "not_found_frequency" for f in data["failure_signals"])
         assert any(f["name"] == "metadata_deficits" for f in data["failure_signals"])
-        assert len(data["tasks"]) == 3
+        assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
+        assert len(data["tasks"]) == 4
         targets = [t["target"] for t in data["tasks"]]
         assert "/docs/notes.md" in targets
         assert "Where is the API?" in targets
+        assert "permissions.default_scope" in targets
 
 
 class TestAskEndpoint:
@@ -916,10 +936,12 @@ class TestRoutinesEndpoint:
         config = Config()
         config.paths.vault = tmp_path
         config.permissions.default_scope = 2
+        mock_db = MagicMock()
 
         with (
             patch("bob.api.routes.routines.get_config", return_value=config),
             patch("bob.api.routes.routines.search") as mock_search,
+            patch("bob.api.routes.routines.get_database", return_value=mock_db),
         ):
             response = client.post(
                 "/routines/daily-checkin",
@@ -933,16 +955,27 @@ class TestRoutinesEndpoint:
         assert detail["required_scope_level"] == 3
         assert not (tmp_path / "routines").exists()
         mock_search.assert_not_called()
+        mock_db.log_permission_denial.assert_called_once_with(
+            action_name="daily-checkin",
+            project="test",
+            target_path=str(tmp_path / "routines" / "daily" / "2025-01-01.md"),
+            reason_code="scope",
+            scope_level=2,
+            required_scope_level=3,
+            allowed_paths=None,
+        )
 
     def test_daily_checkin_requires_allowed_path(self, client: TestClient, tmp_path):
         """POST /routines/daily-checkin rejects targets outside allowed directories."""
         config = Config()
         config.paths.vault = tmp_path
         config.permissions.allowed_vault_paths = ["vault/decisions"]
+        mock_db = MagicMock()
 
         with (
             patch("bob.api.routes.routines.get_config", return_value=config),
             patch("bob.api.routes.routines.search") as mock_search,
+            patch("bob.api.routes.routines.get_database", return_value=mock_db),
         ):
             response = client.post(
                 "/routines/daily-checkin",
@@ -955,16 +988,19 @@ class TestRoutinesEndpoint:
         assert "allowed_paths" in detail
         assert not (tmp_path / "routines").exists()
         mock_search.assert_not_called()
+        mock_db.log_permission_denial.assert_called_once()
 
     def test_meeting_prep_requires_allowed_path(self, client: TestClient, tmp_path):
         """POST /routines/meeting-prep respects allowed vault paths."""
         config = Config()
         config.paths.vault = tmp_path
         config.permissions.allowed_vault_paths = ["vault/decisions"]
+        mock_db = MagicMock()
 
         with (
             patch("bob.api.routes.routines.get_config", return_value=config),
             patch("bob.api.routes.routines.search") as mock_search,
+            patch("bob.api.routes.routines.get_database", return_value=mock_db),
         ):
             response = client.post(
                 "/routines/meeting-prep",
@@ -977,6 +1013,7 @@ class TestRoutinesEndpoint:
         assert "allowed_paths" in detail
         assert not (tmp_path / "meetings").exists()
         mock_search.assert_not_called()
+        mock_db.log_permission_denial.assert_called_once()
 
     def test_get_nonexistent_job(self, client: TestClient):
         """GET /index/{job_id} returns 404 for unknown job."""

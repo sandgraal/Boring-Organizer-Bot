@@ -630,6 +630,117 @@ class Database:
                 (question, project, answer_id, feedback_reason, payload),
             )
 
+    def log_permission_denial(
+        self,
+        *,
+        action_name: str,
+        project: str | None,
+        target_path: str,
+        reason_code: str,
+        scope_level: int | None = None,
+        required_scope_level: int | None = None,
+        allowed_paths: list[str] | None = None,
+    ) -> None:
+        """Record permission denials for Fix Queue diagnostics."""
+        payload = json.dumps(allowed_paths) if allowed_paths is not None else None
+        with self.transaction():
+            self.conn.execute(
+                """
+                INSERT INTO permission_denials (
+                    action_name,
+                    project,
+                    target_path,
+                    reason_code,
+                    scope_level,
+                    required_scope_level,
+                    allowed_paths
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    action_name,
+                    project,
+                    target_path,
+                    reason_code,
+                    scope_level,
+                    required_scope_level,
+                    payload,
+                ),
+            )
+
+    def get_permission_denial_metrics(
+        self,
+        *,
+        project: str | None = None,
+        window_hours: int | None = 168,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        """Summarize permission denials for Fix Queue signals."""
+        base_filters = "WHERE 1=1"
+        params: list[Any] = []
+        if project:
+            base_filters += " AND project = ?"
+            params.append(project)
+        if window_hours is not None:
+            base_filters += " AND datetime(created_at) >= datetime('now', ?)"
+            params.append(f"-{int(window_hours)} hours")
+
+        counts_cursor = self.conn.execute(
+            f"""
+            SELECT reason_code, COUNT(*) as count
+            FROM permission_denials
+            {base_filters}
+            GROUP BY reason_code
+            """,
+            params,
+        )
+        counts: dict[str, int] = {}
+        total = 0
+        for row in counts_cursor.fetchall():
+            reason = row["reason_code"]
+            count = int(row["count"])
+            counts[reason] = count
+            total += count
+
+        recent_cursor = self.conn.execute(
+            f"""
+            SELECT action_name, project, target_path, reason_code,
+                   scope_level, required_scope_level, allowed_paths, created_at
+            FROM permission_denials
+            {base_filters}
+            ORDER BY datetime(created_at) DESC
+            LIMIT ?
+            """,
+            params + [limit],
+        )
+        recent: list[dict[str, Any]] = []
+        for row in recent_cursor.fetchall():
+            allowed_paths = None
+            if row["allowed_paths"]:
+                try:
+                    allowed_paths = json.loads(row["allowed_paths"])
+                except json.JSONDecodeError:
+                    allowed_paths = None
+            recent.append(
+                {
+                    "action_name": row["action_name"],
+                    "project": row["project"],
+                    "target_path": row["target_path"],
+                    "reason_code": row["reason_code"],
+                    "scope_level": row["scope_level"],
+                    "required_scope_level": row["required_scope_level"],
+                    "allowed_paths": allowed_paths,
+                    "created_at": row["created_at"],
+                }
+            )
+
+        return {
+            "total": total,
+            "counts": counts,
+            "recent": recent,
+            "window_hours": window_hours,
+        }
+
     def get_feedback_metrics(
         self, *, project: str | None = None, window_hours: int = 48
     ) -> dict[str, Any]:

@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 from bob.api.schemas import RoutineRequest, RoutineResponse, RoutineRetrieval
 from bob.api.utils import convert_result_to_source
 from bob.config import Config, get_config
+from bob.db.database import get_database
 from bob.retrieval.search import search
 
 router = APIRouter()
@@ -374,12 +375,51 @@ def _resolve_allowed_directories(config: Config) -> list[Path]:
     return list(allowed_dirs)
 
 
-def _ensure_allowed_write_path(target_path: Path, config: Config) -> None:
+def _log_permission_denial(
+    *,
+    action_name: str,
+    project: str | None,
+    target_path: Path,
+    reason_code: str,
+    scope_level: int | None = None,
+    required_scope_level: int | None = None,
+    allowed_paths: list[str] | None = None,
+) -> None:
+    """Persist permission denials without blocking the caller."""
+    try:
+        db = get_database()
+        db.log_permission_denial(
+            action_name=action_name,
+            project=project,
+            target_path=str(target_path),
+            reason_code=reason_code,
+            scope_level=scope_level,
+            required_scope_level=required_scope_level,
+            allowed_paths=allowed_paths,
+        )
+    except Exception:
+        return
+
+
+def _ensure_allowed_write_path(
+    action_name: str, project: str | None, target_path: Path, config: Config
+) -> None:
     """Validate that the routine is writing into an allowed vault directory."""
     resolved_target = target_path.resolve()
     allowed_dirs = _resolve_allowed_directories(config)
     if any(resolved_target.is_relative_to(dir_path) for dir_path in allowed_dirs):
         return
+
+    allowed_paths = [str(dir_path) for dir_path in allowed_dirs]
+    _log_permission_denial(
+        action_name=action_name,
+        project=project,
+        target_path=target_path,
+        reason_code="path",
+        scope_level=config.permissions.default_scope,
+        required_scope_level=TEMPLATE_WRITE_SCOPE,
+        allowed_paths=allowed_paths,
+    )
 
     raise HTTPException(
         status_code=403,
@@ -387,16 +427,27 @@ def _ensure_allowed_write_path(target_path: Path, config: Config) -> None:
             "code": "PERMISSION_DENIED",
             "message": "Target path is outside allowed vault directories.",
             "target_path": str(target_path),
-            "allowed_paths": [str(dir_path) for dir_path in allowed_dirs],
+            "allowed_paths": allowed_paths,
         },
     )
 
 
-def _ensure_scope_level(action_name: str, target_path: Path, config: Config) -> None:
+def _ensure_scope_level(
+    action_name: str, project: str | None, target_path: Path, config: Config
+) -> None:
     """Ensure the configured scope level permits template writes."""
     current = config.permissions.default_scope
     if current >= TEMPLATE_WRITE_SCOPE:
         return
+
+    _log_permission_denial(
+        action_name=action_name,
+        project=project,
+        target_path=target_path,
+        reason_code="scope",
+        scope_level=current,
+        required_scope_level=TEMPLATE_WRITE_SCOPE,
+    )
 
     raise HTTPException(
         status_code=403,
@@ -431,8 +482,8 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
     vault_root = config.paths.vault
     target_path = action.target_path_fn(target_date, vault_root, request, project)
 
-    _ensure_allowed_write_path(target_path, config)
-    _ensure_scope_level(action.name, target_path, config)
+    _ensure_allowed_write_path(action.name, project, target_path, config)
+    _ensure_scope_level(action.name, project, target_path, config)
 
     retrievals: list[RoutineRetrieval] = []
     for query in action.queries:
