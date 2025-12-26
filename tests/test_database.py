@@ -190,6 +190,32 @@ class TestDatabaseOperations:
         assert counts[0]["project"] == "unknown"
         assert counts[0]["count"] >= 1
 
+    def test_feedback_metrics_repeated_question_window(self, test_db):
+        test_db.log_feedback(
+            question="Repeated question?",
+            project="docs",
+            answer_id=None,
+            feedback_reason="didnt_answer",
+        )
+        first_id = test_db.conn.execute(
+            "SELECT id FROM feedback_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()[0]
+
+        test_db.log_feedback(
+            question="Repeated question?",
+            project="docs",
+            answer_id=None,
+            feedback_reason="didnt_answer",
+        )
+        test_db.conn.execute(
+            "UPDATE feedback_log SET created_at = datetime('now', '-3 hours') WHERE id = ?",
+            (first_id,),
+        )
+        test_db.conn.commit()
+
+        metrics = test_db.get_feedback_metrics(window_hours=1)
+        assert metrics["repeated_questions"] == []
+
     def test_stale_document_buckets(self, test_db):
         old_date = datetime.now() - timedelta(days=200)
         recent_date = datetime.now() - timedelta(days=10)
