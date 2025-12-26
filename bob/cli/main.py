@@ -285,6 +285,124 @@ def watchlist_remove(path: str) -> None:
         console.print(f"[red]✗[/] Path [cyan]{path}[/] was not found in the watchlist.")
 
 
+@cli.group("connectors")
+def connectors_group() -> None:
+    """Run opt-in connector imports and manual saves."""
+
+
+@connectors_group.command("bookmarks")
+@click.argument("source_path", type=click.Path(exists=True))
+@click.option(
+    "--project",
+    "-p",
+    default=None,
+    help="Project name for the imported bookmarks.",
+)
+@click.option(
+    "--language",
+    "-l",
+    default=None,
+    help="Language for the imported notes (default from config).",
+)
+def connectors_bookmarks(source_path: str, project: str | None, language: str | None) -> None:
+    """Import a browser bookmarks export into the vault."""
+    from fastapi import HTTPException
+
+    from bob.api.routes.connectors import import_bookmarks
+    from bob.api.schemas import BookmarksImportRequest
+
+    try:
+        response = import_bookmarks(
+            BookmarksImportRequest(
+                source_path=source_path, project=project, language=language
+            )
+        )
+    except HTTPException as exc:
+        console.print(f"[red]Connector error:[/] {exc.detail}")
+        sys.exit(1)
+
+    console.print(f"[green]✓[/] Imported {response.imported} bookmark(s).")
+    if response.warnings:
+        console.print("[yellow]Warnings:[/]")
+        for warning in response.warnings:
+            console.print(f"  - {warning}")
+
+
+@connectors_group.command("highlight")
+@click.option(
+    "--text",
+    required=True,
+    help="Highlight text to store.",
+)
+@click.option(
+    "--url",
+    "source_url",
+    default=None,
+    help="Source URL for the highlight.",
+)
+@click.option(
+    "--title",
+    default=None,
+    help="Optional title for the highlight note.",
+)
+@click.option(
+    "--project",
+    "-p",
+    default=None,
+    help="Project name for the highlight note.",
+)
+@click.option(
+    "--language",
+    "-l",
+    default=None,
+    help="Language for the highlight note (default from config).",
+)
+@click.option(
+    "--date",
+    "entry_date",
+    default=None,
+    help="Date for the highlight note (YYYY-MM-DD).",
+)
+def connectors_highlight(
+    text: str,
+    source_url: str | None,
+    title: str | None,
+    project: str | None,
+    language: str | None,
+    entry_date: str | None,
+) -> None:
+    """Save a manual highlight note in the vault."""
+    from datetime import date as DateType
+    from fastapi import HTTPException
+
+    from bob.api.routes.connectors import create_highlight
+    from bob.api.schemas import HighlightCreateRequest
+
+    parsed_date: DateType | None = None
+    if entry_date:
+        try:
+            parsed_date = DateType.fromisoformat(entry_date)
+        except ValueError as exc:
+            raise click.UsageError("Date must be in YYYY-MM-DD format.") from exc
+
+    try:
+        response = create_highlight(
+            HighlightCreateRequest(
+                text=text,
+                source_url=source_url,
+                title=title,
+                project=project,
+                language=language,
+                date=parsed_date,
+            )
+        )
+    except HTTPException as exc:
+        console.print(f"[red]Connector error:[/] {exc.detail}")
+        sys.exit(1)
+
+    console.print(f"[green]✓[/] Highlight saved to [cyan]{response.file_path}[/].")
+
+
 @cli.command()
 @click.argument("question")
 @click.option(

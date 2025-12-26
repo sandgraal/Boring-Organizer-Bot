@@ -27,7 +27,7 @@ It’s designed to become a daily-use partner via **routines** (daily check-in, 
 
 B.O.B currently ships as a CLI-first/local API experience. The built-in commands, services, and UI that work out of the box right now are:
 
-- **Document tooling:** `bob init`, `bob index`, `bob watchlist` plus recursive indexing with hybrid chunking/embedding and sqlite-vec if available.
+- **Document tooling:** `bob init`, `bob index`, `bob watchlist`, `bob connectors` plus recursive indexing with hybrid chunking/embedding and sqlite-vec if available.
 - **Query surface:** `bob ask` for synthesized answers, `bob search` for raw retrieval, and the FastAPI `POST /ask` route with citations + Coach Mode suggestions.
 - **Decision & metadata helpers:** `bob extract-decisions`, `bob decisions`, `bob decision`, `bob supersede`, plus the HTTP settings/suggestion endpoints that keep Coach Mode state in sync.
 - **Evaluation + health:** `bob eval run/compare`, `bob status`, and `GET /health` for database stats.
