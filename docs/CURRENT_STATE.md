@@ -10,6 +10,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 5. **Decision management** – `bob extract-decisions`, `bob decisions`, `bob decision`, and `bob supersede` wrap the NLP-based extractor (`bob.extract.decisions`) plus the decision table stored with metadata.
 6. **Evaluation** – `bob eval run` and `bob eval compare` execute the evaluation harness (`tests`/`bob.eval.runner`) and expose metrics/JSON exports for regressions.
 7. **Status & Server** – `bob status` reports database stats, project breakdowns, and vector capability; `bob serve` boots the FastAPI app (with optional reload) that powers both the CLI’s API target and the static UI.
+8. **MCP Server** – `bob mcp` starts a local-only JSON-RPC MCP server exposing grounded `ask`, project stats, index status, and permissioned vault read/write (with dry-run).
 
 ## API Surface (`bob/api/routes/`)
 - `GET /health` – quick status, version, and total indexed document count.

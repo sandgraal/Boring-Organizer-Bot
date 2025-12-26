@@ -176,3 +176,8 @@ permissions:
     - vault/trips
     - vault/meetings
     - vault/manual-saves
+
+# MCP server configuration (agent interoperability)
+mcp:
+  host: 127.0.0.1
+  port: 8091

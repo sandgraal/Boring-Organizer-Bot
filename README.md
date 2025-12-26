@@ -257,6 +257,20 @@ Planned additions:
 
 OpenAPI docs: `http://localhost:8080/docs`
 
+## MCP Server (agent interoperability, local-only)
+
+```bash
+# Start the MCP server (JSON-RPC over HTTP)
+bob mcp
+
+# Override host/port
+bob mcp --port 8091
+```
+
+The MCP server exposes tools for grounded `ask`, listing projects, index status, and
+permissioned vault read/write (with dry-run). It is local-only by default and uses the
+same vault scope rules as the routine endpoints.
+
 ## Web Interface
 
 B.O.B includes a local UI designed to be **inspectable**:

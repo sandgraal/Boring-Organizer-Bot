@@ -404,7 +404,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Make trust visible by showing what was retrieved, what was used, and what was rejected.
 
-### Status: 🔜 Not Started
+### Status: ✅ Complete
 
 ### Prerequisites
 
@@ -637,26 +637,26 @@ These are explicit non-goals to avoid scope creep:
 
 1. **MCP Server (Local)**
 
-   - [ ] Expose search/ask with citations
-   - [ ] Read/write note
-   - [ ] List projects
-   - [ ] Index status
+   - [x] Expose search/ask with citations
+   - [x] Read/write note
+   - [x] List projects
+   - [x] Index status
 
 2. **Permissioning**
 
-   - [ ] Allowed paths list
-   - [ ] Read/write scopes
-   - [ ] Dry-run mode for writes
+   - [x] Allowed paths list
+   - [x] Read/write scopes
+   - [x] Dry-run mode for writes
 
 3. **Compatibility**
-   - [ ] MCP JSON-RPC framing
-   - [ ] Explicit errors for denied actions
+   - [x] MCP JSON-RPC framing
+   - [x] Explicit errors for denied actions
 
 ### Acceptance Criteria
 
-- [ ] MCP server runs locally and is opt-in
-- [ ] Permissions enforced for all tools
-- [ ] Tool responses include citations where applicable
+- [x] MCP server runs locally and is opt-in
+- [x] Permissions enforced for all tools
+- [x] Tool responses include citations where applicable
 
 ### Test Plan
 

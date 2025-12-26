@@ -163,6 +163,13 @@ class LoggingConfig(BaseModel):
     file: Path | None = None
 
 
+class MCPConfig(BaseModel):
+    """MCP server configuration."""
+
+    host: str = "127.0.0.1"
+    port: int = 8091
+
+
 class Config(BaseSettings):
     """Main configuration for B.O.B."""
 
@@ -183,6 +190,7 @@ class Config(BaseSettings):
     git_docs: GitDocsConfig = Field(default_factory=GitDocsConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    mcp: MCPConfig = Field(default_factory=MCPConfig)
 
 
 def find_config_file() -> Path | None:

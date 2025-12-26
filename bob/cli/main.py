@@ -1269,5 +1269,35 @@ def serve(host: str, port: int, reload: bool) -> None:
         console.print("\n[bold green]Server stopped.[/]")
 
 
+@cli.command()
+@click.option(
+    "--host",
+    default=None,
+    help="Host to bind to (default from config, localhost only recommended)",
+)
+@click.option(
+    "--port",
+    "-p",
+    default=None,
+    type=int,
+    help="Port to listen on (default from config)",
+)
+def mcp(host: str | None, port: int | None) -> None:
+    """Start the B.O.B MCP server for agent interoperability."""
+    from bob.agents.mcp_server import run_server
+    from bob.config import get_config
+
+    config = get_config()
+    target_host = host or config.mcp.host
+    if target_host not in {"127.0.0.1", "localhost"}:
+        console.print(
+            f"[bold yellow]⚠️  Warning:[/] Binding MCP server to [cyan]{target_host}[/]"
+        )
+        console.print("   This exposes the MCP server to your network. No auth is enabled.")
+        console.print()
+
+    run_server(host=host, port=port)
+
+
 if __name__ == "__main__":
     cli()
