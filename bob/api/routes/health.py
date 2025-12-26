@@ -37,10 +37,22 @@ def health_check() -> dict[str, str | int]:
     }
 
 
+def _invert_priority(bucket: int, *, min_value: int = 1, max_value: int = 5) -> int:
+    """Invert a priority bucket so higher severity yields lower priority numbers."""
+    return max_value + min_value - bucket
+
+
 def _priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) -> int:
-    """Turn a ratio into a 1-5 priority bucket."""
-    bucket = max(min_value, min(5, int(value * scale) or min_value))
-    return bucket
+    """Turn a ratio into a 1-5 priority bucket (1 is highest)."""
+    normalized = max(0.0, min(1.0, value))
+    bucket = max(min_value, min(5, int(normalized * scale) or min_value))
+    return _invert_priority(bucket, min_value=min_value, max_value=5)
+
+
+def _priority_from_count(value: int, *, min_value: int = 1, max_value: int = 5) -> int:
+    """Turn a count into a 1-5 priority bucket (1 is highest)."""
+    bucket = max(min_value, min(max_value, value))
+    return _invert_priority(bucket, min_value=min_value, max_value=max_value)
 
 
 def _format_permission_denial_details(metrics: dict[str, Any]) -> str:
@@ -116,7 +128,7 @@ def _build_fix_queue_tasks(
                 action="run_routine",
                 target=repeated["question"],
                 reason=f"Question repeated {repeated['count']} times in the last 48h",
-                priority=max(1, min(5, repeated["count"])),
+                priority=_priority_from_count(repeated["count"]),
             )
         )
 

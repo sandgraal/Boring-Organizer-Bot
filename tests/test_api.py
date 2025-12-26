@@ -182,6 +182,39 @@ class TestHealthFixQueueEndpoint:
         assert "permissions.default_scope" in targets
         assert "/vault/decisions/decision-01.md" in targets
 
+    def test_fix_queue_priorities_favor_high_frequency(self, client: TestClient):
+        metrics = {
+            "total": 10,
+            "counts": {"didnt_answer": 9},
+            "not_found_frequency": 0.9,
+            "repeated_questions": [{"question": "Where is the API?", "count": 5}],
+        }
+        permission_metrics = {"total": 0, "counts": {}, "recent": [], "window_hours": 48}
+        mock_db = MagicMock()
+        mock_db.get_feedback_metrics.return_value = metrics
+        mock_db.get_documents_missing_metadata.return_value = []
+        mock_db.get_permission_denial_metrics.return_value = permission_metrics
+
+        with patch(
+            "bob.api.routes.health.get_database",
+            return_value=mock_db,
+        ), patch(
+            "bob.api.routes.health.collect_capture_lint_issues",
+            return_value=[],
+        ):
+            response = client.get("/health/fix-queue")
+
+        assert response.status_code == 200
+        data = response.json()
+        not_found_task = next(
+            task for task in data["tasks"] if task["target"] == "routines/daily-checkin"
+        )
+        repeated_task = next(
+            task for task in data["tasks"] if task["target"] == "Where is the API?"
+        )
+        assert not_found_task["priority"] == 1
+        assert repeated_task["priority"] == 1
+
 
 class TestAskEndpoint:
     """Tests for POST /ask endpoint."""
