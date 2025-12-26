@@ -65,8 +65,8 @@
     currentPage: "ask",
     projects: [],
     documents: [],
-    documentOffset: 0,
-    documentLimit: 20,
+    documentPage: 1,
+    documentPageSize: 20,
     currentJobId: null,
     jobPollInterval: null,
     settings: null,
@@ -1382,7 +1382,7 @@
    */
   async function loadDocuments(append = false) {
     if (!append) {
-      state.documentOffset = 0;
+      state.documentPage = 1;
       elements.documentList.innerHTML =
         '<div class="loading-placeholder">Loading documents...</div>';
     }
@@ -1393,16 +1393,17 @@
     try {
       const response = await API.getDocuments({
         project,
-        type,
-        limit: state.documentLimit,
-        offset: state.documentOffset,
+        sourceType: type,
+        page: state.documentPage,
+        pageSize: state.documentPageSize,
       });
 
+      const newDocuments = response.documents || [];
       state.documents = append
-        ? [...state.documents, ...response.documents]
-        : response.documents;
+        ? [...state.documents, ...newDocuments]
+        : newDocuments;
 
-      renderDocuments(append);
+      renderDocuments(append, newDocuments);
 
       // Update count
       elements.documentCount.textContent = `${state.documents.length} of ${response.total} documents`;
@@ -1420,22 +1421,26 @@
   /**
    * Render documents list.
    */
-  function renderDocuments(append = false) {
+  function renderDocuments(append = false, newDocuments = null) {
     if (!append) {
       elements.documentList.innerHTML = "";
+      if (state.documents.length === 0) {
+        elements.documentList.innerHTML =
+          '<div class="loading-placeholder">No documents indexed yet.</div>';
+        return;
+      }
     }
 
-    if (state.documents.length === 0) {
-      elements.documentList.innerHTML =
-        '<div class="loading-placeholder">No documents indexed yet.</div>';
+    const docsToRender = append ? newDocuments || [] : state.documents;
+    if (append && docsToRender.length === 0) {
       return;
     }
 
-    const html = state.documents
-      .slice(append ? state.documentOffset : 0)
+    const html = docsToRender
       .map((doc) => {
-        const icon = getDocumentIcon(doc.file_type);
-        const date = doc.source_date || doc.indexed_at || "Unknown";
+        const icon = getDocumentIcon(doc.source_type);
+        const date =
+          doc.source_date || doc.updated_at || doc.created_at || "Unknown";
 
         return `
                 <div class="document-card">
@@ -1443,12 +1448,12 @@
                         <span class="document-icon">${icon}</span>
                         <div class="document-info">
                             <div class="document-name">${escapeHtml(
-                              doc.file_path
+                              doc.source_path
                             )}</div>
                             <div class="document-meta">
                                 <span>Project: ${escapeHtml(doc.project)}</span>
-                                <span>${doc.chunk_count || 0} chunks</span>
-                                <span>${escapeHtml(date)}</span>
+                                <span>Type: ${escapeHtml(doc.source_type)}</span>
+                                <span>${escapeHtml(String(date))}</span>
                             </div>
                         </div>
                     </div>
@@ -1471,10 +1476,10 @@
     const icons = {
       markdown: "📄",
       pdf: "📕",
-      docx: "📝",
-      xlsx: "📊",
-      yaml: "📋",
-      json: "📋",
+      word: "📝",
+      excel: "📊",
+      recipe: "📋",
+      git: "🧩",
     };
     return icons[type] || "📄";
   }
@@ -1490,7 +1495,7 @@
    * Load more documents.
    */
   function loadMoreDocuments() {
-    state.documentOffset += state.documentLimit;
+    state.documentPage += 1;
     loadDocuments(true);
   }
 

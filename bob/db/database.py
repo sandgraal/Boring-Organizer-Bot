@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime
@@ -33,39 +34,51 @@ class Database:
         self.db_path = db_path or get_config().database.path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self._conn: sqlite3.Connection | None = None
+        self._local = threading.local()
+        self._connections: set[sqlite3.Connection] = set()
+        self._connections_lock = threading.Lock()
         self._has_vec: bool | None = None
 
     @property
     def conn(self) -> sqlite3.Connection:
         """Get or create database connection."""
-        if self._conn is None:
-            self._conn = sqlite3.connect(
-                str(self.db_path),
-                detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
-            )
-            self._conn.row_factory = sqlite3.Row
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = self._create_connection()
+            self._local.conn = conn
+        return conn
 
-            # Enable WAL mode for better concurrency
-            if get_config().database.wal_mode:
-                self._conn.execute("PRAGMA journal_mode=WAL")
+    def _create_connection(self) -> sqlite3.Connection:
+        """Create and configure a new SQLite connection."""
+        conn = sqlite3.connect(
+            str(self.db_path),
+            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+        )
+        conn.row_factory = sqlite3.Row
 
-            # Enable foreign keys
-            self._conn.execute("PRAGMA foreign_keys=ON")
+        # Enable WAL mode for better concurrency
+        if get_config().database.wal_mode:
+            conn.execute("PRAGMA journal_mode=WAL")
 
-            # Try to load sqlite-vec
-            self._try_load_vec()
+        # Enable foreign keys
+        conn.execute("PRAGMA foreign_keys=ON")
 
-        return self._conn
+        # Try to load sqlite-vec
+        self._try_load_vec(conn)
 
-    def _try_load_vec(self) -> None:
+        with self._connections_lock:
+            self._connections.add(conn)
+
+        return conn
+
+    def _try_load_vec(self, conn: sqlite3.Connection) -> None:
         """Try to load sqlite-vec extension."""
         try:
             import sqlite_vec
 
-            self.conn.enable_load_extension(True)
-            sqlite_vec.load(self.conn)
-            self.conn.enable_load_extension(False)
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
             self._has_vec = True
         except (ImportError, OSError):
             self._has_vec = False
@@ -89,10 +102,16 @@ class Database:
             raise
 
     def close(self) -> None:
-        """Close the database connection."""
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        """Close all open database connections."""
+        with self._connections_lock:
+            connections = list(self._connections)
+            self._connections.clear()
+
+        for conn in connections:
+            conn.close()
+
+        if hasattr(self._local, "conn"):
+            del self._local.conn
 
     def migrate(self) -> None:
         """Run database migrations."""

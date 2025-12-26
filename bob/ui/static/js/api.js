@@ -93,9 +93,11 @@ const API = {
   async getDocuments(params = {}) {
     const query = new URLSearchParams();
     if (params.project) query.set("project", params.project);
-    if (params.type) query.set("type", params.type);
-    if (params.limit) query.set("limit", params.limit);
-    if (params.offset) query.set("offset", params.offset);
+    if (params.sourceType || params.type) {
+      query.set("source_type", params.sourceType || params.type);
+    }
+    if (params.page) query.set("page", params.page);
+    if (params.pageSize) query.set("page_size", params.pageSize);
 
     const queryString = query.toString();
     return this.request(`/documents${queryString ? "?" + queryString : ""}`);
