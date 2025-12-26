@@ -369,6 +369,7 @@
     elements.noteProject?.addEventListener("input", updateNoteTemplateHint);
     elements.noteOpenBtn?.addEventListener("click", handleOpenCreatedNote);
     document.addEventListener("keydown", handleNoteModalKeydown);
+    document.addEventListener("keydown", handleGlobalKeydown);
 
     elements.clearHistoryBtn?.addEventListener("click", handleClearHistory);
   }
@@ -1585,6 +1586,44 @@
     await submitAsk({ query, filters, showAnyway: false });
   }
 
+  function handleGlobalKeydown(event) {
+    if (state.noteModalOpen) return;
+
+    const target = event.target;
+    const tagName = target?.tagName || "";
+    const isEditable =
+      target?.isContentEditable ||
+      tagName === "INPUT" ||
+      tagName === "TEXTAREA" ||
+      tagName === "SELECT";
+
+    if (event.key === "/" && !isEditable) {
+      if (state.currentPage === "ask") {
+        event.preventDefault();
+        elements.queryInput?.focus();
+      }
+      return;
+    }
+
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      if (state.currentPage !== "ask") return;
+      const query = elements.queryInput?.value.trim();
+      if (!query) return;
+      event.preventDefault();
+      const filters = getAskFilters();
+      state.lastAsk = { query, filters };
+      submitAsk({ query, filters, showAnyway: false });
+      return;
+    }
+
+    if (event.key === "Escape" && state.currentPage === "ask") {
+      if (isEditable && target !== elements.queryInput) {
+        return;
+      }
+      resetAskState();
+    }
+  }
+
   /**
    * Submit an ask request with optional overrides.
    */
@@ -1754,6 +1793,15 @@
       elements.coachSuggestionsList.innerHTML = "";
     }
     setCopyReportEnabled(false);
+  }
+
+  function resetAskState() {
+    if (elements.queryInput) {
+      elements.queryInput.value = "";
+    }
+    hideAllStates();
+    elements.welcomeState.classList.remove("hidden");
+    state.lastAsk = null;
   }
 
   /**
