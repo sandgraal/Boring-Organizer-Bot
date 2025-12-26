@@ -45,6 +45,17 @@ MONTHS = (
     "december",
 )
 
+CONTEXT_KEYWORDS = (
+    "as of",
+    "updated",
+    "last updated",
+    "last modified",
+    "modified",
+    "dated",
+    "date",
+    "published",
+)
+
 ISO_DATE_RE = re.compile(
     r"\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?\b"
 )
@@ -80,6 +91,27 @@ def parse_date_hint(text: str) -> datetime | None:
     if not text:
         return None
 
+    contextual = _parse_contextual_date(text)
+    if contextual:
+        return contextual
+
+    return _find_first_date(text)
+
+
+def _parse_contextual_date(text: str) -> datetime | None:
+    """Prefer dates on lines with explicit update/as-of markers."""
+    for line in text.splitlines():
+        lowered = line.lower()
+        if not any(keyword in lowered for keyword in CONTEXT_KEYWORDS):
+            continue
+        parsed = _find_first_date(line)
+        if parsed:
+            return parsed
+    return None
+
+
+def _find_first_date(text: str) -> datetime | None:
+    """Find and parse the first supported date in text."""
     for pattern in (ISO_DATE_RE, SLASH_DATE_RE, DOT_DATE_RE, MONTH_NAME_RE, DAY_MONTH_RE):
         match = pattern.search(text)
         if not match:

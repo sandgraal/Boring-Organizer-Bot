@@ -39,3 +39,13 @@ def test_parse_date_hint_handles_iso_time():
 
 def test_parse_date_hint_ignores_ambiguous_numeric():
     assert parse_date_hint("03/04/2025") is None
+
+
+def test_parse_date_hint_prefers_updated_line():
+    parsed = parse_date_hint("Created 2024-01-01\nUpdated 2024-06-15")
+    assert parsed == datetime(2024, 6, 15)
+
+
+def test_parse_date_hint_handles_as_of():
+    parsed = parse_date_hint("As of January 5, 2025 the plan was updated.")
+    assert parsed == datetime(2025, 1, 5)
