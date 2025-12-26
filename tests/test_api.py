@@ -205,6 +205,13 @@ class TestHealthFixQueueEndpoint:
         assert "Where is the API?" in targets
         assert "permissions.default_scope" in targets
         assert "/vault/decisions/decision-01.md" in targets
+        assert mock_db.get_documents_missing_metadata.call_args.kwargs["project"] == "docs"
+        assert mock_db.get_missing_metadata_total.call_args.kwargs["project"] == "docs"
+        assert mock_db.get_missing_metadata_counts.call_args.kwargs["project"] == "docs"
+        assert mock_db.get_project_document_counts.call_args.kwargs["project"] == "docs"
+        assert mock_db.get_search_history_stats.call_args.kwargs["project"] == "docs"
+        assert mock_db.get_stale_document_buckets.call_args.kwargs["project"] == "docs"
+        assert mock_db.get_stale_decision_buckets.call_args.kwargs["project"] == "docs"
 
     def test_fix_queue_priorities_favor_high_frequency(self, client: TestClient):
         metrics = {

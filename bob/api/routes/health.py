@@ -249,12 +249,12 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     db = get_database()
     config = get_config()
     metrics = db.get_feedback_metrics(project=project)
-    metadata_deficits = db.get_documents_missing_metadata()
-    metadata_total = db.get_missing_metadata_total()
-    metadata_counts = db.get_missing_metadata_counts()
+    metadata_deficits = db.get_documents_missing_metadata(project=project)
+    metadata_total = db.get_missing_metadata_total(project=project)
+    metadata_counts = db.get_missing_metadata_counts(project=project)
     permission_metrics = db.get_permission_denial_metrics(project=project)
     lint_issues = collect_capture_lint_issues(config)
-    project_counts = db.get_project_document_counts()
+    project_counts = db.get_project_document_counts(project=project)
     low_volume_threshold = config.health.low_volume_document_threshold
     low_volume_projects = [
         item for item in project_counts if item["document_count"] < low_volume_threshold
@@ -262,6 +262,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     search_stats = db.get_search_history_stats(
         window_hours=config.health.search_window_hours,
         min_count=config.health.min_searches_for_rate,
+        project=project,
     )
     low_hit_rate_threshold = config.health.low_hit_rate_threshold
     low_hit_rate_projects = [
@@ -269,9 +270,11 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     ]
     staleness_buckets = config.health.staleness_buckets_days
     stale_notes = db.get_stale_document_buckets(
-        buckets_days=staleness_buckets, source_type="markdown"
+        buckets_days=staleness_buckets, source_type="markdown", project=project
     )
-    stale_decisions = db.get_stale_decision_buckets(buckets_days=staleness_buckets)
+    stale_decisions = db.get_stale_decision_buckets(
+        buckets_days=staleness_buckets, project=project
+    )
 
     failure_signals = [
         FailureSignal(

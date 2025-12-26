@@ -145,6 +145,9 @@ class TestDatabaseOperations:
         counts = test_db.get_project_document_counts()
         project_names = {entry["project"] for entry in counts}
         assert {"alpha", "beta"} <= project_names
+        filtered = test_db.get_project_document_counts(project="alpha")
+        assert len(filtered) == 1
+        assert filtered[0]["project"] == "alpha"
 
     def test_permission_denial_metrics(self, test_db):
         test_db.log_permission_denial(
@@ -175,6 +178,11 @@ class TestDatabaseOperations:
         assert record["total"] == 2
         assert record["not_found"] == 1
         assert record["hit_rate"] == 0.5
+        filtered_stats = test_db.get_search_history_stats(
+            window_hours=1, min_count=1, project="docs"
+        )
+        assert len(filtered_stats) == 1
+        assert filtered_stats[0]["project"] == "docs"
 
     def test_missing_metadata_counts(self, test_db):
         test_db.insert_document(
@@ -190,6 +198,30 @@ class TestDatabaseOperations:
         assert counts
         assert counts[0]["project"] == "unknown"
         assert counts[0]["count"] >= 1
+
+    def test_missing_metadata_counts_filtered(self, test_db):
+        test_db.insert_document(
+            source_path="/missing-alpha.md",
+            source_type="markdown",
+            project="alpha",
+            content_hash="missing-alpha",
+            language="",
+            source_date=None,
+        )
+        test_db.insert_document(
+            source_path="/missing-beta.md",
+            source_type="markdown",
+            project="beta",
+            content_hash="missing-beta",
+            language="",
+            source_date=None,
+        )
+
+        counts = test_db.get_missing_metadata_counts(limit=5, project="alpha")
+        assert counts
+        assert all(entry["project"] == "alpha" for entry in counts)
+        total = test_db.get_missing_metadata_total(project="alpha")
+        assert total >= 1
 
     def test_missing_metadata_total(self, test_db):
         test_db.insert_document(
@@ -260,7 +292,9 @@ class TestDatabaseOperations:
             source_date=recent_date,
         )
 
-        buckets = test_db.get_stale_document_buckets(buckets_days=[90, 180], source_type="markdown")
+        buckets = test_db.get_stale_document_buckets(
+            buckets_days=[90, 180], source_type="markdown", project="docs"
+        )
         bucket_by_days = {item["days"]: item["count"] for item in buckets}
         assert bucket_by_days[90] >= 1
         assert bucket_by_days[180] >= 1
@@ -295,7 +329,7 @@ class TestDatabaseOperations:
         )
         save_decision(decision)
 
-        buckets = test_db.get_stale_decision_buckets(buckets_days=[90, 180])
+        buckets = test_db.get_stale_decision_buckets(buckets_days=[90, 180], project="docs")
         bucket_by_days = {item["days"]: item["count"] for item in buckets}
         assert bucket_by_days[90] >= 1
         assert bucket_by_days[180] >= 1

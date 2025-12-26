@@ -237,7 +237,8 @@ After the background thread finishes, the job status moves to `completed` or `fa
 ### GET /health/fix-queue
 
 - **Purpose:** Provide the health dashboard and Fix Queue with failure signals (not-found frequency, metadata deficits, stale notes/decisions, repeated questions, permission denials, low indexed volume, low retrieval hit rate) plus actionable tasks derived from those signals.
-- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)`, `db.get_documents_missing_metadata()`, `db.get_permission_denial_metrics(project)`, `db.get_project_document_counts()`, and `db.get_search_history_stats(...)` to build `FixQueueResponse`.
+- **Query params:** Optional `project` filters failure signals and tasks to a single project when provided.
+- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)`, `db.get_documents_missing_metadata(project)`, `db.get_permission_denial_metrics(project)`, `db.get_project_document_counts(project)`, and `db.get_search_history_stats(..., project)` to build `FixQueueResponse`.
 - **Response model:** `FixQueueResponse` with `failure_signals` (instances of `FailureSignal`) and `tasks` (instances of `FixQueueTask`).
 - **Behavior:** 
   - `failure_signals` include `not_found_frequency`, `metadata_deficits`, `metadata_top_offenders`, `stale_notes`, `stale_decisions`, `repeated_questions`, `permission_denials`, `low_indexed_volume`, and `low_retrieval_hit_rate`, each with counts/details that the UI can render directly.

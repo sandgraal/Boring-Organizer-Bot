@@ -654,16 +654,21 @@ class Database:
             "has_vec": self.has_vec,
         }
 
-    def get_project_document_counts(self) -> list[dict[str, Any]]:
-        """Return document counts grouped by project."""
-        cursor = self.conn.execute(
-            """
+    def get_project_document_counts(self, project: str | None = None) -> list[dict[str, Any]]:
+        """Return document counts grouped by project, optionally filtered."""
+        params: list[Any] = []
+        query = """
             SELECT project, COUNT(*) as count
             FROM documents
+        """
+        if project:
+            query += " WHERE project = ?"
+            params.append(project)
+        query += """
             GROUP BY project
             ORDER BY count ASC
-            """
-        )
+        """
+        cursor = self.conn.execute(query, params)
         return [
             {"project": row["project"], "document_count": int(row["count"])}
             for row in cursor.fetchall()
@@ -697,22 +702,28 @@ class Database:
         *,
         window_hours: int = 168,
         min_count: int = 1,
+        project: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Summarize search hit rates per project."""
+        """Summarize search hit rates per project, optionally filtered."""
         window = f"-{int(window_hours)} hours"
-        cursor = self.conn.execute(
-            """
+        params: list[Any] = [window]
+        query = """
             SELECT COALESCE(NULLIF(project, ''), 'all') as project,
                    COUNT(*) as total,
                    SUM(not_found) as not_found
             FROM search_history
             WHERE datetime(searched_at) >= datetime('now', ?)
+        """
+        if project:
+            query += " AND project = ?"
+            params.append(project)
+        query += """
             GROUP BY COALESCE(NULLIF(project, ''), 'all')
             HAVING COUNT(*) >= ?
             ORDER BY total DESC
-            """,
-            (window, min_count),
-        )
+        """
+        params.append(min_count)
+        cursor = self.conn.execute(query, params)
         stats: list[dict[str, Any]] = []
         for row in cursor.fetchall():
             total = int(row["total"])
@@ -920,18 +931,25 @@ class Database:
             "repeated_questions": repeated,
         }
 
-    def get_documents_missing_metadata(self, *, limit: int = 5) -> list[dict[str, Any]]:
+    def get_documents_missing_metadata(
+        self, *, limit: int = 5, project: str | None = None
+    ) -> list[dict[str, Any]]:
         """Find documents whose required metadata are blank or missing."""
-        cursor = self.conn.execute(
-            """
+        params: list[Any] = []
+        query = """
             SELECT id, project, source_path, source_date, language
             FROM documents
-            WHERE source_date IS NULL OR source_date = ''
-               OR project = '' OR language = ''
-            LIMIT ?
-            """,
-            (limit,),
-        )
+            WHERE (
+                source_date IS NULL OR source_date = ''
+                OR project = '' OR language = ''
+            )
+        """
+        if project:
+            query += " AND project = ?"
+            params.append(project)
+        query += " LIMIT ?"
+        params.append(limit)
+        cursor = self.conn.execute(query, params)
 
         results: list[dict[str, Any]] = []
         for row in cursor.fetchall():
@@ -952,33 +970,47 @@ class Database:
             )
         return results
 
-    def get_missing_metadata_total(self) -> int:
+    def get_missing_metadata_total(self, *, project: str | None = None) -> int:
         """Return total count of documents missing required metadata."""
-        cursor = self.conn.execute(
-            """
+        params: list[Any] = []
+        query = """
             SELECT COUNT(*) as count
             FROM documents
-            WHERE source_date IS NULL OR source_date = ''
-               OR project = '' OR language = ''
-            """
-        )
+            WHERE (
+                source_date IS NULL OR source_date = ''
+                OR project = '' OR language = ''
+            )
+        """
+        if project:
+            query += " AND project = ?"
+            params.append(project)
+        cursor = self.conn.execute(query, params)
         return int(cursor.fetchone()[0])
 
-    def get_missing_metadata_counts(self, *, limit: int = 5) -> list[dict[str, Any]]:
+    def get_missing_metadata_counts(
+        self, *, limit: int = 5, project: str | None = None
+    ) -> list[dict[str, Any]]:
         """Return top projects with missing metadata by file count."""
-        cursor = self.conn.execute(
-            """
+        params: list[Any] = []
+        query = """
             SELECT COALESCE(NULLIF(project, ''), 'unknown') as project,
                    COUNT(*) as count
             FROM documents
-            WHERE source_date IS NULL OR source_date = ''
-               OR project = '' OR language = ''
+            WHERE (
+                source_date IS NULL OR source_date = ''
+                OR project = '' OR language = ''
+            )
+        """
+        if project:
+            query += " AND project = ?"
+            params.append(project)
+        query += """
             GROUP BY COALESCE(NULLIF(project, ''), 'unknown')
             ORDER BY count DESC
             LIMIT ?
-            """,
-            (limit,),
-        )
+        """
+        params.append(limit)
+        cursor = self.conn.execute(query, params)
         return [
             {"project": row["project"], "count": int(row["count"])} for row in cursor.fetchall()
         ]
@@ -988,6 +1020,7 @@ class Database:
         *,
         buckets_days: list[int],
         source_type: str | None = None,
+        project: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return counts of stale documents for the given age buckets."""
         buckets = sorted({int(days) for days in buckets_days if int(days) > 0})
@@ -1004,6 +1037,9 @@ class Database:
             if source_type:
                 query += " AND source_type = ?"
                 params.append(source_type)
+            if project:
+                query += " AND project = ?"
+                params.append(project)
             count = self.conn.execute(query, params).fetchone()[0]
             results.append({"days": days, "count": int(count)})
         return results
@@ -1012,22 +1048,27 @@ class Database:
         self,
         *,
         buckets_days: list[int],
+        project: str | None = None,
     ) -> list[dict[str, Any]]:
         """Return counts of stale active decisions for the given age buckets."""
         buckets = sorted({int(days) for days in buckets_days if int(days) > 0})
         results: list[dict[str, Any]] = []
         for days in buckets:
-            count = self.conn.execute(
-                """
+            params: list[Any] = [f"-{days} days"]
+            query = """
                 SELECT COUNT(*) as count
                 FROM decisions
-                WHERE status = 'active'
-                  AND decision_date IS NOT NULL
-                  AND decision_date != ''
-                  AND datetime(decision_date) <= datetime('now', ?)
-                """,
-                (f"-{days} days",),
-            ).fetchone()[0]
+                JOIN chunks ON decisions.chunk_id = chunks.id
+                JOIN documents ON chunks.document_id = documents.id
+                WHERE decisions.status = 'active'
+                  AND decisions.decision_date IS NOT NULL
+                  AND decisions.decision_date != ''
+                  AND datetime(decisions.decision_date) <= datetime('now', ?)
+            """
+            if project:
+                query += " AND documents.project = ?"
+                params.append(project)
+            count = self.conn.execute(query, params).fetchone()[0]
             results.append({"days": days, "count": int(count)})
         return results
 
