@@ -81,12 +81,14 @@ def count_indexable_targets(paths: list[Path]) -> int:
             continue
 
         if target.is_file():
-            total += 1
+            if get_parser(target):
+                total += 1
             continue
 
         if target.is_dir():
-            for _ in _iter_indexable_files(target):
-                total += 1
+            for item in _iter_indexable_files(target):
+                if get_parser(item):
+                    total += 1
 
     return total
 

@@ -149,6 +149,20 @@ Content in section two.
         finally:
             indexer_module.get_database = original_get_db
 
+    def test_count_indexable_targets_skips_unsupported(self, temp_dir: Path) -> None:
+        """Only supported file types are counted for progress."""
+        from bob.index.indexer import count_indexable_targets
+
+        docs = temp_dir / "docs"
+        docs.mkdir()
+
+        (docs / "notes.md").write_text("# Notes\n\nSome content for indexing.")
+        (docs / "image.png").write_text("fake image data")
+        (docs / "notes.txt").write_text("plain text")
+
+        total = count_indexable_targets([docs])
+        assert total == 1
+
     def test_index_skips_unchanged(self, temp_dir: Path, test_db: Database) -> None:
         """Test that unchanged files are skipped on re-index."""
         from bob.index import index_paths
