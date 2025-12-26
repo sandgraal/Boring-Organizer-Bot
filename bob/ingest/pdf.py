@@ -52,11 +52,12 @@ class PDFParser(Parser):
                     title = line.strip()[:100]  # Limit title length
                     break
 
+        content = "\n\n".join(full_content)
         return ParsedDocument(
             source_path=str(path),
             source_type="pdf",
-            content="\n\n".join(full_content),
+            content=content,
             sections=sections,
             title=title or path.stem,
-            source_date=self.get_file_date(path),
+            source_date=self.get_source_date(path, content),
         )

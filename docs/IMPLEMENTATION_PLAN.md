@@ -772,7 +772,7 @@ These are explicit non-goals to avoid scope creep:
 
 4. **Date Confidence Logic**
 
-   - [ ] Parse dates from document content (not just file metadata)
+   - [x] Parse dates from document content (not just file metadata)
    - [ ] Detect "as of" and "updated" statements
    - [ ] Inherit date from parent document for sub-sections
    - [ ] Add `--max-age` filter to search

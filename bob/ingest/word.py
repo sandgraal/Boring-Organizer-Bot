@@ -74,11 +74,12 @@ class WordParser(Parser):
                     title = section.locator_value.get("heading")
                     break
 
+        content = "\n\n".join(full_content)
         return ParsedDocument(
             source_path=str(path),
             source_type="word",
-            content="\n\n".join(full_content),
+            content=content,
             sections=sections,
             title=title or path.stem,
-            source_date=self.get_file_date(path),
+            source_date=self.get_source_date(path, content),
         )

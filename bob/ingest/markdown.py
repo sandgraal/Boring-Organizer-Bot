@@ -91,5 +91,5 @@ class MarkdownParser(Parser):
             content=content,
             sections=sections,
             title=title,
-            source_date=self.get_file_date(path),
+            source_date=self.get_source_date(path, content),
         )

@@ -77,3 +77,9 @@ class Parser(ABC):
             return datetime.fromtimestamp(stat.st_mtime)
         except OSError:
             return None
+
+    def get_source_date(self, path: Path, content: str) -> datetime | None:
+        """Prefer content-derived dates, fallback to file modification time."""
+        from bob.ingest.date_parser import extract_date_from_content
+
+        return extract_date_from_content(content) or self.get_file_date(path)

@@ -52,11 +52,12 @@ class ExcelParser(Parser):
 
         wb.close()
 
+        content = "\n\n".join(full_content)
         return ParsedDocument(
             source_path=str(path),
             source_type="excel",
-            content="\n\n".join(full_content),
+            content=content,
             sections=sections,
             title=path.stem,
-            source_date=self.get_file_date(path),
+            source_date=self.get_source_date(path, content),
         )

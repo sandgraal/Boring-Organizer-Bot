@@ -131,6 +131,6 @@ class RecipeParser(Parser):
             content=content,
             sections=sections,
             title=name,
-            source_date=self.get_file_date(path),
+            source_date=self.get_source_date(path, content),
             metadata=data,
         )
