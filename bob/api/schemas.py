@@ -263,6 +263,19 @@ class FixQueueResponse(BaseModel):
     )
 
 
+class PermissionsResponse(BaseModel):
+    """Response for GET /permissions."""
+
+    default_scope: int = Field(..., description="Current permission scope level")
+    enabled_connectors: dict[str, bool] = Field(
+        default_factory=dict, description="Connector toggles (calendar, browser saves)"
+    )
+    allowed_vault_paths: list[str] = Field(
+        default_factory=list, description="Vault paths that allow template writes"
+    )
+    vault_root: str = Field(..., description="Configured vault root path")
+
+
 class CoachSettings(BaseModel):
     """Persisted Coach Mode settings."""
 

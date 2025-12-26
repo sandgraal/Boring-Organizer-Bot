@@ -178,6 +178,13 @@ const API = {
   },
 
   /**
+   * Get permission scope configuration.
+   */
+  async getPermissions() {
+    return this.request("/permissions");
+  },
+
+  /**
    * Dismiss a Coach Mode suggestion.
    * @param {string} suggestionId - Suggestion fingerprint.
    * @param {Object} payload - Optional dismiss payload.

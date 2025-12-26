@@ -588,6 +588,30 @@
                 <h3>Per-Project Coach Mode</h3>
                 <div id="settings-project-modes" class="checkbox-list"></div>
               </div>
+              <div class="settings-card">
+                <h3>Permissions</h3>
+                <p class="settings-hint">
+                  Current scope and allowed vault paths for template writes.
+                </p>
+                <div class="permissions-grid">
+                  <div class="permission-item">
+                    <span class="permission-label">Scope</span>
+                    <span id="permissions-scope" class="permission-value"></span>
+                  </div>
+                  <div class="permission-item">
+                    <span class="permission-label">Vault root</span>
+                    <span id="permissions-vault-root" class="permission-value mono"></span>
+                  </div>
+                </div>
+                <div class="permissions-section">
+                  <h4>Allowed vault paths</h4>
+                  <div id="permissions-paths" class="pill-list"></div>
+                </div>
+                <div class="permissions-section">
+                  <h4>Connectors (read-only)</h4>
+                  <div id="permissions-connectors" class="pill-list"></div>
+                </div>
+              </div>
               <button id="settings-save-btn" class="btn btn-primary">
                 Save Settings
               </button>

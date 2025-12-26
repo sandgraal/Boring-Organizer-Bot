@@ -137,6 +137,8 @@
     noteTemplateId: DEFAULT_NOTE_TEMPLATE_ID,
     noteResultPath: null,
     noteModalOpen: false,
+    permissions: null,
+    permissionsLoading: false,
   };
 
   const JOB_STORAGE_KEY = "bob_current_index_job";
@@ -285,6 +287,10 @@
     );
     elements.settingsSaveBtn = document.getElementById("settings-save-btn");
     elements.settingsStatus = document.getElementById("settings-status");
+    elements.permissionsScope = document.getElementById("permissions-scope");
+    elements.permissionsVaultRoot = document.getElementById("permissions-vault-root");
+    elements.permissionsPaths = document.getElementById("permissions-paths");
+    elements.permissionsConnectors = document.getElementById("permissions-connectors");
 
     // New note modal
     elements.newNoteBtn = document.getElementById("new-note-btn");
@@ -413,6 +419,7 @@
     }
     if (page === "settings") {
       loadSettings();
+      loadPermissions();
     }
     if (page === "routines") {
       renderRoutineActions();
@@ -1325,6 +1332,33 @@
   }
 
   /**
+   * Load permission configuration for display.
+   */
+  async function loadPermissions() {
+    if (
+      !elements.permissionsScope ||
+      !elements.permissionsVaultRoot ||
+      !elements.permissionsPaths ||
+      !elements.permissionsConnectors ||
+      state.permissionsLoading
+    ) {
+      return;
+    }
+
+    state.permissionsLoading = true;
+    try {
+      const permissions = await API.getPermissions();
+      state.permissions = permissions;
+      renderPermissions();
+    } catch (err) {
+      console.error("Failed to load permissions:", err);
+      renderPermissionsError();
+    } finally {
+      state.permissionsLoading = false;
+    }
+  }
+
+  /**
    * Render settings form values.
    */
   function renderSettings() {
@@ -1349,6 +1383,70 @@
         `;
       })
       .join("");
+  }
+
+  function renderPermissions() {
+    if (!state.permissions) {
+      renderPermissionsError();
+      return;
+    }
+
+    elements.permissionsScope.textContent = String(
+      state.permissions.default_scope
+    );
+    elements.permissionsVaultRoot.textContent = state.permissions.vault_root;
+    renderPermissionsList(
+      elements.permissionsPaths,
+      state.permissions.allowed_vault_paths,
+      "No allowed paths configured.",
+      true
+    );
+    renderPermissionsList(
+      elements.permissionsConnectors,
+      formatConnectorStatus(state.permissions.enabled_connectors),
+      "No connectors configured.",
+      false
+    );
+  }
+
+  function renderPermissionsError() {
+    if (!elements.permissionsScope) return;
+    elements.permissionsScope.textContent = "Unavailable";
+    if (elements.permissionsVaultRoot) {
+      elements.permissionsVaultRoot.textContent = "Unavailable";
+    }
+    renderPermissionsList(elements.permissionsPaths, [], "Unavailable", true);
+    renderPermissionsList(
+      elements.permissionsConnectors,
+      [],
+      "Unavailable",
+      false
+    );
+  }
+
+  function renderPermissionsList(container, items, emptyMessage, useMono) {
+    if (!container) return;
+    if (!items || items.length === 0) {
+      container.innerHTML = `<span class="pill">${escapeHtml(
+        emptyMessage
+      )}</span>`;
+      return;
+    }
+    container.innerHTML = items
+      .map(
+        (item) =>
+          `<span class="pill${useMono ? " mono" : ""}">${escapeHtml(
+            String(item)
+          )}</span>`
+      )
+      .join("");
+  }
+
+  function formatConnectorStatus(connectors) {
+    if (!connectors) return [];
+    return Object.entries(connectors).map(
+      ([name, enabled]) => `${name}: ${enabled ? "on" : "off"}`
+    );
   }
 
   /**

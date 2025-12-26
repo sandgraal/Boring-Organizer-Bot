@@ -31,6 +31,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, `notes/create`, and `health/fix-queue` endpoints today.
 - Coach Mode toggle, suggestion list (with routine run actions when available), source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks, with run routine, run query, and open-file actions where applicable.
 - Global "New note" action renders canonical templates into vault paths via `POST /notes/create`, echoing warnings and open actions for capture.
+- Settings now includes a permissions summary (scope, vault root, allowed paths, connector states) for quick visibility.
 
 ## Data & Quality Helpers
 - **Watchlist**: `.bob_watchlist.yaml` entries (via `bob.watchlist`) define repeated indexing targets so users can `bob index --watchlist`.

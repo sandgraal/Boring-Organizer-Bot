@@ -17,6 +17,7 @@ from bob.api.routes import (
     index,
     notes,
     open,
+    permissions,
     projects,
     routines,
     settings,
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(projects.router, tags=["Projects"])
     app.include_router(documents.router, tags=["Documents"])
     app.include_router(settings.router, tags=["Settings"])
+    app.include_router(permissions.router, tags=["Permissions"])
     app.include_router(open.router, tags=["Files"])
     app.include_router(routines.router, tags=["Routines"])
     app.include_router(notes.router, tags=["Notes"])

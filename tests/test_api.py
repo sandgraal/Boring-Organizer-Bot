@@ -1247,6 +1247,31 @@ class TestSettingsEndpoint:
         assert "cooldown_until" in data
 
 
+class TestPermissionsEndpoint:
+    """Tests for GET /permissions endpoint."""
+
+    def test_permissions_returns_config(self, client: TestClient):
+        """Permissions endpoint returns scope and vault paths."""
+        config = Config()
+        config.permissions.default_scope = 2
+        config.permissions.allowed_vault_paths = ["vault/routines"]
+        config.permissions.enabled_connectors = {
+            "calendar_import": True,
+            "browser_saves": False,
+        }
+        config.paths.vault = Path("/vault")
+
+        with patch("bob.api.routes.permissions.get_config", return_value=config):
+            response = client.get("/permissions")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["default_scope"] == 2
+        assert data["vault_root"] == "/vault"
+        assert data["allowed_vault_paths"] == ["vault/routines"]
+        assert data["enabled_connectors"]["calendar_import"] is True
+
+
 class TestProjectsEndpoint:
     """Tests for GET /projects endpoint."""
 

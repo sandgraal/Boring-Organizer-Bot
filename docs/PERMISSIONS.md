@@ -51,7 +51,7 @@ permissions:
 
 - Routine endpoints (`/routines/*`) check `permissions.default_scope` and `permissions.allowed_vault_paths`. Insufficient scope or disallowed paths return `PERMISSION_DENIED` with the offending target path.
 - Connector endpoints (`/connectors/*`) are not implemented yet, so no permission enforcement exists for them today.
-- The UI does not currently gate write buttons or expose connector toggles based on permission scope.
+- The UI surfaces current scope, vault root, allowed paths, and connector toggles in Settings, but it does not gate write buttons or enable connectors yet.
 - Permission denials are logged to `permission_denials` and surfaced in Fix Queue failure signals and tasks (`GET /health/fix-queue`).
 
 ## Tests

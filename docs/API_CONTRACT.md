@@ -29,11 +29,12 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    13. [POST /routines/new-decision](#post-routinesnew-decision)
    14. [POST /routines/trip-debrief](#post-routinestrip-debrief)
    15. [POST /notes/create](#post-notescreate)
-   16. [GET /settings](#get-settings)
-   17. [PUT /settings](#put-settings)
-   18. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   19. [POST /feedback](#post-feedback)
-   20. [GET /health/fix-queue](#get-healthfix-queue)
+   16. [GET /permissions](#get-permissions)
+   17. [GET /settings](#get-settings)
+   18. [PUT /settings](#put-settings)
+   19. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   20. [POST /feedback](#post-feedback)
+   21. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -197,6 +198,13 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Response model:** `NoteCreateResponse` returning the resolved template path, rendered content, and overwrite warnings.
 - **Behavior:** Resolves templates from `docs/templates/`, fills `project`/`date`/`language` defaults plus any provided values, and writes to `target_path` (relative paths resolve under the configured vault). Scope and allowed-path checks mirror routine endpoints.
 - **Errors:** HTTP 400 for missing template/target path, 404 when the template does not exist, 403 for permission scope/path denials, and 500 for write failures.
+
+### GET /permissions
+
+- **Purpose:** Surface current permission scope and allowed vault paths for UI visibility.
+- **Implementation:** `bob/api/routes/permissions.py`.
+- **Response model:** `PermissionsResponse` with `default_scope`, `enabled_connectors`, `allowed_vault_paths`, and `vault_root`.
+- **Behavior:** Mirrors the configured permission block so the UI can show scope status and allowed write directories without mutating state.
 
 ### GET /settings
 
