@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from bob.api.routes import (
     ask,
+    connectors,
     documents,
     feedback,
     health,
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, tags=["Health"])
     app.include_router(ask.router, tags=["Query"])
     app.include_router(feedback.router, tags=["Feedback"])
+    app.include_router(connectors.router, tags=["Connectors"])
     app.include_router(index.router, tags=["Indexing"])
     app.include_router(projects.router, tags=["Projects"])
     app.include_router(documents.router, tags=["Documents"])

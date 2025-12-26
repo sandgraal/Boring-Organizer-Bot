@@ -43,6 +43,7 @@ def get_parser(path: Path) -> Parser | None:
 
 def init_parsers() -> None:
     """Initialize and register all built-in parsers."""
+    from bob.ingest.bookmarks import BookmarksParser
     from bob.ingest.excel import ExcelParser
     from bob.ingest.markdown import MarkdownParser
     from bob.ingest.pdf import PDFParser
@@ -54,6 +55,7 @@ def init_parsers() -> None:
     register_parser(WordParser())
     register_parser(ExcelParser())
     register_parser(RecipeParser())
+    register_parser(BookmarksParser())
 
 
 # Auto-initialize on import

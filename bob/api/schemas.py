@@ -212,6 +212,42 @@ class NoteCreateResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class BookmarksImportRequest(BaseModel):
+    """Request body for POST /connectors/bookmarks/import."""
+
+    source_path: str = Field(..., description="Path to bookmarks HTML export file")
+    project: str | None = Field(None, description="Project context for imported notes")
+    language: str | None = Field(None, description="ISO 639-1 language code for notes")
+
+
+class BookmarksImportResponse(BaseModel):
+    """Response body for POST /connectors/bookmarks/import."""
+
+    success: bool = Field(True, description="True when import succeeds")
+    imported: int = Field(..., description="Number of bookmarks imported")
+    created_paths: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class HighlightCreateRequest(BaseModel):
+    """Request body for POST /connectors/highlights."""
+
+    text: str = Field(..., description="Highlight text to store")
+    source_url: str | None = Field(None, description="Source URL for the highlight")
+    title: str | None = Field(None, description="Optional title for the highlight note")
+    project: str | None = Field(None, description="Project context for the note")
+    language: str | None = Field(None, description="ISO 639-1 language code for the note")
+    date: DateType | None = Field(None, description="Date for the note (YYYY-MM-DD)")
+
+
+class HighlightCreateResponse(BaseModel):
+    """Response body for POST /connectors/highlights."""
+
+    success: bool = Field(True, description="True when creation succeeds")
+    file_path: str
+    warnings: list[str] = Field(default_factory=list)
+
+
 class FeedbackRequest(BaseModel):
     """Payload for capturing inline feedback."""
 

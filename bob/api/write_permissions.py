@@ -10,6 +10,7 @@ from bob.config import Config
 from bob.db.database import get_database
 
 TEMPLATE_WRITE_SCOPE = 3
+CONNECTOR_WRITE_SCOPE = 2
 
 
 def resolve_allowed_directories(config: Config) -> list[Path]:
@@ -62,7 +63,12 @@ def _log_permission_denial(
 
 
 def ensure_allowed_write_path(
-    action_name: str, project: str | None, target_path: Path, config: Config
+    action_name: str,
+    project: str | None,
+    target_path: Path,
+    config: Config,
+    *,
+    required_scope_level: int = TEMPLATE_WRITE_SCOPE,
 ) -> None:
     """Validate that a write stays within allowed vault directories."""
     resolved_target = target_path.resolve()
@@ -77,7 +83,7 @@ def ensure_allowed_write_path(
         target_path=target_path,
         reason_code="path",
         scope_level=config.permissions.default_scope,
-        required_scope_level=TEMPLATE_WRITE_SCOPE,
+        required_scope_level=required_scope_level,
         allowed_paths=allowed_paths,
     )
 
@@ -93,11 +99,16 @@ def ensure_allowed_write_path(
 
 
 def ensure_scope_level(
-    action_name: str, project: str | None, target_path: Path, config: Config
+    action_name: str,
+    project: str | None,
+    target_path: Path,
+    config: Config,
+    *,
+    required_scope_level: int = TEMPLATE_WRITE_SCOPE,
 ) -> None:
-    """Ensure the configured scope level permits template writes."""
+    """Ensure the configured scope level permits scoped writes."""
     current = config.permissions.default_scope
-    if current >= TEMPLATE_WRITE_SCOPE:
+    if current >= required_scope_level:
         return
 
     _log_permission_denial(
@@ -106,16 +117,52 @@ def ensure_scope_level(
         target_path=target_path,
         reason_code="scope",
         scope_level=current,
-        required_scope_level=TEMPLATE_WRITE_SCOPE,
+        required_scope_level=required_scope_level,
     )
 
     raise HTTPException(
         status_code=403,
         detail={
             "code": "PERMISSION_DENIED",
-            "message": f"Permission level {TEMPLATE_WRITE_SCOPE} required for {action_name}.",
+            "message": f"Permission level {required_scope_level} required for {action_name}.",
             "scope_level": current,
-            "required_scope_level": TEMPLATE_WRITE_SCOPE,
+            "required_scope_level": required_scope_level,
+            "target_path": str(target_path),
+        },
+    )
+
+
+def ensure_connector_enabled(
+    connector_name: str,
+    action_name: str,
+    project: str | None,
+    target_path: Path,
+    config: Config,
+    *,
+    required_scope_level: int = CONNECTOR_WRITE_SCOPE,
+) -> None:
+    """Ensure a connector toggle is enabled before performing writes."""
+    enabled = config.permissions.enabled_connectors.get(connector_name, False)
+    if enabled:
+        return
+
+    allowed_dirs = resolve_allowed_directories(config)
+    allowed_paths = [str(dir_path) for dir_path in allowed_dirs]
+    _log_permission_denial(
+        action_name=action_name,
+        project=project,
+        target_path=target_path,
+        reason_code="connector",
+        scope_level=config.permissions.default_scope,
+        required_scope_level=required_scope_level,
+        allowed_paths=allowed_paths,
+    )
+
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "CONNECTOR_DISABLED",
+            "message": f"Connector '{connector_name}' is disabled.",
             "target_path": str(target_path),
         },
     )
