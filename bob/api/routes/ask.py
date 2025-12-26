@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 
@@ -132,6 +133,8 @@ def ask_query(request: AskRequest) -> AskResponse:
     # Build answer from top result
     top_source = sources[0]
     answer = top_source.snippet
+    if answer and not re.search(r"\[\d+\]", answer):
+        answer = f"{answer} [1]"
 
     # Compute footer
     outdated_count = sum(1 for s in sources if s.may_be_outdated)

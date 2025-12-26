@@ -356,6 +356,7 @@ class TestAskEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["answer"] is not None
+        assert "[1]" in data["answer"]
         assert data["coach_mode_enabled"] is False
         assert data["suggestions"] == []
         assert len(data["sources"]) == 2
