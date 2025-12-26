@@ -2390,8 +2390,17 @@
     if (!locator) return "";
 
     switch (locator.type) {
-      case "heading":
-        return `heading: "${locator.heading}" (lines ${locator.start_line}-${locator.end_line})`;
+      case "heading": {
+        const heading = locator.heading || "";
+        const lines =
+          locator.start_line && locator.end_line
+            ? ` (lines ${locator.start_line}-${locator.end_line})`
+            : "";
+        const gitLabel = locator.git_file
+          ? `${locator.git_file}${locator.git_commit ? `@${locator.git_commit}` : ""} `
+          : "";
+        return `${gitLabel}heading: "${heading}"${lines}`;
+      }
       case "page":
         return `page ${locator.page}/${locator.total_pages}`;
       case "sheet":
@@ -2400,6 +2409,17 @@
         return `paragraph ${locator.paragraph_index}${
           locator.parent_heading ? ` under "${locator.parent_heading}"` : ""
         }`;
+      case "section":
+        return `section: "${locator.section || ""}"`;
+      case "line": {
+        const start = locator.start_line || locator.line || "";
+        const end = locator.end_line || "";
+        const lineLabel = end ? `${start}-${end}` : `${start}`;
+        const gitLabel = locator.git_file
+          ? `${locator.git_file}${locator.git_commit ? `@${locator.git_commit}` : ""} `
+          : "";
+        return `${gitLabel}lines ${lineLabel}`.trim();
+      }
       default:
         return locator.type || "";
     }
