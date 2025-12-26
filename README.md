@@ -98,6 +98,23 @@ pip install -e ".[dev]"
 bob init
 ```
 
+### Run the Local UI
+
+```bash
+# Start the local API + UI server
+bob serve
+```
+
+Open `http://localhost:8080` in your browser to use the UI.
+
+If `bob` is not on your PATH, run:
+
+```bash
+.venv/bin/bob serve
+# or
+python -m bob.cli.main serve
+```
+
 ### Index Your Documents
 
 ```bash
@@ -230,6 +247,8 @@ bob serve --port 9000
 # Enable auto-reload for development
 bob serve --reload
 ```
+
+The UI is served at `http://localhost:8080` when the server is running.
 
 The API currently exposes the following local-only endpoints:
 
