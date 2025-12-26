@@ -1247,6 +1247,13 @@
          Open file
        </button>`;
     }
+    if (task.action === "open_indexing") {
+      return `<button type="button" class="btn btn-secondary btn-sm" data-fixqueue-indexing="${escapeHtml(
+        task.target
+      )}">
+         Open indexing
+       </button>`;
+    }
     return "";
   }
 
@@ -1269,12 +1276,31 @@
       return;
     }
 
+    const indexButton = event.target.closest("[data-fixqueue-indexing]");
+    if (indexButton) {
+      const target = indexButton.dataset.fixqueueIndexing;
+      if (target) {
+        handleFixQueueIndexing(target);
+      } else {
+        handleFixQueueIndexing("");
+      }
+      return;
+    }
+
     const openButton = event.target.closest("[data-fixqueue-open]");
     if (!openButton) return;
     const target = openButton.dataset.fixqueueOpen;
     if (target) {
       handleFixQueueOpen(target);
     }
+  }
+
+  function handleFixQueueIndexing(target) {
+    navigateTo("indexing");
+    if (elements.indexProject) {
+      elements.indexProject.value = target && target !== "unknown" ? target : "";
+    }
+    elements.indexPath?.focus();
   }
 
   async function handleFixQueueRun(target) {

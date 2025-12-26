@@ -271,6 +271,61 @@ def _build_staleness_task(
     )
 
 
+def _build_indexing_tasks(
+    low_volume_projects: list[dict[str, Any]],
+    low_hit_rate_projects: list[dict[str, Any]],
+    *,
+    low_volume_threshold: int,
+    low_hit_rate_threshold: float,
+) -> list[FixQueueTask]:
+    """Create Fix Queue tasks that prompt indexing for low-coverage projects."""
+    tasks: list[FixQueueTask] = []
+
+    for item in low_volume_projects:
+        project = item.get("project") or "unknown"
+        doc_count = int(item.get("document_count", 0))
+        gap = max(0, low_volume_threshold - doc_count)
+        priority = _priority_from_count(gap) if gap else 5
+        task_id = f"index-volume-{project.replace(' ', '-')}"
+        tasks.append(
+            FixQueueTask(
+                id=task_id,
+                action="open_indexing",
+                target=project,
+                reason=(
+                    f"Project '{project}' has only {doc_count} documents "
+                    f"(threshold {low_volume_threshold})."
+                ),
+                priority=priority,
+            )
+        )
+
+    for item in low_hit_rate_projects:
+        project = item.get("project") or "unknown"
+        hit_rate = float(item.get("hit_rate", 0.0))
+        severity = (
+            max(0.0, (low_hit_rate_threshold - hit_rate) / low_hit_rate_threshold)
+            if low_hit_rate_threshold > 0
+            else 0.0
+        )
+        priority = _priority_from_ratio(severity)
+        task_id = f"index-hit-rate-{project.replace(' ', '-')}"
+        tasks.append(
+            FixQueueTask(
+                id=task_id,
+                action="open_indexing",
+                target=project,
+                reason=(
+                    f"Project '{project}' has {hit_rate * 100:.0f}% retrieval hit rate "
+                    f"(threshold {low_hit_rate_threshold * 100:.0f}%)."
+                ),
+                priority=priority,
+            )
+        )
+
+    return tasks
+
+
 @router.get("/health/fix-queue", response_model=FixQueueResponse)
 def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     """Return Fix Queue signals and tasks derived from failure metrics."""
@@ -359,6 +414,14 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         metrics, metadata_deficits, project, permission_metrics.get("recent", [])
     )
     tasks.extend(_build_lint_tasks(lint_issues))
+    tasks.extend(
+        _build_indexing_tasks(
+            low_volume_projects,
+            low_hit_rate_projects,
+            low_volume_threshold=low_volume_threshold,
+            low_hit_rate_threshold=low_hit_rate_threshold,
+        )
+    )
     staleness_task = _build_staleness_task(stale_notes, stale_decisions, project)
     if staleness_task:
         tasks.append(staleness_task)

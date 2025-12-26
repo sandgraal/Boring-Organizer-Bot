@@ -199,13 +199,14 @@ class TestHealthFixQueueEndpoint:
         assert any(f["name"] == "permission_denials" for f in data["failure_signals"])
         assert any(f["name"] == "low_indexed_volume" for f in data["failure_signals"])
         assert any(f["name"] == "low_retrieval_hit_rate" for f in data["failure_signals"])
-        assert len(data["tasks"]) == 6
+        assert len(data["tasks"]) == 8
         targets = [t["target"] for t in data["tasks"]]
         assert "/docs/notes.md" in targets
         assert "Where is the API?" in targets
         assert "permissions.default_scope" in targets
         assert "/vault/decisions/decision-01.md" in targets
         assert "routines/weekly-review" in targets
+        assert targets.count("docs") == 2
         assert mock_db.get_documents_missing_metadata.call_args.kwargs["project"] == "docs"
         assert mock_db.get_missing_metadata_total.call_args.kwargs["project"] == "docs"
         assert mock_db.get_missing_metadata_counts.call_args.kwargs["project"] == "docs"
