@@ -135,6 +135,61 @@ class RoutineResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class FeedbackRequest(BaseModel):
+    """Payload for capturing inline feedback."""
+
+    question: str = Field(..., description="Original user query")
+    project: str | None = Field(
+        None, description="Project context for the question/answer pair"
+    )
+    answer_id: str | None = Field(
+        None, description="Optional identifier the server returned with the answer"
+    )
+    feedback_reason: str = Field(
+        ...,
+        description="One of helpful, wrong_source, outdated, too_long, didnt_answer",
+    )
+    retrieved_source_ids: list[int] = Field(
+        default_factory=list,
+        description="Chunk identifiers that were shown in the answer",
+    )
+
+
+class FeedbackResponse(BaseModel):
+    """Standard acknowledgement for feedback submissions."""
+
+    success: bool = Field(True, description="True when the log succeeded")
+
+
+class FixQueueTask(BaseModel):
+    """Structured Fix Queue task derived from health signals."""
+
+    id: str
+    action: str = Field(..., description="What the UI should do (e.g., fix_metadata, run_routine)")
+    target: str = Field(..., description="Target path, routine, or question text")
+    reason: str = Field(..., description="Why the task exists")
+    priority: int = Field(..., description="Priority bucket (1=highest, 5=lowest)")
+
+
+class FailureSignal(BaseModel):
+    """Health signal that feeds the Fix Queue dashboard."""
+
+    name: str
+    value: float | int
+    details: str | None = None
+
+
+class FixQueueResponse(BaseModel):
+    """Response for GET /health/fix-queue."""
+
+    failure_signals: list[FailureSignal] = Field(
+        default_factory=list, description="Signals that drive the tasks"
+    )
+    tasks: list[FixQueueTask] = Field(
+        default_factory=list, description="Prioritized cleanup actions"
+    )
+
+
 class CoachSettings(BaseModel):
     """Persisted Coach Mode settings."""
 

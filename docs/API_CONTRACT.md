@@ -24,6 +24,8 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    8. [GET /settings](#get-settings)
    9. [PUT /settings](#put-settings)
    10. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   11. [POST /feedback](#post-feedback)
+   12. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -154,6 +156,70 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** Logs `was_shown=False` via `db.log_coach_suggestion`, then returns `SuggestionDismissResponse` containing `cooldown_until`.
 - **Errors:** HTTP 400 when `suggestion_type` cannot be determined from the request or stored context.
 
+### POST /feedback
+
+- **Purpose:** Capture the five inline feedback signals (Helpful, Wrong or missing source, Outdated, Too long, Didn’t answer) so that failure metrics and Fix Queue tasks reflect user pain points.
+- **Implementation:** `bob/api/routes/feedback.py` calls `db.log_feedback` and stores `{question, project, answer_id, feedback_reason, retrieved_source_ids}` in the `feedback_log` table for later aggregation.
+- **Request model:** `FeedbackRequest` (`question`, optional `project`, `answer_id`, `feedback_reason`, `retrieved_source_ids`).
+- **Response model:** `FeedbackResponse` (`success: true`).
+- **Behavior:** UI feedback buttons render `feedback_reason` enumerations (`helpful`, `wrong_source`, `outdated`, `too_long`, `didnt_answer`) and include the chunk IDs that were shown so the Fix Queue can reference the same citations when it surfaces tasks.
+
+### GET /health/fix-queue
+
+- **Purpose:** Provide the health dashboard and Fix Queue with failure signals (not-found frequency, metadata deficits, repeated questions) plus actionable tasks derived from those signals.
+- **Implementation:** The `/health/fix-queue` handler in `bob/api/routes/health.py` calls `db.get_feedback_metrics(project)` and `db.get_documents_missing_metadata()` to build `FixQueueResponse`.
+- **Response model:** `FixQueueResponse` with `failure_signals` (instances of `FailureSignal`) and `tasks` (instances of `FixQueueTask`).
+- **Behavior:** 
+  - `failure_signals` include `not_found_frequency`, `metadata_deficits`, and `repeated_questions`, each with counts/details that the UI can render directly.
+  - `tasks` are prioritized actions such as `run_routine` for high not-found ratios, `fix_metadata` for documents missing `source_date`/`project`/`language`, and `run_routine` for repeated queries (question text is the target).
+  - Task IDs are deterministic (`not-found-<project>`, `metadata-<doc>-<index>`, `repeat-<hash>`) so that UI state can track dismissals or completions.
+- **Example response:**
+
+```json
+{
+  "failure_signals": [
+    {
+      "name": "not_found_frequency",
+      "value": 0.3,
+      "details": "3 of 10 feedback entries were 'didn't answer'"
+    },
+    {
+      "name": "metadata_deficits",
+      "value": 1,
+      "details": "Documents missing source_date/project/language"
+    },
+    {
+      "name": "repeated_questions",
+      "value": 1,
+      "details": "Repeated queries observed over the past 48 hours"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "not-found-global",
+      "action": "run_routine",
+      "target": "routines/daily-checkin",
+      "reason": "30.0% of feedback entries were 'didn't answer'",
+      "priority": 3
+    },
+    {
+      "id": "metadata-100-1",
+      "action": "fix_metadata",
+      "target": "/docs/notes.md",
+      "reason": "Missing metadata fields: source_date",
+      "priority": 3
+    },
+    {
+      "id": "repeat-abcdef",
+      "action": "run_routine",
+      "target": "Where is the API?",
+      "reason": "Question repeated 2 times in the last 48h",
+      "priority": 2
+    }
+  ]
+}
+```
+
 ## Models & Schemas
 
 Key models are defined in [`bob/api/schemas.py`](../bob/api/schemas.py). Examples:
@@ -174,6 +240,5 @@ For field-level detail, consult the schema file and rely on the tests under `tes
 
 ## Future Work
 
-- `POST /feedback` (Helpful / Wrong / Outdated / Too long / Didn’t answer) is still planned. Feedback spikes are intended to feed the health metrics described in [`docs/IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 - The remaining `/routines/*` endpoints remain part of the routines/Fix Queue roadmap in [`docs/ROUTINES_SPEC.md`](ROUTINES_SPEC.md). Those actions will orchestrate template writes, lint-driven Fix Queue tasks, and Coach Mode nudges once implemented.
-- The Fix Queue dashboard, ingest/metadata monitors, and stale-decision radar currently have no API surface beyond `/health`; they live in the roadmap docs until landed.
+- The Fix Queue dashboard, ingest/metadata monitors, and stale-decision radar still need UI surfaces, but they can consume the failure signals that `GET /health/fix-queue` now exposes.

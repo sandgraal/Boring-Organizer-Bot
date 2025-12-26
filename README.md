@@ -234,18 +234,19 @@ bob serve --reload
 The API currently exposes the following local-only endpoints:
 
 - `GET /health` — Uptime, version, database status, and indexed document count.
+- `GET /health/fix-queue` — Failure signals and Fix Queue tasks derived from feedback, repeated questions, and metadata gaps.
 - `POST /ask` — Natural-language query with citations plus Coach Mode suggestions and footer metadata.
 - `POST /index` / `GET /index/{job_id}` — Submit an indexing job, stream progress/errors, and fetch its status once finished.
 - `GET /projects` — Enumerate projects with document/chunk counts.
 - `GET /documents` — Paginated document list filtered by project and source type.
 - `POST /open` — Launch a suitable editor (or fallback instructions) for the requested file path and line.
+- `POST /feedback` — Capture Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer signals for the Fix Queue metrics.
 - `GET /settings`, `PUT /settings`, `POST /suggestions/{id}/dismiss` — Coach Mode preferences, cooldowns, and dismissal logging.
 
 Implementation details, request/response models, and example payloads live in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). 
 
 Planned API additions (not implemented yet):
 
-- `POST /feedback` — capture Helpful / Wrong / Outdated / Too long / Didn’t answer signals.
 - `/routines/*` (`daily-checkin`, `meeting-prep`, etc.) — template-driven writes plus Fix Queue alerts.
 
 OpenAPI docs: `http://localhost:8080/docs`

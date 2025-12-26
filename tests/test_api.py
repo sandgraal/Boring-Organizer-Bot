@@ -80,6 +80,74 @@ class TestHealthEndpoint:
         assert data["indexed_documents"] == 0
 
 
+class TestFeedbackEndpoint:
+    """Tests for POST /feedback."""
+
+    def test_feedback_logs_entry(self, client: TestClient):
+        payload = {
+            "question": "What happened?",
+            "project": "docs",
+            "answer_id": "ans-123",
+            "feedback_reason": "didnt_answer",
+            "retrieved_source_ids": [1, 2],
+        }
+        mock_db = MagicMock()
+
+        with patch(
+            "bob.api.routes.feedback.get_database",
+            return_value=mock_db,
+        ):
+            response = client.post("/feedback", json=payload)
+
+        assert response.status_code == 200
+        assert response.json() == {"success": True}
+        mock_db.log_feedback.assert_called_once_with(
+            question=payload["question"],
+            project=payload["project"],
+            answer_id=payload["answer_id"],
+            feedback_reason=payload["feedback_reason"],
+            retrieved_source_ids=payload["retrieved_source_ids"],
+        )
+
+
+class TestHealthFixQueueEndpoint:
+    """Tests for the Fix Queue health surface."""
+
+    def test_fix_queue_returns_tasks(self, client: TestClient):
+        metrics = {
+            "total": 10,
+            "counts": {"didnt_answer": 3},
+            "not_found_frequency": 0.3,
+            "repeated_questions": [{"question": "Where is the API?", "count": 2}],
+        }
+        metadata = [
+            {
+                "document_id": 100,
+                "project": "docs",
+                "source_path": "/docs/notes.md",
+                "missing_fields": ["source_date"],
+            }
+        ]
+        mock_db = MagicMock()
+        mock_db.get_feedback_metrics.return_value = metrics
+        mock_db.get_documents_missing_metadata.return_value = metadata
+
+        with patch(
+            "bob.api.routes.health.get_database",
+            return_value=mock_db,
+        ):
+            response = client.get("/health/fix-queue", params={"project": "docs"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert any(f["name"] == "not_found_frequency" for f in data["failure_signals"])
+        assert any(f["name"] == "metadata_deficits" for f in data["failure_signals"])
+        assert len(data["tasks"]) == 3
+        targets = [t["target"] for t in data["tasks"]]
+        assert "/docs/notes.md" in targets
+        assert "Where is the API?" in targets
+
+
 class TestAskEndpoint:
     """Tests for POST /ask endpoint."""
 

@@ -603,6 +603,119 @@ class Database:
             "has_vec": self.has_vec,
         }
 
+    def log_feedback(
+        self,
+        *,
+        question: str,
+        project: str | None,
+        answer_id: str | None,
+        feedback_reason: str,
+        retrieved_source_ids: list[int] | None = None,
+    ) -> None:
+        """Record feedback entries for failure signal analysis."""
+        payload = json.dumps(retrieved_source_ids or [])
+        with self.transaction():
+            self.conn.execute(
+                """
+                INSERT INTO feedback_log (
+                    question,
+                    project,
+                    answer_id,
+                    feedback_reason,
+                    retrieved_source_ids
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (question, project, answer_id, feedback_reason, payload),
+            )
+
+    def get_feedback_metrics(
+        self, *, project: str | None = None, window_hours: int = 48
+    ) -> dict[str, Any]:
+        """Summarize feedback for Fix Queue signals."""
+        base_filters = "WHERE 1=1"
+        params: list[str] = []
+        if project:
+            base_filters += " AND project = ?"
+            params.append(project)
+
+        cursor = self.conn.execute(
+            f"""
+            SELECT feedback_reason, COUNT(*) as count
+            FROM feedback_log
+            {base_filters}
+            GROUP BY feedback_reason
+            """,
+            params,
+        )
+        counts: dict[str, int] = {}
+        total = 0
+        for row in cursor.fetchall():
+            reason = row["feedback_reason"]
+            count = int(row["count"])
+            counts[reason] = count
+            total += count
+
+        repeated_cursor = self.conn.execute(
+            f"""
+            SELECT question, COUNT(*) as count
+            FROM feedback_log
+            {base_filters}
+            AND datetime >= datetime('now', '-{int(window_hours)} hours')
+            GROUP BY question
+            HAVING count > 1
+            ORDER BY count DESC
+            LIMIT 5
+            """,
+            params,
+        )
+        repeated = [
+            {"question": row["question"], "count": int(row["count"])}
+            for row in repeated_cursor.fetchall()
+        ]
+
+        not_found = counts.get("didnt_answer", 0)
+        not_found_frequency = (not_found / total) if total else 0.0
+
+        return {
+            "total": total,
+            "counts": counts,
+            "not_found_frequency": not_found_frequency,
+            "repeated_questions": repeated,
+        }
+
+    def get_documents_missing_metadata(self, *, limit: int = 5) -> list[dict[str, Any]]:
+        """Find documents whose required metadata are blank or missing."""
+        cursor = self.conn.execute(
+            """
+            SELECT id, project, source_path, source_date, language
+            FROM documents
+            WHERE source_date IS NULL OR source_date = ''
+               OR project = '' OR language = ''
+            LIMIT ?
+            """,
+            (limit,),
+        )
+
+        results: list[dict[str, Any]] = []
+        for row in cursor.fetchall():
+            missing: list[str] = []
+            if not row["source_date"]:
+                missing.append("source_date")
+            if not row["project"]:
+                missing.append("project")
+            if not row["language"]:
+                missing.append("language")
+            results.append(
+                {
+                    "document_id": row["id"],
+                    "project": row["project"],
+                    "source_path": row["source_path"],
+                    "missing_fields": missing,
+                }
+            )
+        return results
+
     # Coach Mode settings and suggestion log
 
     def _ensure_user_settings(self) -> None:
