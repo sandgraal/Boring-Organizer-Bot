@@ -242,7 +242,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Ship a beautiful, citation-first local web UI that makes B.O.B accessible without CLI.
 
-### Status: ✅ Complete
+### Status: 🔄 In Progress
 
 ### Prerequisites
 
