@@ -28,11 +28,12 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    12. [POST /routines/meeting-debrief](#post-routinesmeeting-debrief)
    13. [POST /routines/new-decision](#post-routinesnew-decision)
    14. [POST /routines/trip-debrief](#post-routinestrip-debrief)
-   15. [GET /settings](#get-settings)
-   16. [PUT /settings](#put-settings)
-   17. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   18. [POST /feedback](#post-feedback)
-   19. [GET /health/fix-queue](#get-healthfix-queue)
+   15. [POST /notes/create](#post-notescreate)
+   16. [GET /settings](#get-settings)
+   17. [PUT /settings](#put-settings)
+   18. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   19. [POST /feedback](#post-feedback)
+   20. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -188,6 +189,14 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** The handler ensures `trip_name` is populated in the template, the `trip notes` query honors the 30-day lookback, and the note is written under the slugified trip folder.
 - **Errors:** Same 500/403 semantics as the other routine endpoints when templates/searches/writes fail or scope/path checks reject the action.
 
+### POST /notes/create
+
+- **Purpose:** Render a canonical template and write a note to an allowed vault path.
+- **Request model:** `NoteCreateRequest` with `template`, `target_path`, optional `project`/`language`/`date`, and optional `values` for template placeholders.
+- **Response model:** `NoteCreateResponse` returning the resolved template path, rendered content, and overwrite warnings.
+- **Behavior:** Resolves templates from `docs/templates/`, fills `project`/`date`/`language` defaults plus any provided values, and writes to `target_path` (relative paths resolve under the configured vault). Scope and allowed-path checks mirror routine endpoints.
+- **Errors:** HTTP 400 for missing template/target path, 404 when the template does not exist, 403 for permission scope/path denials, and 500 for write failures.
+
 ### GET /settings
 
 - **Purpose:** Read persisted Coach Mode settings.
@@ -293,6 +302,7 @@ Key models are defined in [`bob/api/schemas.py`](../bob/api/schemas.py). Example
 - `AskRequest` / `AskResponse` describe filters, top-k, Coach Mode overrides, source metadata, and the mandatory footer.
 - `Source` carries `file_path`, `source_type`, `locator`, `similarity_score`, `project`, and optional Git metadata.
 - `RoutineRequest` / `RoutineResponse` cover all `/routines/*` actions: base fields (`project`, `language`, `date`, `top_k`) plus optional `slug`, `meeting_slug`, `meeting_date`, `participants`, `trip_name`, `trip_slug`, `decision_slug`, and `title`, and the rendered note path/content + retrieval buckets + warnings returned.
+- `NoteCreateRequest` / `NoteCreateResponse` capture template name, target path, placeholder values, and the rendered note content for manual template writes.
 - `IndexRequest` / `IndexResponse` / `IndexProgress` capture job metadata, statuses, timestamps, and per-file errors.
 - `ProjectListResponse`, `DocumentListResponse`, and `DocumentInfo` provide project/document metadata for the UI.
 - `OpenRequest` / `OpenResponse`, `CoachSettings`, and `SuggestionDismissRequest` round out the coaching + editor flows.

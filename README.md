@@ -241,6 +241,7 @@ The API currently exposes the following local-only endpoints:
 - `GET /documents` — Paginated document list filtered by project and source type.
 - `POST /open` — Launch a suitable editor (or fallback instructions) for the requested file path and line.
 - `POST /feedback` — Capture Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer signals for the Fix Queue metrics.
+- `POST /notes/create` — Render a canonical template into an allowed vault path.
 - `GET /settings`, `PUT /settings`, `POST /suggestions/{id}/dismiss` — Coach Mode preferences, cooldowns, and dismissal logging.
 
 Implementation details, request/response models, and example payloads live in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). 
@@ -248,6 +249,7 @@ Implementation details, request/response models, and example payloads live in [`
 Template-write APIs (implemented):
 
 - `/routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, `/routines/trip-debrief` — each renders a canonical template, gathers cited retrievals, and writes to the vault (`vault/routines`, `vault/meetings`, `vault/decisions`, `vault/trips`). See `docs/API_CONTRACT.md` for details.
+- `/notes/create` — renders any canonical template to a vault path using the same permission checks.
 
 Planned additions:
 

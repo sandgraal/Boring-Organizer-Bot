@@ -28,7 +28,7 @@ Every routine response includes chunk IDs, similarity scores, and locator data (
 
 ### Canonical Templates
 
-A `docs/templates/` directory contains the canonical field- and heading-guided templates that these routines reuse. `POST /notes/create` is planned but not implemented yet. Each template begins with YAML front matter:
+A `docs/templates/` directory contains the canonical field- and heading-guided templates that these routines reuse. `POST /notes/create` now exposes the same template rendering flow for manual note creation. Each template begins with YAML front matter:
 
 ```yaml
 project: "{{project}}"
@@ -47,7 +47,7 @@ Required templates:
 6. `recipe.md` – Sections `# Ingredients`, `# Steps`, `# Notes`, `# Source` with structured ingredient list.
 7. `trip.md` – Sections `## Goals`, `## Learnings`, `## Checklist Seeds`, `## Follow-up`.
 
-Templates can contain placeholder variables (project, date) that the API expands before writing. The routine APIs share the same rendering logic that `POST /notes/create` will reuse once implemented.
+Templates can contain placeholder variables (project, date) that the API expands before writing. The routine APIs share the same rendering logic used by `POST /notes/create`.
 
 ### Capture Hygiene Rules (Lint)
 

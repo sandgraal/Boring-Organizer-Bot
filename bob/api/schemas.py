@@ -154,6 +154,28 @@ class RoutineResponse(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class NoteCreateRequest(BaseModel):
+    """Request body for POST /notes/create."""
+
+    template: str = Field(..., description="Template name (e.g., decision, meeting)")
+    target_path: str = Field(..., description="Target path for the note")
+    project: str | None = Field(None, description="Project context for the note")
+    language: str | None = Field(None, description="ISO 639-1 language code for the note")
+    date: DateType | None = Field(None, description="Date for the note (YYYY-MM-DD)")
+    values: dict[str, str] = Field(
+        default_factory=dict, description="Template placeholder values"
+    )
+
+
+class NoteCreateResponse(BaseModel):
+    """Response body for POST /notes/create."""
+
+    file_path: str
+    template: str
+    content: str
+    warnings: list[str] = Field(default_factory=list)
+
+
 class FeedbackRequest(BaseModel):
     """Payload for capturing inline feedback."""
 

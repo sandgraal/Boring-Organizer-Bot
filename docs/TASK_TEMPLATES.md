@@ -461,7 +461,7 @@ Provide built-in templates and linting for structured capture.
 ### Expected Outputs
 
 1. **Templates:** `bob/templates/*.md`
-2. **Note creation:** `POST /notes`
+2. **Note creation:** `POST /notes/create`
 3. **Linter:** `bob/capture/lint.py`
 4. **UI:** Template picker + lint warnings
 5. **Tests:** `tests/test_templates.py`, `tests/test_linter.py`

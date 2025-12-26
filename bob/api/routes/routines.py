@@ -11,23 +11,20 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from bob.api.schemas import RoutineRequest, RoutineResponse, RoutineRetrieval
+from bob.api.templates import TEMPLATES_DIR, render_template
 from bob.api.utils import convert_result_to_source
-from bob.config import Config, get_config
-from bob.db.database import get_database
+from bob.api.write_permissions import ensure_allowed_write_path, ensure_scope_level
+from bob.config import get_config
 from bob.retrieval.search import search
 
 router = APIRouter()
 
-ROOT_DIR = Path(__file__).resolve().parents[3]
-TEMPLATES_DIR = ROOT_DIR / "docs" / "templates"
 DAILY_TEMPLATE = TEMPLATES_DIR / "daily.md"
 DAILY_DEBRIEF_TEMPLATE = TEMPLATES_DIR / "daily-debrief.md"
 WEEKLY_TEMPLATE = TEMPLATES_DIR / "weekly.md"
 MEETING_TEMPLATE = TEMPLATES_DIR / "meeting.md"
 DECISION_TEMPLATE = TEMPLATES_DIR / "decision.md"
 TRIP_TEMPLATE = TEMPLATES_DIR / "trip.md"
-PLACEHOLDER_PATTERN = re.compile(r"{{\s*([\w-]+)\s*}}")
-SOURCE_PATTERN = re.compile(r'(source:\s*")[^"]+(")')
 
 TargetPathFn = Callable[[date, Path, RoutineRequest, str], Path]
 PlaceholderFn = Callable[[date, RoutineRequest], dict[str, str]]
@@ -56,20 +53,6 @@ class RoutineAction:
     placeholder_fn: PlaceholderFn | None = None
 
 
-def _render_template(template_path: Path, values: dict[str, str], source_tag: str) -> str:
-    """Render the template with the provided values and rewrite the source tag."""
-    if not template_path.exists():
-        raise HTTPException(status_code=500, detail="Template not found")
-
-    raw = template_path.read_text(encoding="utf-8")
-
-    def replace(match: re.Match[str]) -> str:
-        key = match.group(1)
-        return values.get(key, "")
-
-    rendered = PLACEHOLDER_PATTERN.sub(replace, raw)
-    rendered = SOURCE_PATTERN.sub(rf"\1{source_tag}\2", rendered, count=1)
-    return rendered
 
 
 def _resolve_date_after(target_date: date, offset: timedelta | None) -> datetime | None:
@@ -349,118 +332,6 @@ ROUTINE_ACTIONS: dict[str, RoutineAction] = {
 }
 
 
-TEMPLATE_WRITE_SCOPE = 3
-
-
-def _resolve_allowed_directories(config: Config) -> list[Path]:
-    """Resolve configured allowed vault paths into absolute directories."""
-    cwd = Path.cwd()
-    vault_root = config.paths.vault.resolve()
-    allowed_dirs: set[Path] = set()
-
-    for entry in config.permissions.allowed_vault_paths:
-        candidate = Path(entry)
-        if candidate.is_absolute():
-            allowed_dirs.add(candidate.resolve())
-            continue
-
-        parts = list(candidate.parts)
-        if parts and parts[0] in {vault_root.name, "vault"}:
-            parts = parts[1:]
-
-        relative = Path(*parts) if parts else Path(".")
-        allowed_dirs.add((vault_root / relative).resolve())
-        allowed_dirs.add((cwd / candidate).resolve())
-
-    return list(allowed_dirs)
-
-
-def _log_permission_denial(
-    *,
-    action_name: str,
-    project: str | None,
-    target_path: Path,
-    reason_code: str,
-    scope_level: int | None = None,
-    required_scope_level: int | None = None,
-    allowed_paths: list[str] | None = None,
-) -> None:
-    """Persist permission denials without blocking the caller."""
-    try:
-        db = get_database()
-        db.log_permission_denial(
-            action_name=action_name,
-            project=project,
-            target_path=str(target_path),
-            reason_code=reason_code,
-            scope_level=scope_level,
-            required_scope_level=required_scope_level,
-            allowed_paths=allowed_paths,
-        )
-    except Exception:
-        return
-
-
-def _ensure_allowed_write_path(
-    action_name: str, project: str | None, target_path: Path, config: Config
-) -> None:
-    """Validate that the routine is writing into an allowed vault directory."""
-    resolved_target = target_path.resolve()
-    allowed_dirs = _resolve_allowed_directories(config)
-    if any(resolved_target.is_relative_to(dir_path) for dir_path in allowed_dirs):
-        return
-
-    allowed_paths = [str(dir_path) for dir_path in allowed_dirs]
-    _log_permission_denial(
-        action_name=action_name,
-        project=project,
-        target_path=target_path,
-        reason_code="path",
-        scope_level=config.permissions.default_scope,
-        required_scope_level=TEMPLATE_WRITE_SCOPE,
-        allowed_paths=allowed_paths,
-    )
-
-    raise HTTPException(
-        status_code=403,
-        detail={
-            "code": "PERMISSION_DENIED",
-            "message": "Target path is outside allowed vault directories.",
-            "target_path": str(target_path),
-            "allowed_paths": allowed_paths,
-        },
-    )
-
-
-def _ensure_scope_level(
-    action_name: str, project: str | None, target_path: Path, config: Config
-) -> None:
-    """Ensure the configured scope level permits template writes."""
-    current = config.permissions.default_scope
-    if current >= TEMPLATE_WRITE_SCOPE:
-        return
-
-    _log_permission_denial(
-        action_name=action_name,
-        project=project,
-        target_path=target_path,
-        reason_code="scope",
-        scope_level=current,
-        required_scope_level=TEMPLATE_WRITE_SCOPE,
-    )
-
-    raise HTTPException(
-        status_code=403,
-        detail={
-            "code": "PERMISSION_DENIED",
-            "message": f"Permission level {TEMPLATE_WRITE_SCOPE} required for {action_name}.",
-            "scope_level": current,
-            "required_scope_level": TEMPLATE_WRITE_SCOPE,
-            "target_path": str(target_path),
-        },
-    )
-
-
 def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineResponse:
     """Execute the retrieval + templating + write cycle for a routine."""
     config = get_config()
@@ -482,8 +353,8 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
     vault_root = config.paths.vault
     target_path = action.target_path_fn(target_date, vault_root, request, project)
 
-    _ensure_allowed_write_path(action.name, project, target_path, config)
-    _ensure_scope_level(action.name, project, target_path, config)
+    ensure_allowed_write_path(action.name, project, target_path, config)
+    ensure_scope_level(action.name, project, target_path, config)
 
     retrievals: list[RoutineRetrieval] = []
     for query in action.queries:
@@ -502,7 +373,7 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
             warnings.append(f"No citations found for {query.name}; manual entry recommended.")
         retrievals.append(retrieval)
 
-    content = _render_template(
+    content = render_template(
         template_path=action.template,
         values=values,
         source_tag=action.source_tag,

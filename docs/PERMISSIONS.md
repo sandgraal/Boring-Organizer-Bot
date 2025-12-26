@@ -2,7 +2,7 @@
 
 > Describes the explicit, local-first permission scopes that govern how routines, connectors, and writes operate inside the B.O.B vault. Agents, UI code, and tests must honor these levels to avoid hidden writes or inappropriate access.
 
-**Last Updated:** 2025-12-24
+**Last Updated:** 2025-12-25
 
 ---
 
@@ -20,7 +20,7 @@
 | **0 (Read)** | Search, retrieval, dashboards, feedback, Fix Queue viewing | Supported via `permissions.default_scope`; no writes permitted. |
 | **1 (Calendar Import)** | Local ICS/CalDAV file ingestion APIs (e.g., `POST /connectors/calendar-import`) | Planned; no connector endpoints are implemented yet. |
 | **2 (Browser Saves)** | Manual “save highlight/bookmark to vault” actions that produce well-formed markdown notes | Planned; no browser save endpoint or UI toggle is implemented yet. |
-| **3 (Template Writes)** | Routine writes (`/routines/*`) that render from canonical templates | Implemented for routines only; `POST /notes/create` is not implemented yet. |
+| **3 (Template Writes)** | Routine writes (`/routines/*`) that render from canonical templates | Implemented for routines and `POST /notes/create`. |
 | **4 (External Accounts)** | Out of scope for now — no OAuth or cloud storage is supported | Mentioned for completeness but always denied in code. |
 
 By default, operations run at scope level **3 (Template Writes)** so the routine APIs succeed. Drop the `permissions.default_scope` value toward `0` for read-only inspections and raise it back to `3` when you trust the vault directories the routines write to; denied attempts return `PERMISSION_DENIED`.
@@ -50,7 +50,7 @@ permissions:
 ## Enforcement & UI
 
 - Routine endpoints (`/routines/*`) check `permissions.default_scope` and `permissions.allowed_vault_paths`. Insufficient scope or disallowed paths return `PERMISSION_DENIED` with the offending target path.
-- Connector endpoints (`/connectors/*`) and `POST /notes/create` are not implemented yet, so no permission enforcement exists for them today.
+- Connector endpoints (`/connectors/*`) are not implemented yet, so no permission enforcement exists for them today.
 - The UI does not currently gate write buttons or expose connector toggles based on permission scope.
 - Permission denials are logged to `permission_denials` and surfaced in Fix Queue failure signals and tasks (`GET /health/fix-queue`).
 

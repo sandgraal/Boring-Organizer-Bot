@@ -15,6 +15,7 @@ from bob.api.routes import (
     feedback,
     health,
     index,
+    notes,
     open,
     projects,
     routines,
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(settings.router, tags=["Settings"])
     app.include_router(open.router, tags=["Files"])
     app.include_router(routines.router, tags=["Routines"])
+    app.include_router(notes.router, tags=["Notes"])
 
     # Mount static files for UI
     if STATIC_DIR.exists():

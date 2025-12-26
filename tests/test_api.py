@@ -955,7 +955,7 @@ class TestRoutinesEndpoint:
         with (
             patch("bob.api.routes.routines.get_config", return_value=config),
             patch("bob.api.routes.routines.search") as mock_search,
-            patch("bob.api.routes.routines.get_database", return_value=mock_db),
+            patch("bob.api.write_permissions.get_database", return_value=mock_db),
         ):
             response = client.post(
                 "/routines/daily-checkin",
@@ -989,7 +989,7 @@ class TestRoutinesEndpoint:
         with (
             patch("bob.api.routes.routines.get_config", return_value=config),
             patch("bob.api.routes.routines.search") as mock_search,
-            patch("bob.api.routes.routines.get_database", return_value=mock_db),
+            patch("bob.api.write_permissions.get_database", return_value=mock_db),
         ):
             response = client.post(
                 "/routines/daily-checkin",
@@ -1014,7 +1014,7 @@ class TestRoutinesEndpoint:
         with (
             patch("bob.api.routes.routines.get_config", return_value=config),
             patch("bob.api.routes.routines.search") as mock_search,
-            patch("bob.api.routes.routines.get_database", return_value=mock_db),
+            patch("bob.api.write_permissions.get_database", return_value=mock_db),
         ):
             response = client.post(
                 "/routines/meeting-prep",
@@ -1027,6 +1027,100 @@ class TestRoutinesEndpoint:
         assert "allowed_paths" in detail
         assert not (tmp_path / "meetings").exists()
         mock_search.assert_not_called()
+        mock_db.log_permission_denial.assert_called_once()
+
+
+class TestNotesEndpoint:
+    """Tests for the note creation endpoint."""
+
+    def test_notes_create_writes_template(self, client: TestClient, tmp_path):
+        """POST /notes/create writes a note from a template."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        with patch("bob.api.routes.notes.get_config", return_value=config):
+            response = client.post(
+                "/notes/create",
+                json={
+                    "template": "decision",
+                    "target_path": "decisions/decision-test.md",
+                    "project": "ops",
+                    "date": "2025-01-01",
+                    "language": "en",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["template"].endswith("docs/templates/decision.md")
+
+        target_path = tmp_path / "decisions" / "decision-test.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert 'project: "ops"' in body
+        assert 'source: "template/decision"' in body
+
+    def test_notes_create_requires_template_scope(self, client: TestClient, tmp_path):
+        """POST /notes/create returns 403 when scope < 3."""
+        config = Config()
+        config.paths.vault = tmp_path
+        config.permissions.default_scope = 2
+        mock_db = MagicMock()
+
+        with (
+            patch("bob.api.routes.notes.get_config", return_value=config),
+            patch("bob.api.write_permissions.get_database", return_value=mock_db),
+        ):
+            response = client.post(
+                "/notes/create",
+                json={
+                    "template": "decision",
+                    "target_path": "decisions/decision-test.md",
+                    "project": "ops",
+                },
+            )
+
+        assert response.status_code == 403
+        detail = response.json()["detail"]
+        assert detail["code"] == "PERMISSION_DENIED"
+        assert detail["scope_level"] == 2
+        assert detail["required_scope_level"] == 3
+        assert not (tmp_path / "decisions").exists()
+        mock_db.log_permission_denial.assert_called_once_with(
+            action_name="notes-create",
+            project="ops",
+            target_path=str(tmp_path / "decisions" / "decision-test.md"),
+            reason_code="scope",
+            scope_level=2,
+            required_scope_level=3,
+            allowed_paths=None,
+        )
+
+    def test_notes_create_requires_allowed_path(self, client: TestClient, tmp_path):
+        """POST /notes/create rejects targets outside allowed directories."""
+        config = Config()
+        config.paths.vault = tmp_path
+        config.permissions.allowed_vault_paths = ["vault/routines"]
+        mock_db = MagicMock()
+
+        with (
+            patch("bob.api.routes.notes.get_config", return_value=config),
+            patch("bob.api.write_permissions.get_database", return_value=mock_db),
+        ):
+            response = client.post(
+                "/notes/create",
+                json={
+                    "template": "decision",
+                    "target_path": "decisions/decision-test.md",
+                    "project": "ops",
+                },
+            )
+
+        assert response.status_code == 403
+        detail = response.json()["detail"]
+        assert detail["code"] == "PERMISSION_DENIED"
+        assert "allowed_paths" in detail
+        assert not (tmp_path / "decisions").exists()
         mock_db.log_permission_denial.assert_called_once()
 
     def test_get_nonexistent_job(self, client: TestClient):

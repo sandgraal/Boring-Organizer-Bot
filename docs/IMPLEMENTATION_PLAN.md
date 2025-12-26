@@ -2,7 +2,7 @@
 
 > A phased roadmap for building a local-first, citation-grounded knowledge assistant with a beautiful interface.
 
-**Last Updated:** 2025-12-24  
+**Last Updated:** 2025-12-25  
 **Status:** Active  
 **Version:** 2.1.0
 
@@ -371,7 +371,7 @@ These are explicit non-goals to avoid scope creep:
 ### Acceptance Criteria
 
 - Routine APIs (`POST /routines/daily-checkin`, `.../meeting-prep`, `.../meeting-debrief`, `.../weekly-review`, `.../new-decision`, `.../trip-debrief`) are documented, return cited retrieval context, and respect scope/path checks.
-- Templates in `docs/templates/` are used by routines; lint runner feeds Fix Queue tasks and `POST /notes/create` remains planned.
+- Templates in `docs/templates/` are used by routines and `POST /notes/create`; lint runner feeds Fix Queue tasks.
 - Permission levels prevent unauthorized writes; connector flows remain opt-in and unimplemented until their endpoints exist.
 - Feedback controls call `POST /feedback`, logging the local schema, and `GET /health`/`GET /health/fix-queue` expose not-found frequency, repeated questions, metadata deficits, permission denials, and capture lint issues.
 - Coach Mode routine suggestions remain planned with citations and cooldowns.
