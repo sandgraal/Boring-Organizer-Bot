@@ -101,9 +101,8 @@ Extracted decisions stored for decision-aware search and CLI output.
 | decision_text | TEXT    | The decision statement               |
 | context       | TEXT    | Surrounding context                  |
 | decision_type | TEXT    | Category                             |
-| status        | TEXT    | 'proposed', 'decided', 'superseded', 'obsolete' |
+| status        | TEXT    | 'active', 'superseded', 'deprecated' |
 | superseded_by | INTEGER | Reference to newer decision          |
-| superseded_at | TEXT    | When superseded (optional)           |
 | decision_date | TEXT    | When decision was made               |
 | confidence    | REAL    | Extraction confidence                |
 | extracted_at  | TEXT    | Extraction timestamp                 |

@@ -134,10 +134,12 @@ CREATE TABLE IF NOT EXISTS decisions (
     chunk_id INTEGER NOT NULL REFERENCES chunks(id),
     decision_text TEXT NOT NULL,
     context TEXT,
-    status TEXT DEFAULT 'decided',
+    decision_type TEXT,
+    status TEXT DEFAULT 'active',
     superseded_by INTEGER REFERENCES decisions(id),
-    superseded_at TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    decision_date TEXT,
+    confidence REAL,
+    extracted_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_decisions_status ON decisions(status);
@@ -267,9 +269,9 @@ When extracting decisions, capture:
 
 ```yaml
 decision:
-  id: DEC-001 # Stable identifier
+  id: 42 # Numeric decision ID
   text: "Use SQLite for local storage" # The decision itself
-  date: 2025-01-15 # When decided
+  decision_date: 2025-01-15 # From source metadata when available
   context: "Evaluated Postgres, MySQL" # Why this choice
 
   rejected_alternatives:
@@ -278,9 +280,9 @@ decision:
     - option: "MySQL"
       reason: "Heavier than needed"
 
-  status: decided # proposed | decided | superseded | obsolete
-  superseded_by: null # DEC-XXX if replaced
-  source_chunk_id: 1234 # For citation
+  status: active # active | superseded | deprecated
+  superseded_by: null # decision ID if replaced
+  chunk_id: 1234 # For citation
 ```
 
 ### Marking Superseded Decisions
@@ -294,20 +296,20 @@ When a decision is replaced:
 
 ```bash
 # CLI command
-bob supersede DEC-001 DEC-042 --reason "Scaling requirements changed"
+bob supersede 12 42 --reason "Scaling requirements changed"
 ```
 
 ### Decision Queries
 
 ```bash
-# List all decided decisions
-bob decisions --status decided
+# List all active decisions
+bob decisions --status active
 
 # Show decision with full context
-bob decision DEC-001
+bob decision 42
 
-# Search decisions about a topic
-bob ask "What did we decide about authentication?" --type decisions
+# Search for decision context
+bob search "What did we decide about authentication?"
 ```
 
 ---

