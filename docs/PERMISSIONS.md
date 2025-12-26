@@ -10,22 +10,22 @@
 
 1. **Local-first & manual**: No background daemons or automatic uploads. Every scope escalation is user-initiated, documented, and reversible.
 2. **Scope-bounded writes**: Only Level 3 or higher may write, and those writes must originate from templates or controlled connectors.
-3. **Optional deep access**: Calendar imports and manual browser saves exist but are opt-in and recorded in settings.
-4. **Trustworthy defaults**: Start at Level 0 (read-only) and escalate only when the user explicitly enables a connector or routine.
+3. **Optional deep access**: Calendar imports and manual browser saves are planned; they remain opt-in when implemented.
+4. **Default configuration**: Ships with Level 3 enabled so routines can write; drop to Level 0 for read-only inspection when desired.
 
 ## Scope Levels
 
 | Level | Capabilities | Notes |
 | --- | --- | --- |
-| **0 (Read)** | Search, retrieval, dashboards, feedback, Fix Queue viewing | Default for every user; no writes permitted. |
-| **1 (Calendar Import)** | Local ICS/CalDAV file ingestion APIs (e.g., `POST /connectors/calendar-import`) | Optional opt-in in UI; stored under `vault/calendar/`; import logs show enablement time. |
-| **2 (Browser Saves)** | Manual “save highlight/bookmark to vault” actions that produce well-formed markdown notes | Requires explicit toolbar button; writes go into `vault/manual-saves/`; always synchronous and logged. |
-| **3 (Template Writes)** | All routine/actions writes (`POST /notes/create`, `/routines/*`) that render from canonical templates | Vault paths locked to `vault/routines/`, `vault/decisions/`, `vault/trips/`, `vault/meetings/`; any attempt to point elsewhere is rejected and reported to Fix Queue. |
+| **0 (Read)** | Search, retrieval, dashboards, feedback, Fix Queue viewing | Supported via `permissions.default_scope`; no writes permitted. |
+| **1 (Calendar Import)** | Local ICS/CalDAV file ingestion APIs (e.g., `POST /connectors/calendar-import`) | Planned; no connector endpoints are implemented yet. |
+| **2 (Browser Saves)** | Manual “save highlight/bookmark to vault” actions that produce well-formed markdown notes | Planned; no browser save endpoint or UI toggle is implemented yet. |
+| **3 (Template Writes)** | Routine writes (`/routines/*`) that render from canonical templates | Implemented for routines only; `POST /notes/create` is not implemented yet. |
 | **4 (External Accounts)** | Out of scope for now — no OAuth or cloud storage is supported | Mentioned for completeness but always denied in code. |
 
-By default, operations run at scope level **3 (Template Writes)** so the routine APIs succeed. Drop the `permissions.default_scope` value toward `0` for read-only inspections and raise it back to `3` (plus connector toggles) when you trust the vault directories the routines write to; denied attempts are surfaced in the Fix Queue and the API returns `PERMISSION_DENIED`.
+By default, operations run at scope level **3 (Template Writes)** so the routine APIs succeed. Drop the `permissions.default_scope` value toward `0` for read-only inspections and raise it back to `3` when you trust the vault directories the routines write to; denied attempts return `PERMISSION_DENIED`.
 
-Calendar and browser connector toggles are grouped in settings (see `bob.yaml` snippet below and the UI settings panel) and default to `false`. Activating them flips the scope flag for that project/session, guaranteeing user control over deep access.
+Calendar and browser connector toggles are defined in configuration but are not yet wired to any API endpoints or UI controls.
 
 ## Configuration
 
@@ -44,23 +44,23 @@ permissions:
 ```
 
  - `default_scope` drives the initial experience (read-only vs template writes); the Fix Queue surfaces denials so you can raise it only when you trust the destination paths.
- - `enabled_connectors` toggles optional deep access; flipping one pushes the session to the matching level and logs the event for Fix Queue analytics.
-- `allowed_vault_paths` lists the directories (routines, decisions, trips, meetings, manual saves) that template-enabled APIs may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
+ - `enabled_connectors` is reserved for future connector endpoints; it is not enforced by the current API surface.
+- `allowed_vault_paths` lists the directories (routines, decisions, trips, meetings, manual saves) that routine template writes may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
 
 ## Enforcement & UI
 
-- APIs that write (routine endpoints, `POST /notes/create`, manual highlight saves) first check the caller’s `scope_level`. If it is insufficient, they return a structured error (`error.code=PERMISSION_DENIED`, `details.scope_level`). 
-- The UI Settings page greys out write buttons unless the required scope is granted and displays a banner for optional connectors (calendar or browser saves) that links to the same toggles. 
-- Audit logs include `permission_level`, `action`, and `target_path` so Fix Queue and `GET /health` can surface denied attempts as health alerts.
-- Attempting to write anywhere outside `permissions.allowed_vault_paths` also returns `PERMISSION_DENIED` with `allowed_paths` and the target path included so the Fix Queue can flag vault misconfiguration before any template is created.
+- Routine endpoints (`/routines/*`) check `permissions.default_scope` and `permissions.allowed_vault_paths`. Insufficient scope or disallowed paths return `PERMISSION_DENIED` with the offending target path.
+- Connector endpoints (`/connectors/*`) and `POST /notes/create` are not implemented yet, so no permission enforcement exists for them today.
+- The UI does not currently gate write buttons or expose connector toggles based on permission scope.
+- Permission denials are not yet recorded in an audit log or surfaced in Fix Queue metrics.
 
 ## Tests
 
-| Test | Description | File |
-| --- | --- | --- |
-| `tests/test_permissions.py` | Ensure Level 0 cannot write, Level 1/2 toggles remain opt-in, Level 3 writes only to allowed templates. | `tests/test_permissions.py` |
-| `tests/test_routines_end_to_end.py` | Confirms `/routines/*` endpoints enforce scope, document path, and template-only writes. | `tests/test_routines_end_to_end.py` |
-| `tests/test_connectors.py` | Calendar import and browser save endpoints respect opt-in toggles and log the connector enablement time. | `tests/test_connectors.py` |
+No permission-specific tests exist yet. Planned coverage includes:
+
+- `tests/test_permissions.py` — Level 0 blocks writes; Level 3 allows template writes to allowed paths only.
+- `tests/test_routines_end_to_end.py` — Routine endpoints enforce scope + allowed paths.
+- `tests/test_connectors.py` — Connector opt-ins and logs once connector endpoints are implemented.
 
 ## Agent Policy
 
