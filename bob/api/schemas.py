@@ -127,16 +127,12 @@ class RoutineRequest(BaseModel):
     participants: list[str] | None = Field(
         None, description="Participant names used to populate meeting templates"
     )
-    trip_name: str | None = Field(
-        None, description="Trip label used in the trip debrief template"
+    trip_name: str | None = Field(None, description="Trip label used in the trip debrief template")
+    trip_slug: str | None = Field(None, description="Slug override for trip-related vault paths")
+    decision_slug: str | None = Field(None, description="Slug override for decision captures")
+    title: str | None = Field(
+        None, description="Optional title or topic associated with this routine"
     )
-    trip_slug: str | None = Field(
-        None, description="Slug override for trip-related vault paths"
-    )
-    decision_slug: str | None = Field(
-        None, description="Slug override for decision captures"
-    )
-    title: str | None = Field(None, description="Optional title or topic associated with this routine")
 
 
 class RoutineRetrieval(BaseModel):
@@ -162,9 +158,7 @@ class FeedbackRequest(BaseModel):
     """Payload for capturing inline feedback."""
 
     question: str = Field(..., description="Original user query")
-    project: str | None = Field(
-        None, description="Project context for the question/answer pair"
-    )
+    project: str | None = Field(None, description="Project context for the question/answer pair")
     answer_id: str | None = Field(
         None, description="Optional identifier the server returned with the answer"
     )

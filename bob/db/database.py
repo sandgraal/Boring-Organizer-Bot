@@ -371,6 +371,7 @@ class Database:
         Returns:
             List of matching chunks with scores.
         """
+
         def _normalize_projects(values: list[str] | None) -> list[str] | None:
             if not values:
                 return None

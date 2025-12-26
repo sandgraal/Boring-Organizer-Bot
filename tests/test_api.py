@@ -343,6 +343,8 @@ class TestAskEndpoint:
         captured: dict[str, object | None] = {}
 
         def fake_search(*, query, top_k, project=None, projects=None, **_kwargs):
+            captured["query"] = query
+            captured["top_k"] = top_k
             captured["project"] = project
             captured["projects"] = projects
             return mock_search_results
@@ -731,7 +733,7 @@ class TestRoutinesEndpoint:
         assert target_path.exists()
         body = target_path.read_text()
         assert 'meeting_date: "2025-02-06"' in body
-        assert "- \"Alice\"" in body
+        assert '- "Alice"' in body
 
         notes_kwargs = captured_kwargs["recent notes"]
         assert notes_kwargs["date_after"] == datetime(2025, 1, 31, 0, 0)
@@ -795,7 +797,7 @@ class TestRoutinesEndpoint:
         target_path = tmp_path / "meetings" / "team" / "sync-call-debrief.md"
         assert target_path.exists()
         body = target_path.read_text()
-        assert "- \"Alice\"" in body
+        assert '- "Alice"' in body
 
     def test_new_decision_writes_slugged_file(self, client: TestClient, tmp_path):
         """POST /routines/new-decision writes a slugged decision note."""
@@ -909,9 +911,7 @@ class TestRoutinesEndpoint:
         body = target_path.read_text()
         assert 'trip_name: "Azores getaway"' in body
 
-    def test_daily_checkin_requires_template_scope(
-        self, client: TestClient, tmp_path
-    ):
+    def test_daily_checkin_requires_template_scope(self, client: TestClient, tmp_path):
         """POST /routines/daily-checkin returns 403 when scope < 3."""
         config = Config()
         config.paths.vault = tmp_path

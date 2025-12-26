@@ -12,7 +12,7 @@ from fastapi import APIRouter, HTTPException
 
 from bob.api.schemas import RoutineRequest, RoutineResponse, RoutineRetrieval
 from bob.api.utils import convert_result_to_source
-from bob.config import get_config
+from bob.config import Config, get_config
 from bob.retrieval.search import search
 
 router = APIRouter()
@@ -158,7 +158,9 @@ def _decision_target_path(
     return vault_root / "decisions" / f"{filename}.md"
 
 
-def _trip_target_path(target_date: date, vault_root: Path, request: RoutineRequest, _project: str) -> Path:
+def _trip_target_path(
+    target_date: date, vault_root: Path, request: RoutineRequest, _project: str
+) -> Path:
     """Build the vault path for a trip debrief note."""
     base_slug = request.trip_slug or request.slug
     fallback = request.trip_name or f"trip-{target_date.isoformat()}"
@@ -349,7 +351,7 @@ ROUTINE_ACTIONS: dict[str, RoutineAction] = {
 TEMPLATE_WRITE_SCOPE = 3
 
 
-def _resolve_allowed_directories(config) -> list[Path]:
+def _resolve_allowed_directories(config: Config) -> list[Path]:
     """Resolve configured allowed vault paths into absolute directories."""
     cwd = Path.cwd()
     vault_root = config.paths.vault.resolve()
@@ -372,7 +374,7 @@ def _resolve_allowed_directories(config) -> list[Path]:
     return list(allowed_dirs)
 
 
-def _ensure_allowed_write_path(target_path: Path, config) -> None:
+def _ensure_allowed_write_path(target_path: Path, config: Config) -> None:
     """Validate that the routine is writing into an allowed vault directory."""
     resolved_target = target_path.resolve()
     allowed_dirs = _resolve_allowed_directories(config)
@@ -390,7 +392,7 @@ def _ensure_allowed_write_path(target_path: Path, config) -> None:
     )
 
 
-def _ensure_scope_level(action_name: str, target_path: Path, config) -> None:
+def _ensure_scope_level(action_name: str, target_path: Path, config: Config) -> None:
     """Ensure the configured scope level permits template writes."""
     current = config.permissions.default_scope
     if current >= TEMPLATE_WRITE_SCOPE:
