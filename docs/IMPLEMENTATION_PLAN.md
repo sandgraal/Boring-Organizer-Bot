@@ -849,7 +849,7 @@ These are explicit non-goals to avoid scope creep:
    - [x] `bob decisions [--status active]` — List decisions
    - [x] `bob decision <id>` — Show decision details with full context
    - [x] `bob supersede <old_id> <new_id>` — Mark decision as superseded
-   - [ ] `bob decisions --older-than 6m --project cdc` — Review cadence filter
+   - [x] `bob decisions --older-than 6m --project cdc` — Review cadence filter
 
 4. **Integration with Search**
    - [x] `bob search` shows decision badges on results

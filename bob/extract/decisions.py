@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import contextlib
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from bob.db import get_database
@@ -210,6 +210,7 @@ def save_decisions(decisions: list[ExtractedDecision]) -> int:
 def get_decisions(
     project: str | None = None,
     status: str | None = None,
+    older_than_days: int | None = None,
     limit: int = 100,
 ) -> list[StoredDecision]:
     """Get decisions from the database.
@@ -217,6 +218,7 @@ def get_decisions(
     Args:
         project: Filter by project.
         status: Filter by status ('active', 'superseded', 'deprecated').
+        older_than_days: Filter decisions older than this many days.
         limit: Maximum results.
 
     Returns:
@@ -252,6 +254,11 @@ def get_decisions(
     if status:
         query += " AND dec.status = ?"
         params.append(status)
+
+    if older_than_days is not None:
+        cutoff = datetime.now() - timedelta(days=older_than_days)
+        query += " AND COALESCE(dec.decision_date, dec.extracted_at) <= ?"
+        params.append(cutoff.isoformat())
 
     query += " ORDER BY dec.confidence DESC, dec.extracted_at DESC LIMIT ?"
     params.append(limit)

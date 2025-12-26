@@ -6,6 +6,7 @@ Provides commands for indexing, querying, and managing the knowledge base.
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -24,6 +25,23 @@ from bob.watchlist import (
 )
 
 console = Console()
+
+_DURATION_PATTERN = re.compile(r"^(?P<value>\d+)\s*(?P<unit>[dwmy])?$", re.IGNORECASE)
+
+
+def parse_duration_to_days(raw: str) -> int:
+    """Parse a duration string into days (e.g., 90d, 6w, 6m, 1y)."""
+    match = _DURATION_PATTERN.match(raw.strip())
+    if not match:
+        raise click.UsageError(
+            "Invalid duration. Use formats like 90d, 6w, 6m, or 1y."
+        )
+    value = int(match.group("value"))
+    unit = (match.group("unit") or "d").lower()
+    if value <= 0:
+        raise click.UsageError("Duration must be greater than zero.")
+    multipliers = {"d": 1, "w": 7, "m": 30, "y": 365}
+    return value * multipliers[unit]
 
 
 def setup_logging() -> None:
@@ -700,6 +718,11 @@ def extract_decisions(
     help="Filter by status",
 )
 @click.option(
+    "--older-than",
+    default=None,
+    help="Filter decisions older than a duration (e.g., 90d, 6w, 6m, 1y).",
+)
+@click.option(
     "--limit",
     default=50,
     type=int,
@@ -714,6 +737,7 @@ def extract_decisions(
 def list_decisions(
     project: str | None,
     status: str | None,
+    older_than: str | None,
     limit: int,
     output_json: bool,
 ) -> None:
@@ -729,7 +753,13 @@ def list_decisions(
     from bob.extract.decisions import get_decisions
 
     try:
-        decisions = get_decisions(project=project, status=status, limit=limit)
+        older_than_days = parse_duration_to_days(older_than) if older_than else None
+        decisions = get_decisions(
+            project=project,
+            status=status,
+            older_than_days=older_than_days,
+            limit=limit,
+        )
 
         if output_json:
             output = {

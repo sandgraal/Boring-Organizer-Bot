@@ -1,6 +1,13 @@
 """Tests for decision extraction."""
 
-from bob.extract.decisions import extract_decisions_from_chunk
+from datetime import datetime, timedelta
+
+from bob.extract.decisions import (
+    ExtractedDecision,
+    extract_decisions_from_chunk,
+    get_decisions,
+    save_decision,
+)
 from bob.extract.patterns import (
     detect_decision_type,
     find_decisions,
@@ -205,6 +212,61 @@ class TestExtractDecisionsFromChunk:
 
         assert len(decisions) >= 1
         assert decisions[0].decision_date is None
+
+
+class TestDecisionFilters:
+    """Tests for decision listing filters."""
+
+    def test_get_decisions_older_than_filters(self, test_db) -> None:
+        """Older-than filter only returns decisions before the cutoff."""
+        doc_id = test_db.insert_document(
+            source_path="/decisions.md",
+            source_type="markdown",
+            project="docs",
+            content_hash="abc",
+        )
+        old_chunk = test_db.insert_chunk(
+            document_id=doc_id,
+            content="Decision: Use legacy flow.",
+            locator_type="heading",
+            locator_value={"heading": "Decisions", "start_line": 1, "end_line": 3},
+            chunk_index=0,
+        )
+        new_chunk = test_db.insert_chunk(
+            document_id=doc_id,
+            content="Decision: Use new flow.",
+            locator_type="heading",
+            locator_value={"heading": "Decisions", "start_line": 4, "end_line": 6},
+            chunk_index=1,
+        )
+
+        now = datetime.now()
+        save_decision(
+            ExtractedDecision(
+                chunk_id=old_chunk,
+                decision_text="Use legacy flow.",
+                context="Legacy context.",
+                decision_type="process",
+                decision_date=now - timedelta(days=120),
+                confidence=0.9,
+                rejected_alternatives=[],
+            )
+        )
+        save_decision(
+            ExtractedDecision(
+                chunk_id=new_chunk,
+                decision_text="Use new flow.",
+                context="New context.",
+                decision_type="process",
+                decision_date=now - timedelta(days=10),
+                confidence=0.9,
+                rejected_alternatives=[],
+            )
+        )
+
+        decisions = get_decisions(older_than_days=90)
+        assert len(decisions) == 1
+        assert decisions[0].decision_text == "Use legacy flow."
 
     def test_min_confidence_threshold(self) -> None:
         """Respects minimum confidence in extraction."""
