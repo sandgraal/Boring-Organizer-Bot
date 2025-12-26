@@ -6,11 +6,8 @@ import time
 
 from fastapi import APIRouter, HTTPException
 
-from bob.api.schemas import (
-    AskFooter,
-    AskRequest,
-    AskResponse,
-)
+from bob.answer.constants import NOT_FOUND_MESSAGE
+from bob.api.schemas import AskFooter, AskRequest, AskResponse
 from bob.api.utils import compute_overall_confidence, convert_result_to_source
 from bob.coach.engine import generate_coach_suggestions
 from bob.db.database import get_database
@@ -122,7 +119,7 @@ def ask_query(request: AskRequest) -> AskResponse:
                 may_be_outdated=False,
                 outdated_source_count=0,
                 not_found=True,
-                not_found_message="No indexed documents contain information matching your query.",
+                not_found_message=NOT_FOUND_MESSAGE,
             ),
             query_time_ms=elapsed_ms,
         )

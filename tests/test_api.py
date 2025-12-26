@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from bob.answer.constants import NOT_FOUND_MESSAGE
 from bob.api.app import create_app
 from bob.config import Config
 from bob.health.lint import LintIssue
@@ -269,7 +270,7 @@ class TestAskEndpoint:
         assert data["coach_mode_enabled"] is False
         assert data["sources"] == []
         assert data["footer"]["not_found"] is True
-        assert data["footer"]["not_found_message"] is not None
+        assert data["footer"]["not_found_message"] == NOT_FOUND_MESSAGE
         assert data["suggestions"] == []
 
     def test_ask_not_found_with_coach_enabled_returns_coverage_suggestion(

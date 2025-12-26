@@ -280,6 +280,7 @@ def ask(
     from datetime import datetime, timedelta
 
     from bob.answer import format_answer
+    from bob.answer.constants import NOT_FOUND_MESSAGE
     from bob.retrieval import search
 
     config = get_config()
@@ -341,7 +342,7 @@ def ask(
             }
             console.print(json.dumps(json_results, indent=2))
         elif not results:
-            console.print("[yellow]No relevant documents found.[/]")
+            console.print(f"[yellow]{NOT_FOUND_MESSAGE}[/]")
             console.print("\nTry:")
             console.print("  • Using different keywords")
             console.print("  • Indexing more documents")
