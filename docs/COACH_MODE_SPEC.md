@@ -82,6 +82,11 @@ Suggestions (Coach Mode):
 - Each suggestion is 1-3 sentences.
 - Include a "Why:" line for each suggestion.
 
+### Actions
+
+- Suggestions may include optional quick actions (run routine, open indexing/health/settings, or rerun a query).
+- Actions should respect the project scope of the suggestion when available.
+
 ### Evidence and Labeling
 
 - If a suggestion is based on vault evidence, include citations to the examples.
