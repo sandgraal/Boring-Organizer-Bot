@@ -102,6 +102,25 @@ const API = {
   },
 
   /**
+   * Run a routine action (daily check-in, debrief, etc.).
+   * @param {string} action - Routine action name (e.g., daily-checkin).
+   * @param {Object} payload - Optional routine parameters.
+   */
+  async runRoutine(action, payload = {}) {
+    return this.request(`/routines/${action}`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  /**
+   * Fetch the Fix Queue health dashboard signals.
+   */
+  async getFixQueue() {
+    return this.request("/health/fix-queue");
+  },
+
+  /**
    * Start an indexing job.
    * @param {string} path - Path to index.
    * @param {string} project - Project name.

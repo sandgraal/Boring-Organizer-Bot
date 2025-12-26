@@ -20,9 +20,11 @@
         </div>
         <nav class="header-nav">
           <a href="#ask" class="nav-link active" data-page="ask">Ask</a>
+          <a href="#routines" class="nav-link" data-page="routines">Routines</a>
           <a href="#library" class="nav-link" data-page="library">Library</a>
           <a href="#indexing" class="nav-link" data-page="indexing">Indexing</a>
           <a href="#settings" class="nav-link" data-page="settings">Settings</a>
+          <a href="#health" class="nav-link" data-page="health">Health</a>
         </nav>
       </header>
 
@@ -190,6 +192,81 @@
                 </div>
               </div>
             </aside>
+          </div>
+        </div>
+
+        <!-- Routines Page -->
+        <div id="page-routines" class="page">
+          <div class="routines-layout">
+            <section class="routine-actions-panel">
+              <div class="section-header">
+                <h2>Routines</h2>
+                <p class="section-subtitle">
+                  Quick workflows that render templates with cited context.
+                </p>
+              </div>
+              <div id="routine-actions-list" class="routine-actions-list">
+                <div class="loading-placeholder">
+                  Select a routine to discover the citations that will feed it.
+                </div>
+              </div>
+            </section>
+            <section class="routine-preview-panel">
+              <div class="routine-preview-header">
+                <div>
+                  <h3 id="routine-preview-title">Select a routine</h3>
+                  <p id="routine-preview-description" class="section-subtitle">
+                    Run a routine to render its canonical template, review warnings, and inspect the retrieved sources before the write.
+                  </p>
+                </div>
+                <button id="run-selected-routine" class="btn btn-primary" disabled>
+                  Run routine
+                </button>
+              </div>
+              <div class="routine-options">
+                <label class="form-label">
+                  Project
+                  <input
+                    type="text"
+                    id="routine-project-input"
+                    class="text-input"
+                    placeholder="Optional project override"
+                    list="routine-project-options"
+                  />
+                </label>
+                <datalist id="routine-project-options"></datalist>
+                <label class="form-label">
+                  Date
+                  <input type="date" id="routine-date-input" class="text-input" />
+                </label>
+                <label class="form-label">
+                  Top K
+                  <input
+                    type="number"
+                    id="routine-topk-input"
+                    class="text-input"
+                    min="1"
+                    max="20"
+                    value="5"
+                  />
+                </label>
+              </div>
+              <div id="routine-status" class="routine-status hidden"></div>
+              <div id="routine-warnings" class="routine-warnings"></div>
+              <div class="routine-preview-body">
+                <div class="routine-preview-info" id="routine-preview-info"></div>
+                <h4>Preview</h4>
+                <pre id="routine-preview-content" class="routine-preview-content">Run a routine to preview the generated note.</pre>
+              </div>
+            </section>
+            <section class="routine-citations-panel">
+              <h3>Retrievals & Citations</h3>
+              <div id="routine-retrievals" class="routine-retrievals">
+                <div class="loading-placeholder">
+                  Retrieval buckets will populate after a routine run.
+                </div>
+              </div>
+            </section>
           </div>
         </div>
 
@@ -419,6 +496,42 @@
                 Save Settings
               </button>
               <div id="settings-status" class="settings-status"></div>
+            </section>
+          </div>
+        </div>
+        <!-- Health Page -->
+        <div id="page-health" class="page">
+          <div class="health-layout">
+            <section class="health-signals-panel">
+              <div class="section-header">
+                <h2>Health Signals</h2>
+                <p class="section-subtitle">
+                  Failure metrics that drive the Fix Queue.
+                </p>
+              </div>
+              <div id="failure-signals-list" class="health-signals-list">
+                <div class="loading-placeholder">
+                  Loading failure signals…
+                </div>
+              </div>
+            </section>
+            <section class="health-tasks-panel">
+              <div class="health-tasks-header">
+                <div>
+                  <h2>Fix Queue</h2>
+                  <p class="section-subtitle">
+                    Prioritized cleanup tasks derived from feedback and lint signals.
+                  </p>
+                </div>
+                <button id="refresh-fixqueue-btn" class="btn btn-secondary btn-sm">
+                  Refresh
+                </button>
+              </div>
+              <div id="fixqueue-tasks-list" class="fixqueue-tasks-list">
+                <div class="loading-placeholder">
+                  Tasks will appear after we fetch the latest health data.
+                </div>
+              </div>
             </section>
           </div>
         </div>

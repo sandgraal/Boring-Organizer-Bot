@@ -6,6 +6,32 @@
 (function () {
   "use strict";
 
+  const ROUTINE_ACTIONS = [
+    {
+      id: "daily-checkin",
+      label: "Daily Check-in",
+      cadence: "Daily",
+      description:
+        "Capture your morning review, open loops, and today’s focus backed by retrievals.",
+    },
+    {
+      id: "daily-debrief",
+      label: "End-of-Day Debrief",
+      cadence: "Daily",
+      description:
+        "Summarize wins, lessons, and follow-ups from the day with cited context.",
+    },
+    {
+      id: "weekly-review",
+      label: "Weekly Review",
+      cadence: "Weekly",
+      description:
+        "Highlight the week, flag stale decisions, and note actions for next week.",
+    },
+  ];
+
+  const DEFAULT_ROUTINE_ID = ROUTINE_ACTIONS[0]?.id ?? null;
+
   // State
   const state = {
     currentPage: "ask",
@@ -18,6 +44,11 @@
     settings: null,
     coachModeOverride: null,
     lastAsk: null,
+    selectedRoutineId: DEFAULT_ROUTINE_ID,
+    routineResponses: {},
+    routineLoading: false,
+    fixQueue: null,
+    fixQueueLoading: false,
   };
 
   const JOB_STORAGE_KEY = "bob_current_index_job";
@@ -38,6 +69,8 @@
     await loadSettings();
     await restoreSavedJob();
     renderJobHistory();
+    renderRoutineActions();
+    renderRoutineDetails();
 
     // Check if we have a hash route
     const hash = window.location.hash.slice(1) || "ask";
@@ -116,6 +149,23 @@
     elements.jobHistoryList = document.getElementById("job-history-list");
     elements.clearHistoryBtn = document.getElementById("clear-history-btn");
 
+    // Routines page
+    elements.routineActionsList = document.getElementById("routine-actions-list");
+    elements.routinePreviewTitle = document.getElementById("routine-preview-title");
+    elements.routinePreviewDescription = document.getElementById(
+      "routine-preview-description"
+    );
+    elements.runRoutineBtn = document.getElementById("run-selected-routine");
+    elements.routineProjectInput = document.getElementById("routine-project-input");
+    elements.routineProjectOptions = document.getElementById("routine-project-options");
+    elements.routineDateInput = document.getElementById("routine-date-input");
+    elements.routineTopKInput = document.getElementById("routine-topk-input");
+    elements.routineStatus = document.getElementById("routine-status");
+    elements.routineWarnings = document.getElementById("routine-warnings");
+    elements.routinePreviewContent = document.getElementById("routine-preview-content");
+    elements.routinePreviewInfo = document.getElementById("routine-preview-info");
+    elements.routineRetrievals = document.getElementById("routine-retrievals");
+
     // Settings page
     elements.settingsDefaultMode = document.getElementById(
       "settings-coach-default"
@@ -128,6 +178,11 @@
     );
     elements.settingsSaveBtn = document.getElementById("settings-save-btn");
     elements.settingsStatus = document.getElementById("settings-status");
+
+    // Health page
+    elements.failureSignalsList = document.getElementById("failure-signals-list");
+    elements.fixQueueTasksList = document.getElementById("fixqueue-tasks-list");
+    elements.refreshFixQueueBtn = document.getElementById("refresh-fixqueue-btn");
   }
 
   /**
@@ -157,6 +212,14 @@
 
     // Settings save
     elements.settingsSaveBtn?.addEventListener("click", handleSettingsSave);
+
+    elements.routineActionsList?.addEventListener(
+      "click",
+      handleRoutineActionsClick
+    );
+    elements.runRoutineBtn?.addEventListener("click", handleRunSelectedRoutine);
+    elements.refreshFixQueueBtn?.addEventListener("click", () => loadFixQueue(true));
+    elements.fixQueueTasksList?.addEventListener("click", handleFixQueueTaskClick);
 
     elements.clearHistoryBtn?.addEventListener("click", handleClearHistory);
   }
@@ -208,6 +271,13 @@
     if (page === "settings") {
       loadSettings();
     }
+    if (page === "routines") {
+      renderRoutineActions();
+      renderRoutineDetails();
+    }
+    if (page === "health") {
+      loadFixQueue();
+    }
   }
 
   /**
@@ -257,6 +327,359 @@
     elements.projectSuggestions.innerHTML = state.projects
       .map((project) => `<option value="${escapeHtml(project)}">`)
       .join("");
+
+    if (elements.routineProjectOptions) {
+      elements.routineProjectOptions.innerHTML = state.projects
+        .map((project) => `<option value="${escapeHtml(project)}">`)
+        .join("");
+    }
+  }
+
+  function getRoutineAction(actionId) {
+    return ROUTINE_ACTIONS.find((action) => action.id === actionId) || null;
+  }
+
+  function renderRoutineActions() {
+    if (!elements.routineActionsList) return;
+
+    const html = ROUTINE_ACTIONS.map((action) => {
+      const isActive = state.selectedRoutineId === action.id;
+      return `
+        <div class="routine-card ${isActive ? "active" : ""}" data-action="${action.id}">
+          <div class="routine-card-header">
+            <span class="routine-card-label">${escapeHtml(action.label)}</span>
+            <span class="routine-card-cadence">${escapeHtml(action.cadence)}</span>
+          </div>
+          <p class="routine-card-description">${escapeHtml(action.description)}</p>
+          <div class="routine-card-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-run-action="${action.id}">
+              Run
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    elements.routineActionsList.innerHTML = html.join("");
+  }
+
+  function renderRoutineDetails() {
+    const actionId = state.selectedRoutineId || DEFAULT_ROUTINE_ID;
+    const action = getRoutineAction(actionId);
+
+    if (elements.routinePreviewTitle) {
+      elements.routinePreviewTitle.textContent =
+        action?.label || "Select a routine";
+    }
+
+    if (elements.routinePreviewDescription) {
+      elements.routinePreviewDescription.textContent =
+        action?.description ||
+        "Run a routine to preview its template and citations.";
+    }
+
+    const responseEntry = action ? state.routineResponses[action.id] : null;
+    const response = responseEntry?.response;
+
+    if (elements.routinePreviewContent) {
+      elements.routinePreviewContent.textContent =
+        response?.content?.trim() ||
+        "Run the routine to preview the generated note.";
+    }
+
+    if (elements.routinePreviewInfo) {
+      elements.routinePreviewInfo.textContent = response
+        ? `File: ${response.file_path} • Template: ${response.template}`
+        : "No runs yet. Run the routine to see the rendered template.";
+    }
+
+    renderRoutineWarnings(response?.warnings || []);
+    renderRoutineRetrievals(response?.retrievals || []);
+    updateRoutineRunButton();
+  }
+
+  function renderRoutineWarnings(warnings) {
+    if (!elements.routineWarnings) return;
+    if (!warnings.length) {
+      elements.routineWarnings.innerHTML = "";
+      return;
+    }
+    elements.routineWarnings.innerHTML = warnings
+      .map((warning) => `<div class="routine-warning">${escapeHtml(warning)}</div>`)
+      .join("");
+  }
+
+  function renderRoutineRetrievals(retrievals) {
+    if (!elements.routineRetrievals) return;
+    if (!retrievals || retrievals.length === 0) {
+      elements.routineRetrievals.innerHTML =
+        '<div class="loading-placeholder">Retrieval details will appear after a run.</div>';
+      return;
+    }
+
+    const html = retrievals
+      .map((bucket) => {
+        const sourcesList = bucket.sources || [];
+        const totalSources = sourcesList.length;
+        const sources = sourcesList
+          .slice(0, 3)
+          .map(
+            (source) =>
+              `<li>${escapeHtml(source.file_path)} (${escapeHtml(
+                source.date_confidence || "UNKNOWN"
+              )}) • ${escapeHtml(formatLocator(source.locator))}</li>`
+          )
+          .join("");
+        const moreSources =
+          totalSources > 3
+            ? `<li>+${totalSources - 3} more sources</li>`
+            : "";
+        return `
+          <div class="routine-retrieval-card">
+            <strong>${escapeHtml(bucket.name)} (${totalSources} sources)</strong>
+            <div class="routine-retrieval-meta">
+              Query: ${escapeHtml(bucket.query)}
+            </div>
+            <ul class="routine-retrieval-sources">
+              ${sources}
+              ${moreSources}
+            </ul>
+          </div>
+        `;
+      })
+      .join("");
+
+    elements.routineRetrievals.innerHTML = html;
+  }
+
+  function selectRoutine(actionId) {
+    if (!actionId) return;
+    state.selectedRoutineId = actionId;
+    renderRoutineActions();
+    renderRoutineDetails();
+  }
+
+  function updateRoutineRunButton() {
+    if (!elements.runRoutineBtn) return;
+    elements.runRoutineBtn.disabled =
+      state.routineLoading || !state.selectedRoutineId;
+    elements.runRoutineBtn.textContent = state.routineLoading
+      ? "Running..."
+      : "Run routine";
+  }
+
+  function buildRoutinePayload(overrides = {}) {
+    const payload = { ...overrides };
+    if (!("project" in payload)) {
+      const project = elements.routineProjectInput?.value.trim();
+      if (project) {
+        payload.project = project;
+      }
+    }
+    if (!("date" in payload)) {
+      const date = elements.routineDateInput?.value;
+      if (date) {
+        payload.date = date;
+      }
+    }
+    if (!("top_k" in payload)) {
+      const topK = parseInt(elements.routineTopKInput?.value, 10);
+      if (!Number.isNaN(topK) && topK > 0) {
+        payload.top_k = topK;
+      }
+    }
+    return payload;
+  }
+
+  async function executeRoutine(actionId, overrides = {}) {
+    const action = getRoutineAction(actionId);
+    if (!action) return;
+
+    const payload = buildRoutinePayload(overrides);
+    state.routineLoading = true;
+    selectRoutine(action.id);
+    setRoutineStatus("", null);
+
+    try {
+      const response = await API.runRoutine(action.id, payload);
+      state.routineResponses[action.id] = {
+        response,
+        executedAt: new Date().toISOString(),
+      };
+      renderRoutineDetails();
+      setRoutineStatus(`Routine wrote ${response.file_path}.`, "success");
+    } catch (err) {
+      console.error("Routine failed:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to run routine.";
+      setRoutineStatus(message, "error");
+    } finally {
+      state.routineLoading = false;
+      updateRoutineRunButton();
+    }
+  }
+
+  function handleRoutineActionsClick(event) {
+    const runTrigger = event.target.closest("[data-run-action]");
+    if (runTrigger) {
+      const actionId = runTrigger.dataset.runAction;
+      if (actionId) {
+        executeRoutine(actionId);
+      }
+      return;
+    }
+    const card = event.target.closest(".routine-card");
+    const actionId = card?.dataset?.action;
+    if (actionId) {
+      selectRoutine(actionId);
+    }
+  }
+
+  function handleRunSelectedRoutine(event) {
+    event?.preventDefault();
+    if (!state.selectedRoutineId) return;
+    executeRoutine(state.selectedRoutineId);
+  }
+
+  function setRoutineStatus(message, type) {
+    if (!elements.routineStatus) return;
+    if (!message) {
+      elements.routineStatus.classList.add("hidden");
+      elements.routineStatus.textContent = "";
+      elements.routineStatus.classList.remove("success", "error");
+      return;
+    }
+    elements.routineStatus.classList.remove("hidden");
+    elements.routineStatus.textContent = message;
+    elements.routineStatus.classList.toggle("success", type === "success");
+    elements.routineStatus.classList.toggle("error", type === "error");
+  }
+
+  async function loadFixQueue(force = false) {
+    if (
+      !elements.failureSignalsList ||
+      !elements.fixQueueTasksList ||
+      state.fixQueueLoading
+    ) {
+      return;
+    }
+
+    if (!force && state.fixQueue) {
+      renderFailureSignals(state.fixQueue.failure_signals);
+      renderFixQueueTasks(state.fixQueue.tasks);
+      return;
+    }
+
+    state.fixQueueLoading = true;
+    elements.failureSignalsList.innerHTML =
+      '<div class="loading-placeholder">Refreshing health metrics…</div>';
+    elements.fixQueueTasksList.innerHTML =
+      '<div class="loading-placeholder">Loading Fix Queue tasks…</div>';
+    elements.refreshFixQueueBtn?.setAttribute("disabled", "true");
+
+    try {
+      const response = await API.getFixQueue();
+      state.fixQueue = response;
+      renderFailureSignals(response.failure_signals);
+      renderFixQueueTasks(response.tasks);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Unable to load Fix Queue.";
+      elements.failureSignalsList.innerHTML = `<div class="loading-placeholder">${escapeHtml(
+        message
+      )}</div>`;
+      elements.fixQueueTasksList.innerHTML = `<div class="loading-placeholder">${escapeHtml(
+        message
+      )}</div>`;
+    } finally {
+      state.fixQueueLoading = false;
+      elements.refreshFixQueueBtn?.removeAttribute("disabled");
+    }
+  }
+
+  function renderFailureSignals(signals) {
+    if (!elements.failureSignalsList) return;
+    if (!signals || signals.length === 0) {
+      elements.failureSignalsList.innerHTML =
+        '<div class="loading-placeholder">No health signals available.</div>';
+      return;
+    }
+
+    elements.failureSignalsList.innerHTML = signals
+      .map(
+        (signal) => `
+          <div class="health-signal-card">
+            <strong>${escapeHtml(signal.name)}</strong>
+            <div>Value: ${escapeHtml(String(signal.value))}</div>
+            <div>${escapeHtml(signal.details || "No details provided.")}</div>
+          </div>
+        `
+      )
+      .join("");
+  }
+
+  function renderFixQueueTasks(tasks) {
+    if (!elements.fixQueueTasksList) return;
+    if (!tasks || tasks.length === 0) {
+      elements.fixQueueTasksList.innerHTML =
+        '<div class="loading-placeholder">Nothing in the Fix Queue yet.</div>';
+      return;
+    }
+
+    const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority);
+    elements.fixQueueTasksList.innerHTML = sortedTasks
+      .map((task) => {
+        const routineTarget = extractRoutineIdFromTarget(task.target);
+        const actionButton =
+          task.action === "run_routine" && routineTarget
+            ? `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-run="${escapeHtml(
+                task.target
+              )}">
+                 Run routine
+               </button>`
+            : "";
+
+        return `
+          <div class="fixqueue-task-card">
+            <div><strong>${escapeHtml(task.reason)}</strong></div>
+            <div class="fixqueue-task-meta">
+              <span>Action: ${escapeHtml(task.action)}</span>
+              <span>Target: ${escapeHtml(task.target)}</span>
+              <span class="priority-badge">P${escapeHtml(
+                String(task.priority)
+              )}</span>
+            </div>
+            <div class="fixqueue-task-actions">
+              ${actionButton}
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  function handleFixQueueTaskClick(event) {
+    const button = event.target.closest("[data-fixqueue-run]");
+    if (!button) return;
+    const target = button.dataset.fixqueueRun;
+    if (target) {
+      handleFixQueueRun(target);
+    }
+  }
+
+  async function handleFixQueueRun(target) {
+    const actionId = extractRoutineIdFromTarget(target);
+    if (!actionId) {
+      setRoutineStatus("Cannot map Fix Queue task to a routine.", "error");
+      return;
+    }
+    await executeRoutine(actionId);
+    loadFixQueue(true);
+  }
+
+  function extractRoutineIdFromTarget(target) {
+    const match = target?.match(/routines\/([\w-]+)/);
+    return match ? match[1] : null;
   }
 
   /**

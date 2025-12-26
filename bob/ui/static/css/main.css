@@ -202,6 +202,243 @@ code {
   display: flex;
 }
 
+/* Routines & Health Layouts */
+.routines-layout,
+.health-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: var(--space-lg);
+  flex: 1;
+  padding: var(--space-lg);
+  max-height: calc(100vh - var(--header-height));
+}
+
+.routine-actions-panel,
+.routine-preview-panel,
+.routine-citations-panel,
+.health-signals-panel,
+.health-tasks-panel {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.routine-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.routine-card {
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-bg-sidebar);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.routine-card:hover,
+.routine-card.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.routine-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.routine-card-cadence {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.routine-card-label {
+  font-weight: 600;
+}
+
+.routine-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-xs);
+}
+
+.routine-card-description {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-xs);
+}
+
+.routine-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.routine-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-md);
+}
+
+.routine-preview-body {
+  background: var(--color-bg-sidebar);
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.routine-preview-content {
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  background: var(--color-bg-card);
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+}
+
+.routine-preview-info {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.routine-status {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.85rem;
+}
+
+.routine-status.success {
+  background: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.routine-status.error {
+  background: var(--color-error-light);
+  color: var(--color-error);
+}
+
+.routine-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.routine-warning {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-warning-light);
+  color: var(--color-warning);
+  font-size: 0.85rem;
+}
+
+.routine-citations-panel h3 {
+  margin-bottom: 0;
+}
+
+.routine-retrievals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.routine-retrieval-card {
+  border: 1px dashed var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-sm);
+  background: var(--color-bg-sidebar);
+}
+
+.routine-retrieval-meta {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+.routine-retrieval-card strong {
+  display: block;
+  margin-bottom: var(--space-xs);
+}
+
+.routine-retrieval-sources {
+  list-style: none;
+  padding-left: var(--space-md);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.health-layout {
+  background: transparent;
+}
+
+.health-signals-list,
+.fixqueue-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.health-signal-card,
+.fixqueue-task-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-sm);
+  padding: var(--space-sm);
+  background: var(--color-bg-card);
+}
+
+.health-signal-card strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.health-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.fixqueue-task-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.fixqueue-task-meta {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.fixqueue-task-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.priority-badge {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
 /* Ask Page Layout */
 .ask-layout {
   display: grid;
@@ -725,6 +962,12 @@ code {
   margin-bottom: var(--space-lg);
 }
 
+.section-subtitle {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  margin-top: var(--space-xs);
+}
+
 .document-count {
   color: var(--color-text-secondary);
   font-size: 0.875rem;
@@ -1113,6 +1356,11 @@ code {
 
   .library-layout {
     grid-template-columns: 1fr;
+  }
+  .routines-layout,
+  .health-layout {
+    grid-template-columns: 1fr;
+    padding: var(--space-md);
   }
 }
 
