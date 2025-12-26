@@ -2117,8 +2117,12 @@
     const targetAttr = target
       ? `data-coach-target="${escapeHtml(target)}"`
       : "";
-    const projectAttr = selectedProject
-      ? `data-coach-project="${escapeHtml(selectedProject)}"`
+    let projectValue = selectedProject || "";
+    if (action === "open_indexing" && target) {
+      projectValue = target;
+    }
+    const projectAttr = projectValue
+      ? `data-coach-project="${escapeHtml(projectValue)}"`
       : "";
     return `<button type="button" class="btn btn-secondary btn-sm coach-action" data-coach-action="${escapeHtml(
       action
