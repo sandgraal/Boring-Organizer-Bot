@@ -132,7 +132,7 @@ bob index https://github.com/user/repo --project "external-docs"
 
 B.O.B lets you store a small watchlist of frequently indexed locations so you avoid retyping paths.
 
-1. **Add a target** (requires the path to exist):
+1. **Add a target** (requires the path to exist or be a git URL):
 
    ```bash
    bob watchlist add ./my-notes --project personal-notes
