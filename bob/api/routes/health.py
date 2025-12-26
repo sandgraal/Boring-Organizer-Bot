@@ -243,6 +243,34 @@ def _build_lint_tasks(lint_issues: list[LintIssue]) -> list[FixQueueTask]:
     return tasks
 
 
+def _build_staleness_task(
+    stale_notes: list[dict[str, Any]],
+    stale_decisions: list[dict[str, Any]],
+    project: str | None,
+) -> FixQueueTask | None:
+    """Create a Fix Queue task that prompts a weekly review for stale content."""
+    notes_count = _staleness_value(stale_notes)
+    decisions_count = _staleness_value(stale_decisions)
+    if notes_count == 0 and decisions_count == 0:
+        return None
+
+    reasons: list[str] = []
+    if notes_count:
+        reasons.append(_format_staleness_details(stale_notes, "Notes"))
+    if decisions_count:
+        reasons.append(_format_staleness_details(stale_decisions, "Decisions"))
+    reason = " | ".join(reasons) if reasons else "Stale notes or decisions detected."
+
+    task_id = f"stale-review-{(project or 'global').replace(' ', '-')}"
+    return FixQueueTask(
+        id=task_id,
+        action="run_routine",
+        target="routines/weekly-review",
+        reason=reason,
+        priority=_priority_from_count(max(notes_count, decisions_count)),
+    )
+
+
 @router.get("/health/fix-queue", response_model=FixQueueResponse)
 def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     """Return Fix Queue signals and tasks derived from failure metrics."""
@@ -331,4 +359,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         metrics, metadata_deficits, project, permission_metrics.get("recent", [])
     )
     tasks.extend(_build_lint_tasks(lint_issues))
+    staleness_task = _build_staleness_task(stale_notes, stale_decisions, project)
+    if staleness_task:
+        tasks.append(staleness_task)
     return FixQueueResponse(failure_signals=failure_signals, tasks=tasks)

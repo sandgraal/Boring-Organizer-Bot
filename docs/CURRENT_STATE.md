@@ -23,7 +23,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - `POST /feedback` – logs user feedback buttons so future Fix Queue calculations know which answers were helpful, wrong, outdated, too long, or missing.
 - `POST /routines/daily-checkin`, `POST /routines/daily-debrief`, `POST /routines/weekly-review`, `POST /routines/meeting-prep`, `POST /routines/meeting-debrief`, `POST /routines/new-decision`, `POST /routines/trip-debrief` – template-backed writes with cited retrieval buckets that persist to `vault/routines/`, `vault/meetings/`, `vault/decisions/`, and `vault/trips/`.
 - `POST /notes/create` – template-backed manual note creation that renders any canonical template into an allowed vault path.
-- `GET /health/fix-queue` – returns failure signals (not-found frequency, metadata gaps + top offenders, stale notes/decisions, low indexed volume, low retrieval hit rate, repeated questions, permission denials) and prioritized Fix Queue tasks derived from feedback, metadata deficits, denied write attempts, and capture lint issues.
+- `GET /health/fix-queue` – returns failure signals (not-found frequency, metadata gaps + top offenders, stale notes/decisions, low indexed volume, low retrieval hit rate, repeated questions, permission denials) and prioritized Fix Queue tasks derived from feedback, metadata deficits, staleness prompts (weekly review), denied write attempts, and capture lint issues.
 - Static UI (`GET /`) + `/static/*` – `bob/api.app.create_app` mounts `bob/ui/static` and serves `bob/ui/index.html`.
 
 ## Web UI (`bob/ui/`)
