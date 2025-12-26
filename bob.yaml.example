@@ -157,4 +157,5 @@ permissions:
     - vault/routines
     - vault/decisions
     - vault/trips
+    - vault/meetings
     - vault/manual-saves

@@ -2,7 +2,7 @@
 
 > Defines the routine entry points, templates, capture hygiene, feedback loops, and Coach Mode integration that make B.O.B a daily-use partner while honoring local-first constraints (manual triggers only, chunk → embed → store, metadata always includes project/date/language/source, docs limited to Markdown/PDF/recipes/notes/Git). All routines are built on the same retrieval pipeline that powers the Ask screen.
 
-> **Status:** Planning / roadmap with `/routines/daily-checkin` now available. The other `/routines/*` actions remain aspirational—see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md) for the implemented CLI/API/UI surface and how it differs from this spec.
+> **Status:** In progress—the API now exposes `/routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief`, while the UI/Fix Queue surfaces that orchestrate these captures remain part of the roadmap (see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md) for the implemented stack).
 
 **Last Updated:** 2025-12-24
 

@@ -114,6 +114,29 @@ class RoutineRequest(BaseModel):
         le=20,
         description="Number of retrieved chunks to collect per query",
     )
+    slug: str | None = Field(
+        None,
+        description="Optional slug used for meeting/trip/decision filenames when provided explicitly",
+    )
+    meeting_slug: str | None = Field(
+        None, description="Meeting-specific slug used when saving prep/debrief notes"
+    )
+    meeting_date: DateType | None = Field(
+        None, description="Explicit meeting date (defaults to routine date when omitted)"
+    )
+    participants: list[str] | None = Field(
+        None, description="Participant names used to populate meeting templates"
+    )
+    trip_name: str | None = Field(
+        None, description="Trip label used in the trip debrief template"
+    )
+    trip_slug: str | None = Field(
+        None, description="Slug override for trip-related vault paths"
+    )
+    decision_slug: str | None = Field(
+        None, description="Slug override for decision captures"
+    )
+    title: str | None = Field(None, description="Optional title or topic associated with this routine")
 
 
 class RoutineRetrieval(BaseModel):

@@ -57,7 +57,7 @@ B.O.B ships today with the Ask/Library/Indexing/Settings UI and the CLI/API surf
 - **New Decision / Trip Debrief** → guided templates for decisions, learnings, checklist seeds, and reusable insights.
 - **Fix Queue** → health metrics, lint flags, and ingestion problems surfaced as prioritized tasks before optional-generation layers ship.
 
-Each routine is still aspirational; `/routines/daily-checkin` now exists to seed the daily template, while the remaining `/routines/*` API endpoints and template writes in `docs/ROUTINES_SPEC.md` stay on the roadmap.
+The API now exposes template-driven endpoints for `POST /routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, and `/routines/trip-debrief`, each writing into the vault with citations, while the visual Routines/Fix Queue surfaces remain on the roadmap (see `docs/CURRENT_STATE.md` for the UI gaps).
 
 ## Modes
 
@@ -245,9 +245,13 @@ The API currently exposes the following local-only endpoints:
 
 Implementation details, request/response models, and example payloads live in [`docs/API_CONTRACT.md`](docs/API_CONTRACT.md). 
 
-Planned API additions (not implemented yet):
+Template-write APIs (implemented):
 
-- `/routines/*` (`daily-checkin`, `meeting-prep`, etc.) — template-driven writes plus Fix Queue alerts.
+- `/routines/daily-checkin`, `/routines/daily-debrief`, `/routines/weekly-review`, `/routines/meeting-prep`, `/routines/meeting-debrief`, `/routines/new-decision`, `/routines/trip-debrief` — each renders a canonical template, gathers cited retrievals, and writes to the vault (`vault/routines`, `vault/meetings`, `vault/decisions`, `vault/trips`). See `docs/API_CONTRACT.md` for details.
+
+Planned additions:
+
+- Routines UI and Fix Queue dashboard — the API already writes the notes above, but the UI surface that drives/save these templates remains on the roadmap.
 
 OpenAPI docs: `http://localhost:8080/docs`
 
@@ -288,6 +292,7 @@ permissions:
     - vault/routines
     - vault/decisions
     - vault/trips
+    - vault/meetings
     - vault/manual-saves
 ```
 

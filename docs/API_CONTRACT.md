@@ -148,6 +148,42 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Behavior:** Retrieval queries run in order, each producing a `RoutineRetrieval` with source citations; the handler calculates the Monday-to-Sunday `week_range`, injects it into the template, and writes the note. `warnings` capture missing citations or overwritten review notes.
 - **Errors:** HTTP 500 is returned if the template is missing, any of the search queries fail, or writing the weekly note fails. HTTP 403 (`PERMISSION_DENIED`) is used when the scope level is insufficient or the target path is not covered by `permissions.allowed_vault_paths` (detail enumerates the allowed directories plus the offending `target_path`).
 
+### POST /routines/meeting-prep
+
+- **Purpose:** Generate a meeting prep note by rendering `docs/templates/meeting.md`, populating `meeting_date`/`participants`, gathering agenda-related citations, and writing `vault/meetings/{{project}}/{{meeting-slug}}-prep.md`.
+- **Implementation:** The handler uses `_meeting_target_factory("prep")` to derive a slugified path, rewrites the template `source` tag to `routine/meeting-prep`, and runs the three queries (`"recent decisions"`, `"unresolved questions"`, `"recent notes"`) that surface retrievals dated within the last seven days before writing the template to the vault.
+- **Request model:** `RoutineRequest` with optional `meeting_slug`, `meeting_date`, and `participants` to seed the metadata.
+- **Response model:** `RoutineResponse` with retrieval buckets for each query plus warnings when citations are missing or an existing prep note is overwritten.
+- **Behavior:** The handler defaults `meeting_date` to the routine date when not provided, inserts the first participant (and any extras if the template expands), and writes the note inside `vault/meetings/<sanitized-project>/<slug>-prep.md`. Each query contributes a `RoutineRetrieval`, and empty retrievals add instructions to capture context manually.
+- **Errors:** Same as the other routine endpoints—HTTP 500 for missing templates/search/write failures and HTTP 403 when the configured scope `default_scope` is below 3 or the target path is outside `permissions.allowed_vault_paths`.
+
+### POST /routines/meeting-debrief
+
+- **Purpose:** Capture the meeting debrief with a filled `docs/templates/meeting.md`, citing meeting notes and open decisions, and persist it as `vault/meetings/{{project}}/{{meeting-slug}}-debrief.md`.
+- **Implementation:** The route runs `_meeting_target_factory("debrief")`, rewrites the template’s `source` tag to `routine/meeting-debrief`, and executes the `"meeting notes"` (last 24 hours) and `"open decisions"` queries before writing to the vault.
+- **Request model:** `RoutineRequest` plus the same meeting metadata hints (`meeting_slug`, `meeting_date`, `participants`).
+- **Response model:** `RoutineResponse` carrying the two retrieval buckets and any warnings.
+- **Behavior:** Meeting notes retrieval is bounded to the 24 hours ending at the requested date, open decisions are surfaced regardless of time, and the participant list is rendered into the template’s `participants` block before the note is written.
+- **Errors:** Mirrors the other routine endpoints—500 for missing template/search/write failures and 403 when scope or allowed paths disallow the write.
+
+### POST /routines/new-decision
+
+- **Purpose:** Create a structured decision record by rendering `docs/templates/decision.md`, linking evidence/conflicts, and storing it under `vault/decisions/decision-{{slug}}.md`.
+- **Implementation:** `_decision_target_path` derives a slug from `decision_slug`, `slug`, or the provided `title` (falling back to the date) and rewrites the template’s `source` tag to `routine/new-decision`. Two queries—`"related decision sources"` and `"conflicting decisions"`—populate the retrieval buckets.
+- **Request model:** `RoutineRequest` with optional `decision_slug`, `slug`, and `title` fields to influence the filename and narrative.
+- **Response model:** `RoutineResponse` with the two retrieval buckets and warnings for missing citations/overwrites.
+- **Behavior:** The slug is sanitized to avoid unsafe filenames, retrievals are attached as evidence/conflicts, and the resulting file always lives under `vault/decisions/`.
+- **Errors:** HTTP 500 for template/search/write failures and HTTP 403 for insufficient `default_scope` or disallowed vault paths.
+
+### POST /routines/trip-debrief
+
+- **Purpose:** Document a trip debrief by rendering `docs/templates/trip.md`, injecting the trip name, and saving `vault/trips/{{trip-slug}}/debrief.md`.
+- **Implementation:** `_trip_target_path` builds the destination folder from `trip_slug`, `slug`, or a sanitized version of `trip_name`, rewrites the template’s `source` tag to `routine/trip-debrief`, and runs three queries (`"trip notes"` capped at the last 30 days, `"trip recipes"`, `"trip open loops"`) to gather context.
+- **Request model:** `RoutineRequest` with optional `trip_name` and `trip_slug`.
+- **Response model:** `RoutineResponse` holding the retrieval buckets and warnings.
+- **Behavior:** The handler ensures `trip_name` is populated in the template, the `trip notes` query honors the 30-day lookback, and the note is written under the slugified trip folder.
+- **Errors:** Same 500/403 semantics as the other routine endpoints when templates/searches/writes fail or scope/path checks reject the action.
+
 ### GET /settings
 
 - **Purpose:** Read persisted Coach Mode settings.
@@ -252,5 +288,5 @@ For field-level detail, consult the schema file and rely on the tests under `tes
 
 ## Future Work
 
-- The remaining `/routines/*` endpoints remain part of the routines/Fix Queue roadmap in [`docs/ROUTINES_SPEC.md`](ROUTINES_SPEC.md). Those actions will orchestrate template writes, lint-driven Fix Queue tasks, and Coach Mode nudges once implemented.
+- The Routine/Fix Queue UI surfaces and coach-driven automation that guide users through the `/routines/*` endpoints (and surface lint/metadata remediation suggestions) remain part of the roadmap documented in [`docs/ROUTINES_SPEC.md`](ROUTINES_SPEC.md).
 - The Fix Queue dashboard, ingest/metadata monitors, and stale-decision radar still need UI surfaces, but they can consume the failure signals that `GET /health/fix-queue` now exposes.

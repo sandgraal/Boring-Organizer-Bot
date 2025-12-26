@@ -22,10 +22,13 @@ TEMPLATES_DIR = ROOT_DIR / "docs" / "templates"
 DAILY_TEMPLATE = TEMPLATES_DIR / "daily.md"
 DAILY_DEBRIEF_TEMPLATE = TEMPLATES_DIR / "daily-debrief.md"
 WEEKLY_TEMPLATE = TEMPLATES_DIR / "weekly.md"
+MEETING_TEMPLATE = TEMPLATES_DIR / "meeting.md"
+DECISION_TEMPLATE = TEMPLATES_DIR / "decision.md"
+TRIP_TEMPLATE = TEMPLATES_DIR / "trip.md"
 PLACEHOLDER_PATTERN = re.compile(r"{{\s*([\w-]+)\s*}}")
 SOURCE_PATTERN = re.compile(r'(source:\s*")[^"]+(")')
 
-TargetPathFn = Callable[[date, Path, RoutineRequest], Path]
+TargetPathFn = Callable[[date, Path, RoutineRequest, str], Path]
 PlaceholderFn = Callable[[date, RoutineRequest], dict[str, str]]
 
 
@@ -84,6 +87,85 @@ def _resolve_date_before(target_date: date, offset: timedelta | None) -> datetim
     return datetime.combine(bound_date, time.max)
 
 
+def _slugify_component(value: str) -> str:
+    """Normalize a string into a filesystem-safe slug."""
+    normalized = value.strip().lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", normalized)
+    slug = re.sub(r"-{2,}", "-", slug)
+    return slug.strip("-")
+
+
+def _derive_slug(candidate: str | None, fallback: str) -> str:
+    """Choose the sanitized slug candidate or fallback when empty."""
+    base = (candidate or fallback or "").strip()
+    slug = _slugify_component(base)
+    if slug:
+        return slug
+    return _slugify_component(fallback)
+
+
+def _normalize_project_segment(project: str) -> str:
+    """Generate a filesystem-safe directory name for a project."""
+    segment = _slugify_component(project)
+    return segment or "project"
+
+
+def _meeting_placeholders(target_date: date, request: RoutineRequest) -> dict[str, str]:
+    """Provide meeting-specific placeholder values for the template."""
+    meeting_date = request.meeting_date or target_date
+    formatted_date = meeting_date.isoformat()
+    participants = request.participants or []
+
+    values = {"meeting_date": formatted_date}
+    if participants:
+        for index, participant in enumerate(participants, start=1):
+            values[f"participant_{index}"] = participant
+    else:
+        values["participant_1"] = ""
+
+    return values
+
+
+def _trip_placeholders(_target_date: date, request: RoutineRequest) -> dict[str, str]:
+    """Provide trip name placeholder for the trip template."""
+    trip_name = request.trip_name or request.slug or request.trip_slug or ""
+    return {"trip_name": trip_name}
+
+
+def _meeting_target_factory(suffix: str) -> TargetPathFn:
+    """Build a target path function for meeting prep/debrief notes."""
+
+    def _target_path(
+        target_date: date, vault_root: Path, request: RoutineRequest, project: str
+    ) -> Path:
+        base_slug = request.meeting_slug or request.slug
+        fallback = f"meeting-{target_date.isoformat()}"
+        slug = _derive_slug(base_slug, fallback)
+        project_segment = _normalize_project_segment(project)
+        return vault_root / "meetings" / project_segment / f"{slug}-{suffix}.md"
+
+    return _target_path
+
+
+def _decision_target_path(
+    target_date: date, vault_root: Path, request: RoutineRequest, _project: str
+) -> Path:
+    """Build the vault path for a decision note."""
+    base_slug = request.decision_slug or request.slug
+    fallback = request.title or f"decision-{target_date.isoformat()}"
+    slug = _derive_slug(base_slug, fallback)
+    filename = slug if slug.startswith("decision-") else f"decision-{slug}"
+    return vault_root / "decisions" / f"{filename}.md"
+
+
+def _trip_target_path(target_date: date, vault_root: Path, request: RoutineRequest, _project: str) -> Path:
+    """Build the vault path for a trip debrief note."""
+    base_slug = request.trip_slug or request.slug
+    fallback = request.trip_name or f"trip-{target_date.isoformat()}"
+    slug = _derive_slug(base_slug, fallback)
+    return vault_root / "trips" / slug / "debrief.md"
+
+
 def _collect_retrieval(
     name: str,
     query: str,
@@ -110,12 +192,16 @@ def _collect_retrieval(
     return RoutineRetrieval(name=name, query=query, sources=sources)
 
 
-def _daily_target_path(target_date: date, vault_root: Path, _request: RoutineRequest) -> Path:
+def _daily_target_path(
+    target_date: date, vault_root: Path, _request: RoutineRequest, _project: str
+) -> Path:
     """Build the vault path for the daily check-in note."""
     return vault_root / "routines" / "daily" / f"{target_date.isoformat()}.md"
 
 
-def _weekly_target_path(target_date: date, vault_root: Path, _request: RoutineRequest) -> Path:
+def _weekly_target_path(
+    target_date: date, vault_root: Path, _request: RoutineRequest, _project: str
+) -> Path:
     """Build the vault path for the weekly review note."""
     iso_year, iso_week, _ = target_date.isocalendar()
     filename = f"{iso_year}-W{iso_week:02d}.md"
@@ -123,7 +209,10 @@ def _weekly_target_path(target_date: date, vault_root: Path, _request: RoutineRe
 
 
 def _daily_debrief_target_path(
-    target_date: date, vault_root: Path, _request: RoutineRequest
+    target_date: date,
+    vault_root: Path,
+    _request: RoutineRequest,
+    _project: str,
 ) -> Path:
     """Build the vault path for the end-of-day debrief note."""
     filename = f"{target_date.isoformat()}-debrief.md"
@@ -189,6 +278,70 @@ ROUTINE_ACTIONS: dict[str, RoutineAction] = {
         target_path_fn=_weekly_target_path,
         overwrite_warning="Existing weekly review note was overwritten.",
         placeholder_fn=_weekly_placeholders,
+    ),
+    "meeting-prep": RoutineAction(
+        name="meeting-prep",
+        template=MEETING_TEMPLATE,
+        source_tag="routine/meeting-prep",
+        queries=(
+            RoutineQuery(name="recent_decisions", query="recent decisions"),
+            RoutineQuery(name="unresolved_questions", query="unresolved questions"),
+            RoutineQuery(
+                name="recent_notes",
+                query="recent notes",
+                date_after_offset=timedelta(days=7),
+                date_before_offset=timedelta(days=0),
+            ),
+        ),
+        target_path_fn=_meeting_target_factory("prep"),
+        overwrite_warning="Existing meeting prep note was overwritten.",
+        placeholder_fn=_meeting_placeholders,
+    ),
+    "meeting-debrief": RoutineAction(
+        name="meeting-debrief",
+        template=MEETING_TEMPLATE,
+        source_tag="routine/meeting-debrief",
+        queries=(
+            RoutineQuery(
+                name="meeting_notes",
+                query="meeting notes",
+                date_after_offset=timedelta(days=1),
+                date_before_offset=timedelta(days=0),
+            ),
+            RoutineQuery(name="open_decisions", query="open decisions"),
+        ),
+        target_path_fn=_meeting_target_factory("debrief"),
+        overwrite_warning="Existing meeting debrief note was overwritten.",
+        placeholder_fn=_meeting_placeholders,
+    ),
+    "new-decision": RoutineAction(
+        name="new-decision",
+        template=DECISION_TEMPLATE,
+        source_tag="routine/new-decision",
+        queries=(
+            RoutineQuery(name="related_sources", query="related decision sources"),
+            RoutineQuery(name="conflicting_decisions", query="conflicting decisions"),
+        ),
+        target_path_fn=_decision_target_path,
+        overwrite_warning="Existing decision note was overwritten.",
+    ),
+    "trip-debrief": RoutineAction(
+        name="trip-debrief",
+        template=TRIP_TEMPLATE,
+        source_tag="routine/trip-debrief",
+        queries=(
+            RoutineQuery(
+                name="trip_notes",
+                query="trip notes",
+                date_after_offset=timedelta(days=30),
+                date_before_offset=timedelta(days=0),
+            ),
+            RoutineQuery(name="trip_recipes", query="trip recipes"),
+            RoutineQuery(name="trip_open_loops", query="trip open loops"),
+        ),
+        target_path_fn=_trip_target_path,
+        overwrite_warning="Existing trip debrief note was overwritten.",
+        placeholder_fn=_trip_placeholders,
     ),
 }
 
@@ -274,7 +427,7 @@ def _run_routine(action: RoutineAction, request: RoutineRequest) -> RoutineRespo
         values.update(action.placeholder_fn(target_date, request))
 
     vault_root = config.paths.vault
-    target_path = action.target_path_fn(target_date, vault_root, request)
+    target_path = action.target_path_fn(target_date, vault_root, request, project)
 
     _ensure_allowed_write_path(target_path, config)
     _ensure_scope_level(action.name, target_path, config)
@@ -341,3 +494,27 @@ def weekly_review(request: RoutineRequest) -> RoutineResponse:
 def daily_debrief(request: RoutineRequest) -> RoutineResponse:
     """Generate the end-of-day debrief note with citations."""
     return _run_routine(ROUTINE_ACTIONS["daily-debrief"], request)
+
+
+@router.post("/routines/meeting-prep", response_model=RoutineResponse)
+def meeting_prep(request: RoutineRequest) -> RoutineResponse:
+    """Generate a meeting prep note with retrieval-backed context."""
+    return _run_routine(ROUTINE_ACTIONS["meeting-prep"], request)
+
+
+@router.post("/routines/meeting-debrief", response_model=RoutineResponse)
+def meeting_debrief(request: RoutineRequest) -> RoutineResponse:
+    """Generate a meeting debrief note with open decisions highlighted."""
+    return _run_routine(ROUTINE_ACTIONS["meeting-debrief"], request)
+
+
+@router.post("/routines/new-decision", response_model=RoutineResponse)
+def new_decision(request: RoutineRequest) -> RoutineResponse:
+    """Capture a new decision note with evidence and conflicting decisions."""
+    return _run_routine(ROUTINE_ACTIONS["new-decision"], request)
+
+
+@router.post("/routines/trip-debrief", response_model=RoutineResponse)
+def trip_debrief(request: RoutineRequest) -> RoutineResponse:
+    """Write a trip debrief note seeded from trip-related context."""
+    return _run_routine(ROUTINE_ACTIONS["trip-debrief"], request)

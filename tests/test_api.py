@@ -674,6 +674,241 @@ class TestRoutinesEndpoint:
         expected_range = f"{week_start.isoformat()} - {week_end.isoformat()}"
         assert f'week_range: "{expected_range}"' in body
 
+    def test_meeting_prep_creates_note_with_participants(self, client: TestClient, tmp_path):
+        """POST /routines/meeting-prep writes a meeting note with participants."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="Meeting prep snippet.",
+            score=0.95,
+            source_path="/docs/meeting.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Prep", "start_line": 1, "end_line": 5},
+            project="team",
+            source_date=datetime(2025, 2, 5),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        results_by_query = {
+            "recent decisions": [sample_result],
+            "unresolved questions": [sample_result],
+            "recent notes": [sample_result],
+        }
+
+        captured_kwargs: dict[str, dict[str, datetime]] = {}
+
+        def fake_search(*, query, project, top_k, **kwargs):
+            _ = project
+            _ = top_k
+            captured_kwargs[query] = kwargs
+            return results_by_query.get(query, [])
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
+        ):
+            response = client.post(
+                "/routines/meeting-prep",
+                json={
+                    "project": "team",
+                    "date": "2025-02-07",
+                    "top_k": 1,
+                    "meeting_slug": "sync-call",
+                    "meeting_date": "2025-02-06",
+                    "participants": ["Alice"],
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "meeting-prep"
+        assert len(data["retrievals"]) == 3
+        target_path = tmp_path / "meetings" / "team" / "sync-call-prep.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert 'meeting_date: "2025-02-06"' in body
+        assert "- \"Alice\"" in body
+
+        notes_kwargs = captured_kwargs["recent notes"]
+        assert notes_kwargs["date_after"] == datetime(2025, 1, 31, 0, 0)
+        assert notes_kwargs["date_before"] == datetime(2025, 2, 7, 23, 59, 59, 999999)
+
+    def test_meeting_debrief_applies_date_filters(self, client: TestClient, tmp_path):
+        """POST /routines/meeting-debrief applies the meeting date windows."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="Debrief snippet.",
+            score=0.88,
+            source_path="/docs/meeting.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Debrief", "start_line": 1, "end_line": 5},
+            project="team",
+            source_date=datetime(2025, 2, 7),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        captured_kwargs: dict[str, dict[str, datetime]] = {}
+        results_by_query = {
+            "meeting notes": [sample_result],
+            "open decisions": [sample_result],
+        }
+
+        def fake_search(*, query, project, top_k, **kwargs):
+            _ = project
+            _ = top_k
+            captured_kwargs[query] = kwargs
+            return results_by_query.get(query, [])
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
+        ):
+            response = client.post(
+                "/routines/meeting-debrief",
+                json={
+                    "project": "team",
+                    "date": "2025-02-07",
+                    "top_k": 2,
+                    "meeting_slug": "sync-call",
+                    "participants": ["Alice", "Bob"],
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "meeting-debrief"
+        assert len(data["retrievals"]) == 2
+
+        notes_kwargs = captured_kwargs["meeting notes"]
+        assert notes_kwargs["date_after"] == datetime(2025, 2, 6, 0, 0)
+        assert notes_kwargs["date_before"] == datetime(2025, 2, 7, 23, 59, 59, 999999)
+
+        target_path = tmp_path / "meetings" / "team" / "sync-call-debrief.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert "- \"Alice\"" in body
+
+    def test_new_decision_writes_slugged_file(self, client: TestClient, tmp_path):
+        """POST /routines/new-decision writes a slugged decision note."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="Decision evidence.",
+            score=0.8,
+            source_path="/docs/decision.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Decision", "start_line": 1, "end_line": 5},
+            project="work",
+            source_date=datetime(2025, 3, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        results_by_query = {
+            "related decision sources": [sample_result],
+            "conflicting decisions": [sample_result],
+        }
+
+        def fake_search(*, query, project, top_k, **_kwargs):
+            _ = project
+            _ = top_k
+            return results_by_query.get(query, [])
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
+        ):
+            response = client.post(
+                "/routines/new-decision",
+                json={
+                    "project": "work",
+                    "date": "2025-03-01",
+                    "top_k": 1,
+                    "title": "Choose CI provider",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "new-decision"
+        target_path = tmp_path / "decisions" / "decision-choose-ci-provider.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert 'source: "routine/new-decision"' in body
+
+    def test_trip_debrief_records_trip_name_and_quotes(self, client: TestClient, tmp_path):
+        """POST /routines/trip-debrief writes a trip note with the provided name."""
+        config = Config()
+        config.paths.vault = tmp_path
+
+        sample_result = SearchResult(
+            chunk_id=1,
+            content="Trip snippet.",
+            score=0.75,
+            source_path="/docs/trip.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Trip", "start_line": 1, "end_line": 5},
+            project="travel",
+            source_date=datetime(2025, 4, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+
+        captured_kwargs: dict[str, dict[str, datetime]] = {}
+        results_by_query = {
+            "trip notes": [sample_result],
+            "trip recipes": [sample_result],
+            "trip open loops": [sample_result],
+        }
+
+        def fake_search(*, query, project, top_k, **kwargs):
+            _ = project
+            _ = top_k
+            captured_kwargs[query] = kwargs
+            return results_by_query.get(query, [])
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search", side_effect=fake_search),
+        ):
+            response = client.post(
+                "/routines/trip-debrief",
+                json={
+                    "project": "travel",
+                    "date": "2025-04-15",
+                    "top_k": 2,
+                    "trip_name": "Azores getaway",
+                    "trip_slug": "azores-2025",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["routine"] == "trip-debrief"
+        assert len(data["retrievals"]) == 3
+
+        notes_kwargs = captured_kwargs["trip notes"]
+        assert notes_kwargs["date_after"] == datetime(2025, 3, 16, 0, 0)
+        assert notes_kwargs["date_before"] == datetime(2025, 4, 15, 23, 59, 59, 999999)
+
+        target_path = tmp_path / "trips" / "azores-2025" / "debrief.md"
+        assert target_path.exists()
+        body = target_path.read_text()
+        assert 'trip_name: "Azores getaway"' in body
+
     def test_daily_checkin_requires_template_scope(
         self, client: TestClient, tmp_path
     ):
@@ -719,6 +954,28 @@ class TestRoutinesEndpoint:
         assert detail["code"] == "PERMISSION_DENIED"
         assert "allowed_paths" in detail
         assert not (tmp_path / "routines").exists()
+        mock_search.assert_not_called()
+
+    def test_meeting_prep_requires_allowed_path(self, client: TestClient, tmp_path):
+        """POST /routines/meeting-prep respects allowed vault paths."""
+        config = Config()
+        config.paths.vault = tmp_path
+        config.permissions.allowed_vault_paths = ["vault/decisions"]
+
+        with (
+            patch("bob.api.routes.routines.get_config", return_value=config),
+            patch("bob.api.routes.routines.search") as mock_search,
+        ):
+            response = client.post(
+                "/routines/meeting-prep",
+                json={"project": "team", "date": "2025-02-01"},
+            )
+
+        assert response.status_code == 403
+        detail = response.json()["detail"]
+        assert detail["code"] == "PERMISSION_DENIED"
+        assert "allowed_paths" in detail
+        assert not (tmp_path / "meetings").exists()
         mock_search.assert_not_called()
 
     def test_get_nonexistent_job(self, client: TestClient):

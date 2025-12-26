@@ -20,7 +20,7 @@
 | **0 (Read)** | Search, retrieval, dashboards, feedback, Fix Queue viewing | Default for every user; no writes permitted. |
 | **1 (Calendar Import)** | Local ICS/CalDAV file ingestion APIs (e.g., `POST /connectors/calendar-import`) | Optional opt-in in UI; stored under `vault/calendar/`; import logs show enablement time. |
 | **2 (Browser Saves)** | Manual “save highlight/bookmark to vault” actions that produce well-formed markdown notes | Requires explicit toolbar button; writes go into `vault/manual-saves/`; always synchronous and logged. |
-| **3 (Template Writes)** | All routine/actions writes (`POST /notes/create`, `/routines/*`) that render from canonical templates | Vault paths locked to `vault/routines/`, `vault/decisions/`, `vault/trips/`; any attempt to point elsewhere is rejected and reported to Fix Queue. |
+| **3 (Template Writes)** | All routine/actions writes (`POST /notes/create`, `/routines/*`) that render from canonical templates | Vault paths locked to `vault/routines/`, `vault/decisions/`, `vault/trips/`, `vault/meetings/`; any attempt to point elsewhere is rejected and reported to Fix Queue. |
 | **4 (External Accounts)** | Out of scope for now — no OAuth or cloud storage is supported | Mentioned for completeness but always denied in code. |
 
 By default, operations run at scope level **3 (Template Writes)** so the routine APIs succeed. Drop the `permissions.default_scope` value toward `0` for read-only inspections and raise it back to `3` (plus connector toggles) when you trust the vault directories the routines write to; denied attempts are surfaced in the Fix Queue and the API returns `PERMISSION_DENIED`.
@@ -39,12 +39,13 @@ permissions:
     - vault/routines
     - vault/decisions
     - vault/trips
+    - vault/meetings
     - vault/manual-saves
 ```
 
  - `default_scope` drives the initial experience (read-only vs template writes); the Fix Queue surfaces denials so you can raise it only when you trust the destination paths.
  - `enabled_connectors` toggles optional deep access; flipping one pushes the session to the matching level and logs the event for Fix Queue analytics.
-- `allowed_vault_paths` lists the directories that template-enabled APIs may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
+- `allowed_vault_paths` lists the directories (routines, decisions, trips, meetings, manual saves) that template-enabled APIs may target; relative entries are resolved both against the configured `paths.vault` and against the repo root so you can move the vault without breaking the defaults. Any file outside this list is rejected before a write occurs.
 
 ## Enforcement & UI
 
