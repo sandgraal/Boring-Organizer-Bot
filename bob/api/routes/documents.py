@@ -60,7 +60,7 @@ def list_documents(
     cursor = db.conn.execute(
         f"""
         SELECT id, source_path, source_type, project, source_date,
-               created_at, updated_at
+               indexed_at AS created_at, updated_at
         FROM documents
         WHERE {where_clause}
         ORDER BY updated_at DESC
@@ -81,8 +81,9 @@ def list_documents(
 
         created_at = datetime.now(UTC)
         with suppress(ValueError, TypeError):
-            if row_dict.get("created_at"):
-                created_at = datetime.fromisoformat(row_dict["created_at"])
+            created_value = row_dict.get("created_at") or row_dict.get("indexed_at")
+            if created_value:
+                created_at = datetime.fromisoformat(created_value)
 
         updated_at = datetime.now(UTC)
         with suppress(ValueError, TypeError):
