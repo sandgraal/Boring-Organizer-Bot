@@ -4,7 +4,7 @@
 
 > **Status:** In progress—routine endpoints and the UI Routines/Health pages are live, while lint-driven remediation and connector workflows remain on the roadmap (see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md) for the implemented stack).
 
-**Last Updated:** 2025-12-24
+**Last Updated:** 2025-12-25
 
 ---
 
@@ -99,7 +99,7 @@ A runner converts these metrics into prioritized Fix Queue tasks (returned by `G
 
 Permission-denial tasks include `raise_scope` targets for blocked scope levels and `allow_path` targets for denied vault paths; repeated-question tasks surface the question text as the `target`. Lint tasks use `fix_capture` and point to the offending note path.
 
-The Fix Queue screen lists tasks and lets the user run the associated routine (e.g., “Daily Check-in” for a not-found spike). Metadata/path/scope actions are listed but not yet wired to one-click remediation. Tasks tied to Coach Mode and routines surface before optional Generation improvements, ensuring the system remains grounded.
+The Fix Queue screen lists tasks and lets the user run the associated routine (e.g., “Daily Check-in” for a not-found spike). Lint/metadata tasks include one-click open actions; permission/path/scope actions remain listed without remediation. Tasks tied to Coach Mode and routines surface before optional Generation improvements, ensuring the system remains grounded.
 
 ## Coach Mode Integration
 

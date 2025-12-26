@@ -739,16 +739,7 @@
     const sortedTasks = [...tasks].sort((a, b) => a.priority - b.priority);
     elements.fixQueueTasksList.innerHTML = sortedTasks
       .map((task) => {
-        const routineTarget = extractRoutineIdFromTarget(task.target);
-        const actionButton =
-          task.action === "run_routine" && routineTarget
-            ? `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-run="${escapeHtml(
-                task.target
-              )}">
-                 Run routine
-               </button>`
-            : "";
-
+        const actionButton = getFixQueueActionButton(task);
         return `
           <div class="fixqueue-task-card">
             <div><strong>${escapeHtml(task.reason)}</strong></div>
@@ -768,12 +759,40 @@
       .join("");
   }
 
+  function getFixQueueActionButton(task) {
+    const routineTarget = extractRoutineIdFromTarget(task.target);
+    if (task.action === "run_routine" && routineTarget) {
+      return `<button type="button" class="btn btn-primary btn-sm" data-fixqueue-run="${escapeHtml(
+        task.target
+      )}">
+         Run routine
+       </button>`;
+    }
+    if (task.action === "fix_metadata" || task.action === "fix_capture") {
+      return `<button type="button" class="btn btn-secondary btn-sm" data-fixqueue-open="${escapeHtml(
+        task.target
+      )}">
+         Open file
+       </button>`;
+    }
+    return "";
+  }
+
   function handleFixQueueTaskClick(event) {
-    const button = event.target.closest("[data-fixqueue-run]");
-    if (!button) return;
-    const target = button.dataset.fixqueueRun;
+    const runButton = event.target.closest("[data-fixqueue-run]");
+    if (runButton) {
+      const target = runButton.dataset.fixqueueRun;
+      if (target) {
+        handleFixQueueRun(target);
+      }
+      return;
+    }
+
+    const openButton = event.target.closest("[data-fixqueue-open]");
+    if (!openButton) return;
+    const target = openButton.dataset.fixqueueOpen;
     if (target) {
-      handleFixQueueRun(target);
+      handleFixQueueOpen(target);
     }
   }
 
@@ -785,6 +804,17 @@
     }
     await executeRoutine(actionId);
     loadFixQueue(true);
+  }
+
+  async function handleFixQueueOpen(target) {
+    try {
+      await API.openFile(target);
+    } catch (err) {
+      console.error("Failed to open file:", err);
+      alert(
+        `Could not open file: ${target}\n\nYou can manually navigate to this file.`
+      );
+    }
   }
 
   function extractRoutineIdFromTarget(target) {
