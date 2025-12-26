@@ -81,7 +81,7 @@ The B.O.B API is a local-only FastAPI server that exposes the same index/retriev
   - `coach_show_anyway`: bypass cooldowns
 - **Behavior:** Delegates to `bob.retrieval.search`, formats the top chunk as the answer, builds citations (`Source`), computes date confidence, and calls `bob.coach.engine.generate_coach_suggestions`. Suggestions and outcomes are logged via `db.log_coach_suggestion`.
 - **Response model:** `AskResponse`
-  - `answer`: snippet from the highest-ranked chunk
+  - `answer`: snippet from the highest-ranked chunk with inline citation marker (`[1]`)
   - `sources`: list of citations (source path, locator, snippet, date)
   - `audit`: retrieved vs used chunks plus unsupported spans (for the Audit tab)
   - `suggestions`: up to three deterministic Coach Mode suggestions
