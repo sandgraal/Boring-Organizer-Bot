@@ -866,7 +866,7 @@ class Database:
             SELECT question, COUNT(*) as count
             FROM feedback_log
             {base_filters}
-            AND datetime >= datetime('now', '-{int(window_hours)} hours')
+            AND datetime(created_at) >= datetime('now', '-{int(window_hours)} hours')
             GROUP BY question
             HAVING count > 1
             ORDER BY count DESC
