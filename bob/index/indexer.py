@@ -14,7 +14,7 @@ from bob.db.database import compute_content_hash
 from bob.index.chunker import chunk_document
 from bob.index.embedder import embed_chunks
 from bob.ingest import get_parser
-from bob.ingest.git_docs import is_git_url, parse_git_repo
+from bob.ingest.git_docs import is_git_url, normalize_git_url, parse_git_repo
 
 logger = logging.getLogger(__name__)
 
@@ -66,27 +66,28 @@ def _iter_indexable_files(path: Path) -> Iterator[Path]:
         logger.warning("Unable to scan %s: %s", path, exc)
 
 
-def count_indexable_targets(paths: list[Path]) -> int:
+def count_indexable_targets(paths: list[Path | str]) -> int:
     """Estimate how many files/targets will be indexed."""
 
     total = 0
     for target in paths:
-        target_str = str(target)
+        target_str = normalize_git_url(str(target))
 
         if is_git_url(target_str):
             total += 1
             continue
 
-        if not target.exists():
+        target_path = target if isinstance(target, Path) else Path(target_str)
+        if not target_path.exists():
             continue
 
-        if target.is_file():
-            if get_parser(target):
+        if target_path.is_file():
+            if get_parser(target_path):
                 total += 1
             continue
 
-        if target.is_dir():
-            for item in _iter_indexable_files(target):
+        if target_path.is_dir():
+            for item in _iter_indexable_files(target_path):
                 if get_parser(item):
                     total += 1
 
@@ -307,7 +308,7 @@ def index_git_repo(
 
 
 def index_paths(
-    paths: list[Path],
+    paths: list[Path | str],
     project: str,
     language: str,
     progress_callback: Callable[[Path], None] | None = None,
@@ -329,18 +330,20 @@ def index_paths(
     stats: dict[str, int] = {"documents": 0, "chunks": 0, "skipped": 0, "errors": 0}
 
     for path in paths:
-        path_str = str(path)
+        path_str = normalize_git_url(str(path))
 
         if is_git_url(path_str):
             result = index_git_repo(path_str, project, language, progress_callback)
-        elif path.is_file():
-            result = index_file(path, project, language, progress_callback)
-        elif path.is_dir():
-            result = index_directory(path, project, language, progress_callback)
         else:
-            logger.warning(f"Path not found: {path}")
-            stats["errors"] = stats.get("errors", 0) + 1
-            continue
+            target_path = path if isinstance(path, Path) else Path(path_str)
+            if target_path.is_file():
+                result = index_file(target_path, project, language, progress_callback)
+            elif target_path.is_dir():
+                result = index_directory(target_path, project, language, progress_callback)
+            else:
+                logger.warning(f"Path not found: {target_path}")
+                stats["errors"] = stats.get("errors", 0) + 1
+                continue
 
         for key in stats:
             stats[key] = stats.get(key, 0) + result.get(key, 0)

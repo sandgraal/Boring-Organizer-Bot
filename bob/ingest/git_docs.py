@@ -15,9 +15,19 @@ from bob.ingest.base import ParsedDocument
 from bob.ingest.registry import get_parser
 
 
+def normalize_git_url(path: str) -> str:
+    """Normalize common git URL forms (including Path-coerced variants)."""
+    if path.startswith("http:/") and not path.startswith("http://"):
+        return f"http://{path[len('http:/'):]}"
+    if path.startswith("https:/") and not path.startswith("https://"):
+        return f"https://{path[len('https:/'):]}"
+    return path
+
+
 def is_git_url(path: str) -> bool:
     """Check if a path is a git URL."""
-    return path.startswith(("http://", "https://", "git@", "git://"))
+    normalized = normalize_git_url(path)
+    return normalized.startswith(("http://", "https://", "git@", "git://"))
 
 
 def clone_repo(url: str, target_dir: Path) -> str:

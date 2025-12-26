@@ -163,6 +163,39 @@ Content in section two.
         total = count_indexable_targets([docs])
         assert total == 1
 
+    def test_count_indexable_targets_accepts_git_urls(self) -> None:
+        """Git URLs should count as indexable targets."""
+        from bob.index.indexer import count_indexable_targets
+
+        total = count_indexable_targets([Path("https://github.com/example/repo")])
+        assert total == 1
+
+    def test_index_paths_normalizes_git_urls(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Indexing should normalize git URLs before cloning."""
+        from bob.index import indexer as indexer_module
+
+        captured: dict[str, str] = {}
+
+        def fake_index_git_repo(
+            url: str,
+            project: str,
+            language: str,
+            progress_callback=None,
+        ) -> dict[str, int]:
+            captured["url"] = url
+            return {"documents": 1, "chunks": 0, "skipped": 0, "errors": 0}
+
+        monkeypatch.setattr(indexer_module, "index_git_repo", fake_index_git_repo)
+
+        stats = indexer_module.index_paths(
+            paths=[Path("https://github.com/example/repo")],
+            project="docs",
+            language="en",
+        )
+
+        assert stats["documents"] == 1
+        assert captured["url"] == "https://github.com/example/repo"
+
     def test_index_skips_unchanged(self, temp_dir: Path, test_db: Database) -> None:
         """Test that unchanged files are skipped on re-index."""
         from bob.index import index_paths

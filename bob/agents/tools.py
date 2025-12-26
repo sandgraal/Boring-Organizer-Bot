@@ -104,21 +104,31 @@ def index(
     try:
         from bob.index import index_paths
 
-        # Convert to Path objects
-        path_objects = [Path(p) for p in paths]
+        from bob.ingest.git_docs import is_git_url, normalize_git_url
 
-        # Validate paths exist
-        missing = [p for p in path_objects if not p.exists()]
+        targets: list[Path | str] = []
+        missing: list[str] = []
+        for raw in paths:
+            candidate = normalize_git_url(raw)
+            if is_git_url(candidate):
+                targets.append(candidate)
+                continue
+            path_obj = Path(candidate).expanduser()
+            if not path_obj.exists():
+                missing.append(raw)
+                continue
+            targets.append(path_obj)
+
         if missing:
             return AgentResult(
                 success=False,
-                message=f"Paths not found: {missing}",
-                warnings=[f"Path does not exist: {p}" for p in missing],
+                message=f"Paths not found: {', '.join(missing)}",
+                warnings=[f"Path does not exist: {path}" for path in missing],
             )
 
         # Run indexing
         stats = index_paths(
-            paths=path_objects,
+            paths=targets,
             project=project,
             language=language,
         )

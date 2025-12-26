@@ -101,7 +101,7 @@ def init() -> None:
     is_flag=True,
     help="Index all paths saved in the watchlist (`bob watchlist list`).",
 )
-@click.argument("paths", nargs=-1, type=click.Path(exists=True))
+@click.argument("paths", nargs=-1, type=str)
 @click.option(
     "--project",
     "-p",
@@ -175,8 +175,26 @@ def index(
                 for key in stats:
                     stats[key] = stats.get(key, 0) + result.get(key, 0)
         else:
+            from bob.ingest.git_docs import is_git_url, normalize_git_url
+
+            targets: list[Path | str] = []
+            missing: list[str] = []
+            for raw in paths:
+                candidate = normalize_git_url(raw)
+                if is_git_url(candidate):
+                    targets.append(candidate)
+                    continue
+                path_obj = Path(candidate).expanduser()
+                if not path_obj.exists():
+                    missing.append(raw)
+                    continue
+                targets.append(path_obj)
+
+            if missing:
+                raise click.UsageError(f"Paths not found: {', '.join(missing)}")
+
             stats = index_paths(
-                paths=[Path(p) for p in paths],
+                paths=targets,
                 project=project,
                 language=language,
             )
