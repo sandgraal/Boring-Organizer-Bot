@@ -1586,7 +1586,7 @@
     await submitAsk({ query, filters, showAnyway: false });
   }
 
-  function handleGlobalKeydown(event) {
+  async function handleGlobalKeydown(event) {
     if (state.noteModalOpen) return;
 
     const target = event.target;
@@ -1602,6 +1602,13 @@
         event.preventDefault();
         elements.queryInput?.focus();
       }
+      return;
+    }
+
+    if (!isEditable && state.currentPage === "ask" && /^[1-9]$/.test(event.key)) {
+      const index = Number.parseInt(event.key, 10) - 1;
+      event.preventDefault();
+      await openSourceByIndex(index);
       return;
     }
 
@@ -1802,6 +1809,22 @@
     hideAllStates();
     elements.welcomeState.classList.remove("hidden");
     state.lastAsk = null;
+  }
+
+  async function openSourceByIndex(index) {
+    const sources = state.lastAsk?.response?.sources || [];
+    const source = sources[index];
+    if (!source) return;
+
+    const line = source.locator?.start_line;
+    try {
+      await API.openFile(source.file_path, line ? { start_line: line } : null);
+    } catch (err) {
+      console.error("Failed to open file:", err);
+      alert(
+        `Could not open file: ${source.file_path}\n\nYou can manually navigate to this file.`
+      );
+    }
   }
 
   /**
