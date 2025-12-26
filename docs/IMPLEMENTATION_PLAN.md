@@ -422,7 +422,7 @@ These are explicit non-goals to avoid scope creep:
 2. **Unsupported Claim Detection**
 
    - [x] Detect answer spans without citations
-   - [ ] Remove or mark unsupported spans before rendering
+   - [x] Remove or mark unsupported spans before rendering
    - [x] Expose unsupported spans in audit payload
 
 3. **Copy as Report**
@@ -458,7 +458,7 @@ These are explicit non-goals to avoid scope creep:
 
 - [x] Audit payload returned in /ask
 - [x] UI panel shows retrieved vs used chunks
-- [ ] Unsupported claims are blocked or marked
+- [x] Unsupported claims are blocked or marked
 - [x] Report export works offline
 
 ---
