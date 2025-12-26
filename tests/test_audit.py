@@ -39,7 +39,7 @@ def test_build_audit_payload_marks_retrieved_and_used() -> None:
         ),
     ]
 
-    audit = build_audit_payload(results)
+    audit = build_audit_payload(results, answer="Top answer content.")
 
     assert len(audit.retrieved) == 2
     assert len(audit.used) == 1
@@ -48,3 +48,27 @@ def test_build_audit_payload_marks_retrieved_and_used() -> None:
     assert audit.retrieved[1].rank == 2
     assert audit.used[0].chunk_id == 10
     assert audit.unsupported_spans == []
+
+
+def test_build_audit_payload_flags_unsupported_span() -> None:
+    """Audit payload flags answers that are not in used chunks."""
+    results = [
+        SearchResult(
+            chunk_id=20,
+            content="Known content.",
+            score=0.8,
+            source_path="/docs/known.md",
+            source_type="markdown",
+            locator_type="heading",
+            locator_value={"heading": "Known", "start_line": 1, "end_line": 2},
+            project="test",
+            source_date=datetime(2024, 2, 1),
+            git_repo=None,
+            git_commit=None,
+        )
+    ]
+
+    audit = build_audit_payload(results, answer="Unrelated answer text.")
+
+    assert len(audit.unsupported_spans) == 1
+    assert "not found" in audit.unsupported_spans[0].reason.lower()

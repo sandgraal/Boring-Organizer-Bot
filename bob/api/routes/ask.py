@@ -114,7 +114,7 @@ def ask_query(request: AskRequest) -> AskResponse:
             coach_mode_enabled=coach_enabled,
             suggestions=suggestions,
             sources=[],
-            audit=build_audit_payload([]),
+            audit=build_audit_payload([], answer=None),
             footer=AskFooter(
                 source_count=0,
                 date_confidence=None,
@@ -158,7 +158,7 @@ def ask_query(request: AskRequest) -> AskResponse:
         coach_mode_enabled=coach_enabled,
         suggestions=suggestions,
         sources=sources,
-        audit=build_audit_payload(results),
+        audit=build_audit_payload(results, answer=answer),
         footer=AskFooter(
             source_count=len(sources),
             date_confidence=overall_confidence,

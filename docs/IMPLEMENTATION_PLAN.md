@@ -421,9 +421,9 @@ These are explicit non-goals to avoid scope creep:
 
 2. **Unsupported Claim Detection**
 
-   - [ ] Detect answer spans without citations
+   - [x] Detect answer spans without citations
    - [ ] Remove or mark unsupported spans before rendering
-   - [ ] Expose unsupported spans in audit payload
+   - [x] Expose unsupported spans in audit payload
 
 3. **Copy as Report**
 
