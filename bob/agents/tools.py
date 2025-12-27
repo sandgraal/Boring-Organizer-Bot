@@ -103,7 +103,6 @@ def index(
     """
     try:
         from bob.index import index_paths
-
         from bob.ingest.git_docs import is_git_url, normalize_git_url
 
         targets: list[Path | str] = []

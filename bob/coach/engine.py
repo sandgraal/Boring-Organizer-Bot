@@ -321,9 +321,7 @@ def _allow_health_suggestions(
 ) -> bool:
     if not_found or source_count < MIN_CITED_CHUNKS:
         return False
-    if overall_confidence == "LOW":
-        return False
-    return True
+    return overall_confidence != "LOW"
 
 
 def _select_staleness_citations(sources: Iterable[Source]) -> list[Source]:

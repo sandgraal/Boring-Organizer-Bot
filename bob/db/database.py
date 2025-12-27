@@ -109,7 +109,11 @@ class Database:
             self._connections.clear()
 
         for conn in connections:
-            conn.close()
+            try:
+                conn.close()
+            except sqlite3.ProgrammingError:
+                # Connection was created in a different thread; ignore
+                pass
 
         if hasattr(self._local, "conn"):
             del self._local.conn

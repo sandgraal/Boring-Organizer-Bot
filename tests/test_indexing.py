@@ -178,9 +178,9 @@ Content in section two.
 
         def fake_index_git_repo(
             url: str,
-            project: str,
-            language: str,
-            progress_callback=None,
+            project: str,  # noqa: ARG001
+            language: str,  # noqa: ARG001
+            progress_callback=None,  # noqa: ARG001
         ) -> dict[str, int]:
             captured["url"] = url
             return {"documents": 1, "chunks": 0, "skipped": 0, "errors": 0}

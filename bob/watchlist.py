@@ -10,6 +10,7 @@ from pathlib import Path
 import yaml
 
 from bob.ingest.git_docs import is_git_url, normalize_git_url
+
 DEFAULT_WATCHLIST_FILE = ".bob_watchlist.yaml"
 
 

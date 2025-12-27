@@ -373,6 +373,7 @@ def connectors_highlight(
 ) -> None:
     """Save a manual highlight note in the vault."""
     from datetime import date as DateType
+
     from fastapi import HTTPException
 
     from bob.api.routes.connectors import create_highlight
