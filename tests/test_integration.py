@@ -4,6 +4,7 @@ These tests verify complete user workflows from indexing to querying
 and routine execution. They ensure all components work together correctly.
 """
 
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,7 @@ from bob.index.indexer import index_file, index_paths
 from bob.retrieval.search import search
 
 
-def test_index_and_search_workflow(test_db, temp_dir):
+def test_index_and_search_workflow(test_db, temp_dir):  # noqa: ARG001
     """Test the complete workflow: create file -> index -> search."""
     # Create a markdown file with searchable content
     doc_path = temp_dir / "notes.md"
@@ -48,7 +49,7 @@ The batch size is typically 32 or 64.
     assert any("backpropagation" in r.chunk.content.lower() for r in results)
 
 
-def test_index_multiple_files_and_project_filter(test_db, temp_dir):
+def test_index_multiple_files_and_project_filter(test_db, temp_dir):  # noqa: ARG001
     """Test indexing multiple files and filtering by project."""
     # Create files in different projects
     project_a = temp_dir / "project_a"
@@ -79,19 +80,19 @@ We use Docker and Kubernetes.
     # Search in project A only
     results_a = search("implementation", project="project-a", top_k=5)
     assert len(results_a) > 0
-    assert all("project-a" == r.chunk.project for r in results_a)
+    assert all(r.chunk.project == "project-a" for r in results_a)
 
     # Search in project B only
     results_b = search("infrastructure", project="project-b", top_k=5)
     assert len(results_b) > 0
-    assert all("project-b" == r.chunk.project for r in results_b)
+    assert all(r.chunk.project == "project-b" for r in results_b)
 
     # Search across all projects
     results_all = search("project", project=None, top_k=10)
     assert len(results_all) > 0
 
 
-def test_reindex_updated_file(test_db, temp_dir):
+def test_reindex_updated_file(test_db, temp_dir):  # noqa: ARG001
     """Test that re-indexing an updated file replaces old content."""
     doc_path = temp_dir / "evolving.md"
 
@@ -106,7 +107,7 @@ This is the first version of the document.
     # Index first version
     stats1 = index_file(doc_path, project="test", language="en")
     assert stats1["documents"] == 1
-    initial_chunks = stats1["chunks"]
+    assert stats1["chunks"] > 0
 
     # Search for initial content
     results1 = search("first version", project="test", top_k=5)
@@ -137,7 +138,7 @@ The first version has been replaced.
         assert not any("This is the first version" in r.chunk.content for r in results_old)
 
 
-def test_skip_unchanged_file(test_db, temp_dir):
+def test_skip_unchanged_file(test_db, temp_dir):  # noqa: ARG001
     """Test that unchanged files are skipped on re-indexing."""
     doc_path = temp_dir / "static.md"
     doc_path.write_text(
@@ -160,7 +161,7 @@ This content never changes.
 
 def test_search_with_max_age_filter(test_db, temp_dir):
     """Test search with max_age filter for recent documents."""
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     # Create a document
     doc_path = temp_dir / "dated.md"
@@ -176,7 +177,7 @@ This is recent content that should be found.
     index_file(doc_path, project="test", language="en")
 
     # Update the document's source_date to be recent
-    recent_date = datetime.now(timezone.utc) - timedelta(days=10)
+    recent_date = datetime.now(UTC) - timedelta(days=10)
     test_db.conn.execute(
         "UPDATE documents SET source_date = ? WHERE source_path = ?",
         (recent_date.isoformat(), str(doc_path)),
@@ -193,7 +194,7 @@ This is recent content that should be found.
     assert len(results_exclude) == 0
 
 
-def test_pdf_parsing_and_page_locators(test_db, temp_dir):
+def test_pdf_parsing_and_page_locators(test_db, temp_dir):  # noqa: ARG001
     """Test that PDF files can be indexed with page locators.
 
     This test requires pypdf. If PDFs with actual content are needed,
@@ -286,7 +287,7 @@ def test_large_file_size_limit(test_db, temp_dir):
     assert errors[0][0] == "oversize"
 
 
-def test_query_parser_with_advanced_syntax(test_db, temp_dir):
+def test_query_parser_with_advanced_syntax(test_db, temp_dir):  # noqa: ARG001
     """Test query parser with exact phrases, exclusions, and project filters."""
     from bob.retrieval.query_parser import QueryParser
 
@@ -328,7 +329,7 @@ It's different from REST APIs.
     assert "api" in parser.terms
 
 
-def test_error_logging_for_unparseable_files(test_db, temp_dir):
+def test_error_logging_for_unparseable_files(test_db, temp_dir):  # noqa: ARG001
     """Test that parsing errors are properly logged to ingestion_errors."""
     # Create a file with an unsupported extension
     bad_file = temp_dir / "test.xyz"
@@ -434,7 +435,7 @@ def test_health_metrics_ingestion_errors(test_db, temp_dir):
     bad_file.write_bytes(b"# Test\n\nInvalid UTF-8: \xff\xfe")
 
     # Try to index - should fail and log error
-    stats = index_file(bad_file, project="test", language="en")
+    index_file(bad_file, project="test", language="en")
 
     # Check that error was logged
     errors = list(

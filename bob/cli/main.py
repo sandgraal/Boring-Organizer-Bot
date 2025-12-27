@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -1578,11 +1579,12 @@ def backup(backup_path: str, compress: bool) -> None:
 
     Example: bob backup backups/bob-2025-12-27.db
     """
-    import shutil
     import gzip
+    import shutil
+
     from bob.db import get_database
 
-    console.print(f"[bold blue]Creating database backup...[/]")
+    console.print("[bold blue]Creating database backup...[/]")
 
     try:
         db = get_database()
@@ -1602,9 +1604,8 @@ def backup(backup_path: str, compress: bool) -> None:
             # Compress the backup
             console.print("[cyan]Compressing backup...[/]")
             compressed_path = backup_file.with_suffix(backup_file.suffix + ".gz")
-            with open(temp_backup, "rb") as f_in:
-                with gzip.open(compressed_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with open(temp_backup, "rb") as f_in, gzip.open(compressed_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
             temp_backup.unlink()
             final_path = compressed_path
         else:
@@ -1634,8 +1635,9 @@ def restore(backup_path: str, force: bool) -> None:
 
     Example: bob restore backups/bob-2025-12-27.db
     """
-    import shutil
     import gzip
+    import shutil
+
     from bob.db import get_database
 
     backup_file = Path(backup_path)
@@ -1648,14 +1650,14 @@ def restore(backup_path: str, force: bool) -> None:
 
     # Check if database exists and ask for confirmation
     if db.db_path.exists() and not force:
-        console.print(f"[yellow]Warning:[/] This will replace your current database at:")
+        console.print("[yellow]Warning:[/] This will replace your current database at:")
         console.print(f"  [cyan]{db.db_path}[/]")
 
         if not click.confirm("Are you sure you want to continue?"):
             console.print("[yellow]Restore cancelled[/]")
             return
 
-    console.print(f"[bold blue]Restoring database from backup...[/]")
+    console.print("[bold blue]Restoring database from backup...[/]")
 
     current_backup = None
     try:
@@ -1674,9 +1676,8 @@ def restore(backup_path: str, force: bool) -> None:
         # Restore from backup (decompress if needed)
         if backup_file.suffix == ".gz":
             console.print("[cyan]Decompressing backup...[/]")
-            with gzip.open(backup_file, "rb") as f_in:
-                with open(db.db_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with gzip.open(backup_file, "rb") as f_in, open(db.db_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
         else:
             shutil.copy2(backup_file, db.db_path)
 
@@ -1689,10 +1690,10 @@ def restore(backup_path: str, force: bool) -> None:
 
         # Try to restore from pre-restore backup if it exists
         if current_backup and current_backup.exists():
-            console.print(f"[yellow]Attempting to restore previous database...[/]")
+            console.print("[yellow]Attempting to restore previous database...[/]")
             try:
                 shutil.copy2(current_backup, db.db_path)
-                console.print(f"[green]✓[/] Previous database restored")
+                console.print("[green]✓[/] Previous database restored")
             except Exception as restore_error:
                 console.print(f"[red]Failed to restore previous database:[/] {restore_error}")
 
