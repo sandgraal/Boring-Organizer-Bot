@@ -235,6 +235,30 @@ bob eval
 bob eval --project "cdc"
 ```
 
+### Backup and Restore
+
+Protect your local knowledge base with regular backups:
+
+```bash
+# Create a backup
+bob backup backups/bob-2025-12-27.db
+
+# Create a compressed backup (recommended for storage)
+bob backup backups/bob-2025-12-27.db --compress
+
+# Restore from a backup
+bob restore backups/bob-2025-12-27.db
+
+# Force restore without confirmation
+bob restore backups/bob-2025-12-27.db --force
+```
+
+**Backup best practices:**
+- Backups use SQLite's backup API for consistency
+- Compressed backups (.gz) save disk space
+- Restore automatically backs up your current database first
+- Schedule regular backups (e.g., via cron) for important data
+
 ## API Server (local-only)
 
 ```bash
