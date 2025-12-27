@@ -20,23 +20,26 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    4. [GET /index/{job_id}](#get-indexjob_id)
    5. [GET /projects](#get-projects)
    6. [GET /documents](#get-documents)
-   7. [POST /open](#post-open)
-   8. [POST /routines/daily-checkin](#post-routinesdaily-checkin)
-   9. [POST /routines/daily-debrief](#post-routinesdaily-debrief)
-   10. [POST /routines/weekly-review](#post-routinesweekly-review)
-   11. [POST /routines/meeting-prep](#post-routinesmeeting-prep)
-   12. [POST /routines/meeting-debrief](#post-routinesmeeting-debrief)
-   13. [POST /routines/new-decision](#post-routinesnew-decision)
-   14. [POST /routines/trip-debrief](#post-routinestrip-debrief)
-   15. [POST /notes/create](#post-notescreate)
-   16. [POST /connectors/bookmarks/import](#post-connectorsbookmarksimport)
-   17. [POST /connectors/highlights](#post-connectorshighlights)
-   18. [GET /permissions](#get-permissions)
-   19. [GET /settings](#get-settings)
-   20. [PUT /settings](#put-settings)
-   21. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   22. [POST /feedback](#post-feedback)
-   23. [GET /health/fix-queue](#get-healthfix-queue)
+   7. [GET /decisions](#get-decisions)
+   8. [GET /decisions/{id}/history](#get-decisionsidhistory)
+   9. [POST /open](#post-open)
+   10. [POST /routines/daily-checkin](#post-routinesdaily-checkin)
+   11. [POST /routines/daily-debrief](#post-routinesdaily-debrief)
+   12. [POST /routines/weekly-review](#post-routinesweekly-review)
+   13. [POST /routines/meeting-prep](#post-routinesmeeting-prep)
+   14. [POST /routines/meeting-debrief](#post-routinesmeeting-debrief)
+   15. [POST /routines/new-decision](#post-routinesnew-decision)
+   16. [POST /routines/trip-plan](#post-routinestrip-plan)
+   17. [POST /routines/trip-debrief](#post-routinestrip-debrief)
+   18. [POST /notes/create](#post-notescreate)
+   19. [POST /connectors/bookmarks/import](#post-connectorsbookmarksimport)
+   20. [POST /connectors/highlights](#post-connectorshighlights)
+   21. [GET /permissions](#get-permissions)
+   22. [GET /settings](#get-settings)
+   23. [PUT /settings](#put-settings)
+   24. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   25. [POST /feedback](#post-feedback)
+   26. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -123,6 +126,26 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Implementation:** `bob/api/routes/documents.py` builds SQL WHERE clauses and returns ISO-formatted timestamps.
 - **Response:** `DocumentListResponse` with `documents`, `total`, `page`, and `page_size`. Each `DocumentInfo` includes the path, source type, project, and parsed `source_date`, `created_at`, `updated_at`.
 
+### GET /decisions
+
+- **Purpose:** List extracted decisions with optional filters for project, status, and age.
+- **Query params:** `project` (optional), `status` (optional: active, superseded, deprecated), `older_than_days` (optional, for review cadence), `limit` (1–500, default 100).
+- **Implementation:** `bob/api/routes/decisions.py` queries the `decisions` table with filtering.
+- **Response:** `DecisionListResponse` with `decisions` array (each containing `id`, `chunk_id`, `decision_text`, `context`, `decision_type`, `status`, `superseded_by`, `decision_date`, `confidence`, `extracted_at`, `source_path`, `project`), `total` count, and applied `filters` for reference.
+- **Use case:** Supports decision review workflows, such as reviewing all decisions older than 90 days in a specific project.
+
+### GET /decisions/{id}/history
+
+- **Purpose:** Get the full supersession history for a specific decision.
+- **Path param:** `decision_id` - ID of the decision.
+- **Implementation:** `bob/api/routes/decisions.py` traverses supersession chains using `get_supersession_chain` and `get_decisions_superseded_by`.
+- **Response:** `DecisionHistoryResponse` with:
+  - `decision`: The requested decision details
+  - `predecessors`: Earlier decisions that this decision superseded (oldest first)
+  - `successors`: Later decisions that supersede this decision (oldest first)
+- **Errors:** HTTP 404 if decision not found.
+- **Use case:** Visualizing decision evolution and understanding which decisions replaced others over time.
+
 ### POST /open
 
 - **Purpose:** Launch a local editor for a chunk’s source.
@@ -182,6 +205,15 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Request model:** `RoutineRequest` with optional `decision_slug`, `slug`, and `title` fields to influence the filename and narrative.
 - **Response model:** `RoutineResponse` with the two retrieval buckets and warnings for missing citations/overwrites.
 - **Behavior:** The slug is sanitized to avoid unsafe filenames, retrievals are attached as evidence/conflicts, and the resulting file always lives under `vault/decisions/`.
+- **Errors:** HTTP 500 for template/search/write failures and HTTP 403 for insufficient `default_scope` or disallowed vault paths.
+
+### POST /routines/trip-plan
+
+- **Purpose:** Create a trip planning note by rendering `docs/templates/trip-plan.md`, gathering relevant trip context, and saving `vault/trips/{{trip-slug}}/plan.md`.
+- **Implementation:** `_trip_target_path` builds the destination folder from `trip_slug`, `slug`, or a sanitized version of `trip_name`, rewrites the template's `source` tag to `routine/trip-plan`, and runs three queries (`"trip learnings"` from previous trips, `"destination travel"` notes, `"packing checklist"` items).
+- **Request model:** `RoutineRequest` with optional `trip_name`, `trip_slug`, and `slug`.
+- **Response model:** `RoutineResponse` holding the retrieval buckets (`previous_trips`, `destination_notes`, `packing_lists`) and warnings.
+- **Behavior:** The handler ensures `trip_name` is populated in the template and the note is written under the slugified trip folder before the trip begins.
 - **Errors:** HTTP 500 for template/search/write failures and HTTP 403 for insufficient `default_scope` or disallowed vault paths.
 
 ### POST /routines/trip-debrief
