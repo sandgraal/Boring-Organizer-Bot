@@ -23,6 +23,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - `GET /decisions/{id}/history` – retrieve decision supersession chain (predecessors and successors).
 - `POST /open` – heuristics for launching editors (VS Code, Cursor, Vim, Sublime, system defaults) and returns success/message/command.
 - `GET /settings`, `PUT /settings`, `POST /suggestions/{id}/dismiss` – Coach Mode preferences, cooldown updates, and dismissal logging stored in the `settings` table.
+- `GET /permissions` – returns current permission scope, vault root, allowed paths, and enabled connectors for UI visibility.
 - `POST /feedback` – logs user feedback buttons so future Fix Queue calculations know which answers were helpful, wrong, outdated, too long, or missing.
 - `POST /connectors/bookmarks/import`, `POST /connectors/highlights` – opt-in browser-saves connectors that write bookmark/highlight notes into `vault/manual-saves` with scope + toggle checks.
 - `POST /routines/daily-checkin`, `POST /routines/daily-debrief`, `POST /routines/weekly-review`, `POST /routines/meeting-prep`, `POST /routines/meeting-debrief`, `POST /routines/new-decision`, `POST /routines/trip-debrief`, `POST /routines/trip-plan` – template-backed writes with cited retrieval buckets that persist to `vault/routines/`, `vault/meetings/`, `vault/decisions/`, and `vault/trips/`.
