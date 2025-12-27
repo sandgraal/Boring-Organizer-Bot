@@ -10,15 +10,7 @@ from dataclasses import dataclass
 from bob.api.schemas import CoachSuggestion, Source
 from bob.config import get_config
 from bob.db.database import Database
-from bob.health.priority import (
-    priority_from_count as _priority_from_count,
-)
-from bob.health.priority import (
-    priority_from_ratio as _priority_from_ratio,
-)
-from bob.health.priority import (
-    staleness_value as _staleness_value,
-)
+from bob.health.priority import priority_from_count, priority_from_ratio, staleness_value
 
 MIN_CITED_CHUNKS = 2
 MAX_SUGGESTIONS = 3
@@ -88,7 +80,7 @@ def _health_suggestion_candidates(
         percent = not_found_frequency * 100
         candidates.append(
             (
-                _priority_from_ratio(not_found_frequency),
+                priority_from_ratio(not_found_frequency),
                 SuggestionCandidate(
                     suggestion_type="health_not_found",
                     text=(
@@ -112,7 +104,7 @@ def _health_suggestion_candidates(
             project_value = top.get("project") if isinstance(top, dict) else None
             candidates.append(
                 (
-                    _priority_from_count(count),
+                    priority_from_count(count),
                     SuggestionCandidate(
                         suggestion_type="health_repeated_questions",
                         text=(
@@ -140,7 +132,7 @@ def _health_suggestion_candidates(
         metadata_action = "open_file" if metadata_target else "open_health"
         candidates.append(
             (
-                _priority_from_count(metadata_total),
+                priority_from_count(metadata_total),
                 SuggestionCandidate(
                     suggestion_type="health_metadata",
                     text=(
@@ -161,7 +153,7 @@ def _health_suggestion_candidates(
     if permission_total > 0:
         candidates.append(
             (
-                _priority_from_count(permission_total),
+                priority_from_count(permission_total),
                 SuggestionCandidate(
                     suggestion_type="health_permissions",
                     text=(
@@ -188,7 +180,7 @@ def _health_suggestion_candidates(
         gap = max(0, threshold - doc_count)
         candidates.append(
             (
-                _priority_from_count(gap),
+                priority_from_count(gap),
                 SuggestionCandidate(
                     suggestion_type="health_low_volume",
                     text=(
@@ -224,7 +216,7 @@ def _health_suggestion_candidates(
         )
         candidates.append(
             (
-                _priority_from_ratio(severity),
+                priority_from_ratio(severity),
                 SuggestionCandidate(
                     suggestion_type="health_low_hit_rate",
                     text=(
@@ -246,10 +238,10 @@ def _health_suggestion_candidates(
         buckets_days=staleness_buckets, source_type="markdown", project=project
     )
     stale_decisions = db.get_stale_decision_buckets(buckets_days=staleness_buckets, project=project)
-    notes_count = _staleness_value(stale_notes)
-    decisions_count = _staleness_value(stale_decisions)
+    notes_count = staleness_value(stale_notes)
+    decisions_count = staleness_value(stale_decisions)
     if notes_count or decisions_count:
-        priority = _priority_from_count(max(notes_count, decisions_count))
+        priority = priority_from_count(max(notes_count, decisions_count))
         candidates.append(
             (
                 priority,
@@ -283,7 +275,7 @@ def _health_suggestion_candidates(
         ingestion_action = "open_file" if ingestion_target else "open_health"
         candidates.append(
             (
-                _priority_from_count(ingestion_total),
+                priority_from_count(ingestion_total),
                 SuggestionCandidate(
                     suggestion_type="health_ingestion",
                     text=(

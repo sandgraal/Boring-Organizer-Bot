@@ -12,15 +12,7 @@ from bob.api.schemas import FailureSignal, FixQueueResponse, FixQueueTask
 from bob.config import get_config
 from bob.db.database import get_database
 from bob.health.lint import LintIssue, collect_capture_lint_issues
-from bob.health.priority import (
-    priority_from_count as _priority_from_count,
-)
-from bob.health.priority import (
-    priority_from_ratio as _priority_from_ratio,
-)
-from bob.health.priority import (
-    staleness_value as _staleness_value,
-)
+from bob.health.priority import priority_from_count, priority_from_ratio, staleness_value
 
 router = APIRouter()
 
@@ -183,7 +175,7 @@ def _build_fix_queue_tasks(
                     f"{freq * 100:.1f}% of feedback entries "
                     f"from {project_label} were 'didn't answer'"
                 ),
-                priority=_priority_from_ratio(freq),
+                priority=priority_from_ratio(freq),
             )
         )
 
@@ -210,7 +202,7 @@ def _build_fix_queue_tasks(
                 target=repeated["question"],
                 project=repeated_project,
                 reason=f"Question repeated {repeated['count']} times in the last 48h",
-                priority=_priority_from_count(repeated["count"]),
+                priority=priority_from_count(repeated["count"]),
             )
         )
 
@@ -286,8 +278,8 @@ def _build_staleness_task(
     project: str | None,
 ) -> FixQueueTask | None:
     """Create a Fix Queue task that prompts a weekly review for stale content."""
-    notes_count = _staleness_value(stale_notes)
-    decisions_count = _staleness_value(stale_decisions)
+    notes_count = staleness_value(stale_notes)
+    decisions_count = staleness_value(stale_decisions)
     if notes_count == 0 and decisions_count == 0:
         return None
 
@@ -305,7 +297,7 @@ def _build_staleness_task(
         target="routines/weekly-review",
         project=project,
         reason=reason,
-        priority=_priority_from_count(max(notes_count, decisions_count)),
+        priority=priority_from_count(max(notes_count, decisions_count)),
     )
 
 
@@ -323,7 +315,7 @@ def _build_indexing_tasks(
         project = item.get("project") or "unknown"
         doc_count = int(item.get("document_count", 0))
         gap = max(0, low_volume_threshold - doc_count)
-        priority = _priority_from_count(gap) if gap else 5
+        priority = priority_from_count(gap) if gap else 5
         task_id = f"index-volume-{project.replace(' ', '-')}"
         tasks.append(
             FixQueueTask(
@@ -347,7 +339,7 @@ def _build_indexing_tasks(
             if low_hit_rate_threshold > 0
             else 0.0
         )
-        priority = _priority_from_ratio(severity)
+        priority = priority_from_ratio(severity)
         task_id = f"index-hit-rate-{project.replace(' ', '-')}"
         tasks.append(
             FixQueueTask(
@@ -451,12 +443,12 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         ),
         FailureSignal(
             name="stale_notes",
-            value=_staleness_value(stale_notes),
+            value=staleness_value(stale_notes),
             details=_format_staleness_details(stale_notes, "Notes"),
         ),
         FailureSignal(
             name="stale_decisions",
-            value=_staleness_value(stale_decisions),
+            value=staleness_value(stale_decisions),
             details=_format_staleness_details(stale_decisions, "Decisions"),
         ),
         FailureSignal(
