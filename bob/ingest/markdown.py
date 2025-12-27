@@ -21,8 +21,30 @@ class MarkdownParser(Parser):
         """Parse a Markdown document into sections.
 
         Splits on headings to create logical sections with line-level locators.
+
+        Raises:
+            UnicodeDecodeError: If file cannot be decoded as UTF-8.
+            OSError: If file cannot be read.
         """
-        content = path.read_text(encoding="utf-8")
+        try:
+            content = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            # Try common fallback encodings
+            for encoding in ["latin-1", "cp1252", "iso-8859-1"]:
+                try:
+                    content = path.read_text(encoding=encoding)
+                    break
+                except (UnicodeDecodeError, LookupError):
+                    continue
+            else:
+                raise UnicodeDecodeError(
+                    "utf-8",
+                    b"",
+                    0,
+                    0,
+                    f"Unable to decode {path} with UTF-8 or common fallback encodings",
+                )
+
         lines = content.split("\n")
 
         sections: list[DocumentSection] = []

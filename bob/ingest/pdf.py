@@ -17,15 +17,38 @@ class PDFParser(Parser):
         return path.suffix.lower() in self.extensions
 
     def parse(self, path: Path) -> ParsedDocument:
-        """Parse a PDF document into page-based sections."""
-        from pypdf import PdfReader
+        """Parse a PDF document into page-based sections.
 
-        reader = PdfReader(path)
+        Raises:
+            pypdf.errors.PdfReadError: If PDF is corrupted or encrypted.
+            OSError: If file cannot be read.
+        """
+        from pypdf import PdfReader
+        from pypdf.errors import PdfReadError
+
+        try:
+            reader = PdfReader(path)
+        except PdfReadError as e:
+            raise PdfReadError(f"Failed to read PDF {path}: {e}") from e
+
+        if reader.is_encrypted:
+            raise PdfReadError(f"PDF is encrypted and cannot be parsed: {path}")
+
         sections: list[DocumentSection] = []
         full_content: list[str] = []
 
         for page_num, page in enumerate(reader.pages, start=1):
-            text = page.extract_text() or ""
+            try:
+                text = page.extract_text() or ""
+            except Exception as e:
+                # Log warning but continue with other pages
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "Failed to extract text from page %d of %s: %s", page_num, path, e
+                )
+                text = ""
+
             full_content.append(text)
 
             if text.strip():
