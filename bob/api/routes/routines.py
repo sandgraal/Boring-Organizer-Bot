@@ -25,6 +25,7 @@ WEEKLY_TEMPLATE = TEMPLATES_DIR / "weekly.md"
 MEETING_TEMPLATE = TEMPLATES_DIR / "meeting.md"
 DECISION_TEMPLATE = TEMPLATES_DIR / "decision.md"
 TRIP_TEMPLATE = TEMPLATES_DIR / "trip.md"
+TRIP_PLAN_TEMPLATE = TEMPLATES_DIR / "trip-plan.md"
 
 TargetPathFn = Callable[[date, Path, RoutineRequest, str], Path]
 PlaceholderFn = Callable[[date, RoutineRequest], dict[str, str]]
@@ -114,6 +115,13 @@ def _trip_placeholders(_target_date: date, request: RoutineRequest) -> dict[str,
     return {"trip_name": trip_name}
 
 
+def _trip_plan_placeholders(_target_date: date, request: RoutineRequest) -> dict[str, str]:
+    """Provide placeholders for the trip plan template."""
+    trip_name = request.trip_name or request.slug or request.trip_slug or ""
+    trip_dates = request.trip_dates or ""
+    return {"trip_name": trip_name, "trip_dates": trip_dates}
+
+
 def _meeting_target_factory(suffix: str) -> TargetPathFn:
     """Build a target path function for meeting prep/debrief notes."""
 
@@ -148,6 +156,16 @@ def _trip_target_path(
     fallback = request.trip_name or f"trip-{target_date.isoformat()}"
     slug = _derive_slug(base_slug, fallback)
     return vault_root / "trips" / slug / "debrief.md"
+
+
+def _trip_plan_target_path(
+    target_date: date, vault_root: Path, request: RoutineRequest, _project: str
+) -> Path:
+    """Build the vault path for a trip plan note."""
+    base_slug = request.trip_slug or request.slug
+    fallback = request.trip_name or f"trip-{target_date.isoformat()}"
+    slug = _derive_slug(base_slug, fallback)
+    return vault_root / "trips" / slug / "plan.md"
 
 
 def _collect_retrieval(
@@ -327,6 +345,19 @@ ROUTINE_ACTIONS: dict[str, RoutineAction] = {
         overwrite_warning="Existing trip debrief note was overwritten.",
         placeholder_fn=_trip_placeholders,
     ),
+    "trip-plan": RoutineAction(
+        name="trip-plan",
+        template=TRIP_PLAN_TEMPLATE,
+        source_tag="routine/trip-plan",
+        queries=(
+            RoutineQuery(name="previous_trips", query="trip learnings"),
+            RoutineQuery(name="destination_notes", query="destination travel"),
+            RoutineQuery(name="packing_lists", query="packing checklist"),
+        ),
+        target_path_fn=_trip_plan_target_path,
+        overwrite_warning="Existing trip plan note was overwritten.",
+        placeholder_fn=_trip_plan_placeholders,
+    ),
 }
 
 
@@ -440,3 +471,9 @@ def new_decision(request: RoutineRequest) -> RoutineResponse:
 def trip_debrief(request: RoutineRequest) -> RoutineResponse:
     """Write a trip debrief note seeded from trip-related context."""
     return _run_routine(ROUTINE_ACTIONS["trip-debrief"], request)
+
+
+@router.post("/routines/trip-plan", response_model=RoutineResponse)
+def trip_plan(request: RoutineRequest) -> RoutineResponse:
+    """Write a trip plan note seeded from previous trip learnings and packing lists."""
+    return _run_routine(ROUTINE_ACTIONS["trip-plan"], request)

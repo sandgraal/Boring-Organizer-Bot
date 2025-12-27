@@ -56,6 +56,13 @@
       description:
         "Turn travel notes into reusable lessons, checklists, and recipes.",
     },
+    {
+      id: "trip-plan",
+      label: "Trip Plan",
+      cadence: "Trip",
+      description:
+        "Prepare for a new trip with logistics, packing lists, and prior learnings.",
+    },
   ];
 
   const NOTE_TEMPLATES = [
@@ -99,6 +106,15 @@
       label: "Trip Debrief",
       pathTemplate: "trips/trip-{{date}}/debrief.md",
       fields: [{ key: "trip_name", label: "Trip name", type: "text" }],
+    },
+    {
+      id: "trip-plan",
+      label: "Trip Plan",
+      pathTemplate: "trips/trip-{{date}}/plan.md",
+      fields: [
+        { key: "trip_name", label: "Trip name", type: "text" },
+        { key: "trip_dates", label: "Trip dates", type: "text" },
+      ],
     },
     {
       id: "experiment",
@@ -273,6 +289,7 @@
     elements.routineDecisionSlug = document.getElementById("routine-decision-slug");
     elements.routineTripName = document.getElementById("routine-trip-name");
     elements.routineTripSlug = document.getElementById("routine-trip-slug");
+    elements.routineTripDates = document.getElementById("routine-trip-dates");
     elements.routineFieldLabels = document.querySelectorAll(".routine-field");
     elements.routineStatus = document.getElementById("routine-status");
     elements.routineWarnings = document.getElementById("routine-warnings");
@@ -1119,6 +1136,12 @@
       const tripSlug = elements.routineTripSlug?.value.trim();
       if (tripSlug) {
         payload.trip_slug = tripSlug;
+      }
+    }
+    if (!("trip_dates" in payload) && isRoutineFieldVisible(elements.routineTripDates)) {
+      const tripDates = elements.routineTripDates?.value.trim();
+      if (tripDates) {
+        payload.trip_dates = tripDates;
       }
     }
     return payload;

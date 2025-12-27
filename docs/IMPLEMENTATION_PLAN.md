@@ -555,20 +555,20 @@ These are explicit non-goals to avoid scope creep:
 
 2. **New Note Workflow**
 
-   - [ ] "New note" UI action writes template into vault
-   - [ ] Local-first file creation only (no cloud)
-   - [ ] Template variables (date, project) expanded on creation
+   - [x] "New note" UI action writes template into vault
+   - [x] Local-first file creation only (no cloud)
+   - [x] Template variables (date, project) expanded on creation
 
 3. **Capture Linter**
-   - [ ] Flag "Decision without rationale"
-   - [ ] Flag "Decision missing rejected options"
-   - [ ] Surface lint warnings in UI and API
+   - [x] Flag "Decision without rationale"
+   - [x] Flag "Decision missing rejected options"
+   - [x] Surface lint warnings in UI and API
 
 ### Acceptance Criteria
 
 - [x] Templates ship in repo (UI selection beyond routines pending)
-- [ ] New note writes file to configured vault path
-- [ ] Linter flags missing required sections with low false positives
+- [x] New note writes file to configured vault path
+- [x] Linter flags missing required sections with low false positives
 
 ### Test Plan
 

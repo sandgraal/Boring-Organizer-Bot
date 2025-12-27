@@ -165,8 +165,9 @@ class RoutineRequest(BaseModel):
     participants: list[str] | None = Field(
         None, description="Participant names used to populate meeting templates"
     )
-    trip_name: str | None = Field(None, description="Trip label used in the trip debrief template")
+    trip_name: str | None = Field(None, description="Trip label used in trip templates")
     trip_slug: str | None = Field(None, description="Slug override for trip-related vault paths")
+    trip_dates: str | None = Field(None, description="Date range for trip plans (e.g., 2025-03-01 - 2025-03-10)")
     decision_slug: str | None = Field(None, description="Slug override for decision captures")
     title: str | None = Field(
         None, description="Optional title or topic associated with this routine"
