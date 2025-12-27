@@ -128,37 +128,46 @@ You need to install Python and some other tools.
             assert isinstance(section.locator_value["end_line"], int)
 
 
+def _can_import_pypdf() -> bool:
+    """Check if pypdf can be imported without cryptography/Rust panics."""
+    import subprocess
+    import sys
+
+    # Use subprocess to avoid pyo3 panics affecting the test process
+    result = subprocess.run(
+        [sys.executable, "-c", "from pypdf import PdfWriter"],
+        capture_output=True,
+        timeout=5,
+    )
+    return result.returncode == 0
+
+
 class TestPDFParserConsistency:
     """Test PDF parser produces consistent locators."""
 
+    @pytest.mark.skipif(not _can_import_pypdf(), reason="pypdf not available or cryptography issue")
     def test_page_locators_valid(self, tmp_path: Path):
         """PDF parser produces valid page locators."""
-        # Create a minimal PDF for testing
-        # We'll need to check if we have pypdf available
-        try:
-            from pypdf import PdfWriter
+        from pypdf import PdfWriter
 
-            pdf_file = tmp_path / "test.pdf"
-            writer = PdfWriter()
-            writer.add_blank_page(width=612, height=792)  # Letter size
+        pdf_file = tmp_path / "test.pdf"
+        writer = PdfWriter()
+        writer.add_blank_page(width=612, height=792)  # Letter size
 
-            # Write PDF
-            with open(pdf_file, "wb") as f:
-                writer.write(f)
+        # Write PDF
+        with open(pdf_file, "wb") as f:
+            writer.write(f)
 
-            parser = get_parser(pdf_file)
-            if parser is None:
-                pytest.skip("PDF parser not available")
+        parser = get_parser(pdf_file)
+        if parser is None:
+            pytest.skip("PDF parser not available")
 
-            doc = parser.parse(pdf_file)
+        doc = parser.parse(pdf_file)
 
-            # PDF may have no sections if blank, but should still validate
-            if doc.sections:
-                errors = validate_document(doc)
-                assert errors == [], f"Validation errors: {errors}"
-
-        except ImportError:
-            pytest.skip("pypdf not installed")
+        # PDF may have no sections if blank, but should still validate
+        if doc.sections:
+            errors = validate_document(doc)
+            assert errors == [], f"Validation errors: {errors}"
 
 
 class TestWordParserConsistency:

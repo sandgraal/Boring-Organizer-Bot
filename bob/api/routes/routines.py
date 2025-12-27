@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
@@ -16,6 +15,7 @@ from bob.api.utils import convert_result_to_source
 from bob.api.write_permissions import ensure_allowed_write_path, ensure_scope_level
 from bob.config import get_config
 from bob.retrieval.search import search
+from bob.utils import slugify
 
 router = APIRouter()
 
@@ -72,10 +72,7 @@ def _resolve_date_before(target_date: date, offset: timedelta | None) -> datetim
 
 def _slugify_component(value: str) -> str:
     """Normalize a string into a filesystem-safe slug."""
-    normalized = value.strip().lower()
-    slug = re.sub(r"[^a-z0-9]+", "-", normalized)
-    slug = re.sub(r"-{2,}", "-", slug)
-    return slug.strip("-")
+    return slugify(value)
 
 
 def _derive_slug(candidate: str | None, fallback: str) -> str:

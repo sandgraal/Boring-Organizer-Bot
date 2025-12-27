@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import date as DateType
 from datetime import datetime
 from pathlib import Path
@@ -24,18 +23,25 @@ from bob.api.write_permissions import (
 )
 from bob.config import get_config
 from bob.ingest.bookmarks import parse_bookmarks_file
+from bob.utils import slugify
 
 router = APIRouter()
 
 
 def _slugify(value: str) -> str:
-    normalized = value.strip().lower()
-    slug = re.sub(r"[^a-z0-9]+", "-", normalized)
-    slug = re.sub(r"-{2,}", "-", slug)
-    return slug.strip("-") or "untitled"
+    """Normalize text into a filesystem-safe slug."""
+    return slugify(value, fallback="untitled")
 
 
 def _format_date(value: DateType | datetime | None) -> str:
+    """Format a date value as ISO date string.
+
+    Args:
+        value: Date, datetime, or None.
+
+    Returns:
+        ISO date string (YYYY-MM-DD), defaults to today if None.
+    """
     if isinstance(value, datetime):
         return value.date().isoformat()
     if isinstance(value, DateType):
@@ -44,6 +50,14 @@ def _format_date(value: DateType | datetime | None) -> str:
 
 
 def _frontmatter(metadata: dict[str, Any]) -> str:
+    """Generate YAML frontmatter block from metadata dict.
+
+    Args:
+        metadata: Key-value pairs for frontmatter.
+
+    Returns:
+        YAML frontmatter string with --- delimiters.
+    """
     lines = ["---"]
     for key, raw_value in metadata.items():
         if raw_value is None:
@@ -55,6 +69,17 @@ def _frontmatter(metadata: dict[str, Any]) -> str:
 
 
 def _ensure_unique_path(path: Path) -> Path:
+    """Ensure a file path is unique by appending numeric suffixes if needed.
+
+    Args:
+        path: Desired file path.
+
+    Returns:
+        The original path if available, or a modified path with numeric suffix.
+
+    Raises:
+        HTTPException: If unable to find unique path after 1000 attempts.
+    """
     if not path.exists():
         return path
     stem = path.stem
@@ -75,6 +100,19 @@ def _render_bookmark_note(
     language: str,
     entry_date: DateType | datetime | None,
 ) -> str:
+    """Render a markdown note for a saved bookmark.
+
+    Args:
+        title: Bookmark title.
+        url: Bookmark URL.
+        folder: Browser folder path (optional).
+        project: Project tag for the note.
+        language: Language code.
+        entry_date: Date of the bookmark.
+
+    Returns:
+        Formatted markdown content with frontmatter.
+    """
     frontmatter = _frontmatter(
         {
             "project": project,
@@ -111,6 +149,19 @@ def _render_highlight_note(
     language: str,
     entry_date: DateType | datetime | None,
 ) -> str:
+    """Render a markdown note for a text highlight/excerpt.
+
+    Args:
+        title: Title for the highlight.
+        text: The highlighted text content.
+        source_url: URL where text was highlighted (optional).
+        project: Project tag for the note.
+        language: Language code.
+        entry_date: Date of the highlight.
+
+    Returns:
+        Formatted markdown content with frontmatter.
+    """
     frontmatter = _frontmatter(
         {
             "project": project,
@@ -147,6 +198,20 @@ def _write_connector_note(
     target_path: Path,
     content: str,
 ) -> None:
+    """Write a connector note after verifying permissions.
+
+    Checks that browser_saves connector is enabled, scope level is sufficient,
+    and target path is allowed before writing the content.
+
+    Args:
+        action_name: Name of the connector action (for error messages).
+        project: Project tag for permission checks.
+        target_path: File path to write.
+        content: Markdown content to write.
+
+    Raises:
+        HTTPException: If connector disabled, scope insufficient, or path not allowed.
+    """
     config = get_config()
     ensure_connector_enabled("browser_saves", action_name, project, target_path, config)
     ensure_scope_level(

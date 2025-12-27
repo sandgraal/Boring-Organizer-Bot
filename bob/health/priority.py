@@ -24,8 +24,10 @@ def invert_priority(bucket: int, *, min_value: int = 1, max_value: int = 5) -> i
     return max_value + min_value - bucket
 
 
-def priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) -> int:
-    """Convert a ratio (0.0-1.0) into a 1-5 priority bucket.
+def priority_from_ratio(
+    value: float, scale: int = 10, *, min_value: int = 1, max_value: int = 5
+) -> int:
+    """Convert a ratio (0.0-1.0) into a priority bucket.
 
     Higher ratios indicate more severe issues and result in higher priority
     (lower numbers). For example, a 30% not-found rate is more urgent than 10%.
@@ -34,13 +36,14 @@ def priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) ->
         value: A ratio between 0.0 and 1.0.
         scale: Scaling factor for bucket calculation (default 10).
         min_value: Minimum bucket value before inversion (default 1).
+        max_value: Maximum bucket value (default 5).
 
     Returns:
-        Priority bucket from 1 (highest) to 5 (lowest).
+        Priority bucket from min_value (highest) to max_value (lowest).
     """
     normalized = max(0.0, min(1.0, value))
-    bucket = max(min_value, min(5, int(normalized * scale) or min_value))
-    return invert_priority(bucket, min_value=min_value, max_value=5)
+    bucket = max(min_value, min(max_value, int(normalized * scale) or min_value))
+    return invert_priority(bucket, min_value=min_value, max_value=max_value)
 
 
 def priority_from_count(value: int, *, min_value: int = 1, max_value: int = 5) -> int:
