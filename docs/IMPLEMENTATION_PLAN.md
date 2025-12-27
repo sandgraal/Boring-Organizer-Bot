@@ -774,7 +774,7 @@ These are explicit non-goals to avoid scope creep:
 4. **Date Confidence Logic**
 
    - [x] Parse dates from document content (not just file metadata)
-   - [ ] Detect "as of" and "updated" statements
+   - [x] Detect "as of" and "updated" statements
    - [ ] Inherit date from parent document for sub-sections
    - [x] Add `--max-age` filter to search
 
@@ -840,8 +840,8 @@ These are explicit non-goals to avoid scope creep:
    - [x] Rejected alternatives (what was not chosen and why)
    - [x] Status: `active`, `superseded`, `deprecated`
    - [x] Superseded by (link to replacement decision)
-   - [ ] Supersession chronology view (chain display)
-   - [ ] Review cadence view (manual): filter by age + project
+   - [x] Supersession chronology view (chain display)
+   - [x] Review cadence view (manual): filter by age + project
    - [x] Source chunk ID (for citation back to original)
 
 3. **CLI Commands**
@@ -860,8 +860,8 @@ These are explicit non-goals to avoid scope creep:
 ### Acceptance Criteria
 
 - [x] Decision states include active/superseded/deprecated
-- [ ] Superseded decisions link to replacements with chronology
-- [ ] Review cadence view lists older decisions by project
+- [x] Superseded decisions link to replacements with chronology
+- [x] Review cadence view lists older decisions by project
 - [ ] Search can filter by decision lifecycle state
 
 ### Test Plan

@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from bob.extract.decisions import (
     StoredDecision,
     get_decision,
+    get_decisions,
     get_decisions_superseded_by,
     get_supersession_chain,
 )
@@ -46,6 +47,17 @@ class DecisionHistoryResponse(BaseModel):
     )
 
 
+class DecisionListResponse(BaseModel):
+    """Response for GET /decisions."""
+
+    decisions: list[DecisionDetail]
+    total: int
+    filters: dict[str, str | int | None] = Field(
+        default_factory=dict,
+        description="Applied filters for reference",
+    )
+
+
 router = APIRouter()
 
 
@@ -64,6 +76,49 @@ def _to_detail(d: StoredDecision) -> DecisionDetail:
         extracted_at=d.extracted_at,
         source_path=d.source_path,
         project=d.project,
+    )
+
+
+@router.get("/decisions", response_model=DecisionListResponse)
+def list_decisions(
+    project: str | None = Query(None, description="Filter by project"),
+    status: str | None = Query(
+        None, description="Filter by status (active, superseded, deprecated)"
+    ),
+    older_than_days: int | None = Query(
+        None, description="Filter decisions older than N days (for review cadence)"
+    ),
+    limit: int = Query(100, ge=1, le=500, description="Maximum results"),
+) -> DecisionListResponse:
+    """List decisions with optional filters.
+
+    Supports filtering by project, status, and age for review cadence workflows.
+
+    Args:
+        project: Filter by project name.
+        status: Filter by status (active, superseded, deprecated).
+        older_than_days: Filter decisions older than this many days.
+        limit: Maximum number of results.
+
+    Returns:
+        List of decisions matching the filters.
+    """
+    decisions = get_decisions(
+        project=project,
+        status=status,
+        older_than_days=older_than_days,
+        limit=limit,
+    )
+
+    return DecisionListResponse(
+        decisions=[_to_detail(d) for d in decisions],
+        total=len(decisions),
+        filters={
+            "project": project,
+            "status": status,
+            "older_than_days": older_than_days,
+            "limit": limit,
+        },
     )
 
 

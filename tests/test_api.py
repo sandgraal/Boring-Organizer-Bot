@@ -1657,3 +1657,84 @@ class TestDecisionsEndpoint:
         assert len(data["successors"]) == 1
         assert data["successors"][0]["id"] == 2
         assert data["predecessors"] == []
+
+    def test_list_decisions_returns_list(self, client: TestClient):
+        """GET /decisions returns list of decisions."""
+        from bob.extract.decisions import StoredDecision
+
+        decision1 = StoredDecision(
+            id=1,
+            chunk_id=5,
+            decision_text="Use SQLite",
+            context="Database choice",
+            decision_type="technical",
+            status="active",
+            superseded_by=None,
+            decision_date=datetime(2025, 1, 1),
+            confidence=0.9,
+            extracted_at=datetime(2025, 1, 1),
+            source_path="/docs/adr-001.md",
+            project="infra",
+        )
+
+        decision2 = StoredDecision(
+            id=2,
+            chunk_id=10,
+            decision_text="Use PostgreSQL",
+            context="Database upgrade",
+            decision_type="technical",
+            status="active",
+            superseded_by=None,
+            decision_date=datetime(2025, 2, 1),
+            confidence=0.85,
+            extracted_at=datetime(2025, 2, 1),
+            source_path="/docs/adr-002.md",
+            project="infra",
+        )
+
+        with patch("bob.api.routes.decisions.get_decisions", return_value=[decision1, decision2]):
+            response = client.get("/decisions")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        assert len(data["decisions"]) == 2
+        assert data["decisions"][0]["id"] == 1
+        assert data["decisions"][1]["id"] == 2
+        assert data["filters"]["project"] is None
+        assert data["filters"]["status"] is None
+
+    def test_list_decisions_with_filters(self, client: TestClient):
+        """GET /decisions supports project and status filters."""
+        from bob.extract.decisions import StoredDecision
+
+        decision = StoredDecision(
+            id=1,
+            chunk_id=5,
+            decision_text="Use SQLite",
+            context="Database choice",
+            decision_type="technical",
+            status="active",
+            superseded_by=None,
+            decision_date=datetime(2025, 1, 1),
+            confidence=0.9,
+            extracted_at=datetime(2025, 1, 1),
+            source_path="/docs/adr-001.md",
+            project="infra",
+        )
+
+        with patch("bob.api.routes.decisions.get_decisions", return_value=[decision]) as mock_get:
+            response = client.get("/decisions?project=infra&status=active&older_than_days=30")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["filters"]["project"] == "infra"
+        assert data["filters"]["status"] == "active"
+        assert data["filters"]["older_than_days"] == 30
+        mock_get.assert_called_once_with(
+            project="infra",
+            status="active",
+            older_than_days=30,
+            limit=100,
+        )
