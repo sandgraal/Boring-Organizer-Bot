@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import platform
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -94,16 +95,11 @@ def _get_editor_command(editor: str | None, file_path: str, line: int | None) ->
 
 
 def _command_exists(cmd: str) -> bool:
-    """Check if a command exists in PATH."""
-    try:
-        subprocess.run(
-            ["which", cmd],
-            capture_output=True,
-            check=True,
-        )
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return False
+    """Check if a command exists in PATH.
+
+    Uses shutil.which() for cross-platform compatibility.
+    """
+    return shutil.which(cmd) is not None
 
 
 @router.post("/open", response_model=OpenResponse)
