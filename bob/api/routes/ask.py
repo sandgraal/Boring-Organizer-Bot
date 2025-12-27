@@ -5,18 +5,35 @@ from __future__ import annotations
 import re
 import time
 import uuid
+from collections.abc import Sequence
 
 from fastapi import APIRouter, HTTPException
 
 from bob.answer.audit import build_audit_payload
 from bob.answer.constants import NOT_FOUND_MESSAGE
-from bob.api.schemas import AskFooter, AskRequest, AskResponse
+from bob.api.schemas import AskFooter, AskRequest, AskResponse, CoachSuggestion
 from bob.api.utils import compute_overall_confidence, convert_result_to_source
 from bob.coach.engine import generate_coach_suggestions
-from bob.db.database import get_database
+from bob.db.database import Database, get_database
 from bob.retrieval.search import search
 
 router = APIRouter()
+
+
+def _log_suggestions(
+    db: Database,
+    suggestions: Sequence[CoachSuggestion],
+    default_project: str | None,
+) -> None:
+    """Log coach suggestions as shown for cooldown tracking."""
+    for suggestion in suggestions:
+        suggestion_project = suggestion.project or default_project or "all"
+        db.log_coach_suggestion(
+            project=suggestion_project,
+            suggestion_type=suggestion.type,
+            suggestion_fingerprint=suggestion.id,
+            was_shown=True,
+        )
 
 
 def _resolve_coach_mode(
@@ -104,14 +121,7 @@ def ask_query(request: AskRequest) -> AskResponse:
             db=db,
             override_cooldown=request.coach_show_anyway,
         )
-        for suggestion in suggestions:
-            suggestion_project = suggestion.project or project or "all"
-            db.log_coach_suggestion(
-                project=suggestion_project,
-                suggestion_type=suggestion.type,
-                suggestion_fingerprint=suggestion.id,
-                was_shown=True,
-            )
+        _log_suggestions(db, suggestions, project)
         return AskResponse(
             answer=None,
             answer_id=answer_id,
@@ -150,14 +160,7 @@ def ask_query(request: AskRequest) -> AskResponse:
         db=db,
         override_cooldown=request.coach_show_anyway,
     )
-    for suggestion in suggestions:
-        suggestion_project = suggestion.project or project or "all"
-        db.log_coach_suggestion(
-            project=suggestion_project,
-            suggestion_type=suggestion.type,
-            suggestion_fingerprint=suggestion.id,
-            was_shown=True,
-        )
+    _log_suggestions(db, suggestions, project)
 
     return AskResponse(
         answer=answer,

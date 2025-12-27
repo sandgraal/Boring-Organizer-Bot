@@ -2,9 +2,9 @@
 
 > A phased roadmap for building a local-first, citation-grounded knowledge assistant with a beautiful interface.
 
-**Last Updated:** 2025-12-25  
-**Status:** Active  
-**Version:** 2.1.0
+**Last Updated:** 2025-12-27
+**Status:** Active
+**Version:** 2.2.0
 
 ---
 
@@ -161,7 +161,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Expose core functionality via a local HTTP API that the web UI will consume.
 
-### Status: 🔄 In Progress
+### Status: ✅ Complete
 
 ### Prerequisites
 
@@ -185,8 +185,8 @@ These are explicit non-goals to avoid scope creep:
    - [x] `GET /projects` — List all projects
    - [x] `GET /documents` — List documents with filters
    - [x] `POST /open` — Request to open file at locator (returns instruction)
-
-   > **Note:** `GET /decisions` and `GET /recipes` endpoints are Phase 5 features that require the Decision Layer to be implemented first.
+   - [x] `GET /decisions` — List decisions with filters (Phase 5)
+   - [x] `GET /decisions/{id}/history` — Decision supersession chain (Phase 5)
 
 3. **Response Format**
 
@@ -242,7 +242,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Ship a beautiful, citation-first local web UI that makes B.O.B accessible without CLI.
 
-### Status: 🔄 In Progress
+### Status: ✅ Complete
 
 ### Prerequisites
 

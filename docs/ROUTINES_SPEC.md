@@ -4,7 +4,7 @@
 
 > **Status:** In progress—routine endpoints and the UI Routines/Health pages are live, browser-saves connectors (bookmarks/highlights) are implemented, while lint-driven remediation and calendar connectors remain on the roadmap (see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md) for the implemented stack).
 
-**Last Updated:** 2025-12-25
+**Last Updated:** 2025-12-27
 
 ---
 
@@ -21,6 +21,7 @@ The following routine actions are exposed in the UI, wired to `/routines/<action
 | **Weekly Review** | `vault/routines/weekly/{{YYYY}}-W{{week}}.md` | Headings: `## Highlights`, `## Stale Decisions`, `## Actions for next week` with metadata `week_range` | Queries: `"weekly highlights"` + `"stale decisions"` + `"missing metadata"` | Routines panel renders the template and cited retrievals for the run. | Warns when a retrieval bucket is empty; warns on overwrite. |
 | **New Decision** | `vault/decisions/decision-{{slug}}.md` | Mandatory sections: `### Decision`, `### Context`, `### Evidence`, `### Rejected Options`, `### Next Actions`, optional `### Supersedes` | Queries: `"related decision sources"` + `"conflicting decisions"` | Routines panel renders the template and cited retrievals for the run. | Warns when a retrieval bucket is empty; warns on overwrite. |
 | **Trip Debrief** | `vault/trips/{{trip-slug}}/debrief.md` | Sections: `## Goals`, `## Learnings`, `## Checklist Seeds`, `## Follow-up` | Queries: `"trip notes"` (lookback 30 days) + `"trip recipes"` + `"trip open loops"` | Routines panel renders the template and cited retrievals for the run. | Warns when a retrieval bucket is empty; warns on overwrite. |
+| **Trip Plan** | `vault/trips/{{trip-slug}}/plan.md` | Front matter: `project`, `date`, `language`, `source: routine/trip-plan`, `trip_name`, `trip_dates`; sections: `## Purpose`, `## Destinations`, `## Logistics`, `## Packing`, `## Questions to Answer`, `## Open Loops` | Queries: `"trip learnings"` + `"destination travel"` + `"packing checklist"` (no date bounds) | Routines panel renders the template and cited retrievals for the run. | Warns when a retrieval bucket is empty; warns on overwrite. |
 
 Every routine response includes chunk IDs, similarity scores, and locator data (heading, lines, page) alongside the rendered note, ensuring evidence is citable and locatable. Retrievals run before the write, and empty retrieval buckets are surfaced as warnings in the response.
 
@@ -39,13 +40,15 @@ source: "template/<name>"
 
 Required templates:
 
-1. `daily.md` – Sections `## Morning Review`, `## Open Loops`, `## Today’s Focus`.
-2. `weekly.md` – Sections `## Highlights`, `## Stale Decisions`, `## Actions for Next Week` + `week_range` metadata.
-3. `meeting.md` – Sections `## Agenda`, `## Relevant Decisions`, `## Post-Meeting Decisions`, `## Next Actions`.
-4. `decision.md` – Sections `### Decision`, `### Context`, `### Evidence`, `### Rejected Options`, `### Next Actions`, optional `### Supersedes`.
-5. `experiment.md` – Sections `## Hypothesis`, `## Setup`, `## Results`, `## Learnings`.
-6. `recipe.md` – Sections `# Ingredients`, `# Steps`, `# Notes`, `# Source` with structured ingredient list.
-7. `trip.md` – Sections `## Goals`, `## Learnings`, `## Checklist Seeds`, `## Follow-up`.
+1. `daily.md` – Sections `## Morning Review`, `## Open Loops`, `## Today's Focus`.
+2. `daily-debrief.md` – Sections `## Wins`, `## Lessons`, `## Open Loops / Follow-ups`.
+3. `weekly.md` – Sections `## Highlights`, `## Stale Decisions`, `## Actions for Next Week` + `week_range` metadata.
+4. `meeting.md` – Sections `## Agenda`, `## Relevant Decisions`, `## Post-Meeting Decisions`, `## Next Actions`.
+5. `decision.md` – Sections `### Decision`, `### Context`, `### Evidence`, `### Rejected Options`, `### Next Actions`, optional `### Supersedes`.
+6. `experiment.md` – Sections `## Hypothesis`, `## Setup`, `## Results`, `## Learnings`.
+7. `recipe.md` – Sections `# Ingredients`, `# Steps`, `# Notes`, `# Source` with structured ingredient list.
+8. `trip.md` – Sections `## Goals`, `## Learnings`, `## Checklist Seeds`, `## Follow-up`.
+9. `trip-plan.md` – Sections `## Purpose`, `## Destinations`, `## Logistics`, `## Packing`, `## Questions to Answer`, `## Open Loops` + `trip_name`, `trip_dates` metadata.
 
 Templates can contain placeholder variables (project, date) that the API expands before writing. The routine APIs share the same rendering logic used by `POST /notes/create`.
 
