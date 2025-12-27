@@ -47,6 +47,29 @@ class StoredDecision:
     project: str | None = None
 
 
+def _row_to_stored_decision(row: Any) -> StoredDecision:
+    """Convert a database row into a StoredDecision."""
+    decision_date = None
+    if row["decision_date"]:
+        with contextlib.suppress(ValueError):
+            decision_date = datetime.fromisoformat(row["decision_date"])
+
+    return StoredDecision(
+        id=row["id"],
+        chunk_id=row["chunk_id"],
+        decision_text=row["decision_text"],
+        context=row["context"],
+        decision_type=row["decision_type"],
+        status=row["status"],
+        superseded_by=row["superseded_by"],
+        decision_date=decision_date,
+        confidence=row["confidence"],
+        extracted_at=datetime.fromisoformat(row["extracted_at"]),
+        source_path=row["source_path"],
+        project=row["project"],
+    )
+
+
 def extract_decisions_from_chunk(
     chunk_id: int,
     content: str,
@@ -267,29 +290,7 @@ def get_decisions(
 
     decisions: list[StoredDecision] = []
     for row in cursor.fetchall():
-        decision_date = None
-        if row["decision_date"]:
-            with contextlib.suppress(ValueError):
-                decision_date = datetime.fromisoformat(row["decision_date"])
-
-        extracted_at = datetime.fromisoformat(row["extracted_at"])
-
-        decisions.append(
-            StoredDecision(
-                id=row["id"],
-                chunk_id=row["chunk_id"],
-                decision_text=row["decision_text"],
-                context=row["context"],
-                decision_type=row["decision_type"],
-                status=row["status"],
-                superseded_by=row["superseded_by"],
-                decision_date=decision_date,
-                confidence=row["confidence"],
-                extracted_at=extracted_at,
-                source_path=row["source_path"],
-                project=row["project"],
-            )
-        )
+        decisions.append(_row_to_stored_decision(row))
 
     return decisions
 
@@ -332,25 +333,55 @@ def get_decision(decision_id: int) -> StoredDecision | None:
     if not row:
         return None
 
-    decision_date = None
-    if row["decision_date"]:
-        with contextlib.suppress(ValueError):
-            decision_date = datetime.fromisoformat(row["decision_date"])
+    return _row_to_stored_decision(row)
 
-    return StoredDecision(
-        id=row["id"],
-        chunk_id=row["chunk_id"],
-        decision_text=row["decision_text"],
-        context=row["context"],
-        decision_type=row["decision_type"],
-        status=row["status"],
-        superseded_by=row["superseded_by"],
-        decision_date=decision_date,
-        confidence=row["confidence"],
-        extracted_at=datetime.fromisoformat(row["extracted_at"]),
-        source_path=row["source_path"],
-        project=row["project"],
+
+def get_decisions_superseded_by(decision_id: int) -> list[StoredDecision]:
+    """Get decisions directly superseded by the given decision."""
+    db = get_database()
+    cursor = db.conn.execute(
+        """
+        SELECT
+            dec.id,
+            dec.chunk_id,
+            dec.decision_text,
+            dec.context,
+            dec.decision_type,
+            dec.status,
+            dec.superseded_by,
+            dec.decision_date,
+            dec.confidence,
+            dec.extracted_at,
+            d.source_path,
+            d.project
+        FROM decisions dec
+        JOIN chunks c ON dec.chunk_id = c.id
+        JOIN documents d ON c.document_id = d.id
+        WHERE dec.superseded_by = ?
+        ORDER BY COALESCE(dec.decision_date, dec.extracted_at) ASC
+        """,
+        (decision_id,),
     )
+    return [_row_to_stored_decision(row) for row in cursor.fetchall()]
+
+
+def get_supersession_chain(decision_id: int, *, max_depth: int = 10) -> list[StoredDecision]:
+    """Return the supersession chain starting at the given decision."""
+    chain: list[StoredDecision] = []
+    seen: set[int] = set()
+    current_id: int | None = decision_id
+
+    while current_id is not None and len(chain) < max_depth:
+        if current_id in seen:
+            break
+        decision = get_decision(current_id)
+        if not decision:
+            break
+        chain.append(decision)
+        seen.add(current_id)
+        current_id = decision.superseded_by
+
+    return chain
 
 
 def supersede_decision(old_id: int, new_id: int, reason: str | None = None) -> bool:  # noqa: ARG001
