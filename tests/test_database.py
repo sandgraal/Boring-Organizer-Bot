@@ -526,3 +526,91 @@ class TestDecisionStorage:
 
         decisions = get_decisions()
         assert len(decisions) == 0
+
+
+class TestSQLInjectionProtection:
+    """Tests for SQL injection protection."""
+
+    def test_is_valid_identifier_accepts_valid_names(self, test_db):
+        """Test that valid identifiers are accepted."""
+        assert test_db._is_valid_identifier("documents")
+        assert test_db._is_valid_identifier("_private_table")
+        assert test_db._is_valid_identifier("table_123")
+        assert test_db._is_valid_identifier("CamelCase")
+        assert test_db._is_valid_identifier("snake_case_name")
+
+    def test_is_valid_identifier_rejects_invalid_names(self, test_db):
+        """Test that invalid identifiers are rejected."""
+        # Empty string
+        assert not test_db._is_valid_identifier("")
+
+        # Starts with digit
+        assert not test_db._is_valid_identifier("123table")
+
+        # Reserved sqlite_ prefix
+        assert not test_db._is_valid_identifier("sqlite_master")
+        assert not test_db._is_valid_identifier("sqlite_temp")
+
+        # Contains special characters
+        assert not test_db._is_valid_identifier("table; DROP TABLE users--")
+        assert not test_db._is_valid_identifier("table'OR'1'='1")
+        assert not test_db._is_valid_identifier("table-name")
+        assert not test_db._is_valid_identifier("table.name")
+        assert not test_db._is_valid_identifier("table name")
+        assert not test_db._is_valid_identifier("table*")
+
+    def test_column_exists_rejects_malicious_table_name(self, test_db):
+        """Test that _column_exists rejects SQL injection attempts."""
+        import pytest
+
+        # Try various SQL injection patterns
+        with pytest.raises(ValueError, match="Invalid table name"):
+            test_db._column_exists("documents; DROP TABLE users--", "id")
+
+        with pytest.raises(ValueError, match="Invalid table name"):
+            test_db._column_exists("documents' OR '1'='1", "id")
+
+        with pytest.raises(ValueError, match="Invalid table name"):
+            test_db._column_exists("documents); DELETE FROM chunks; --", "id")
+
+        with pytest.raises(ValueError, match="Invalid table name"):
+            test_db._column_exists("", "id")
+
+    def test_column_exists_works_with_valid_table(self, test_db):
+        """Test that _column_exists works correctly with valid table names."""
+        # Test with existing table and column
+        assert test_db._column_exists("documents", "id")
+        assert test_db._column_exists("documents", "source_path")
+
+        # Test with non-existent column
+        assert not test_db._column_exists("documents", "nonexistent_column")
+
+    def test_create_vec_table_validates_dimension(self, test_db):
+        """Test that _create_vec_table validates dimension parameter."""
+        from unittest.mock import patch
+
+        import pytest
+
+        # Test with invalid dimension: negative number
+        with patch("bob.db.database.get_config") as mock_get_config:
+            mock_config = mock_get_config.return_value
+            mock_config.embedding.dimension = -1
+
+            with pytest.raises(ValueError, match="Invalid embedding dimension"):
+                test_db._create_vec_table()
+
+        # Test with invalid dimension: zero
+        with patch("bob.db.database.get_config") as mock_get_config:
+            mock_config = mock_get_config.return_value
+            mock_config.embedding.dimension = 0
+
+            with pytest.raises(ValueError, match="Invalid embedding dimension"):
+                test_db._create_vec_table()
+
+        # Test with invalid dimension: string (not an integer)
+        with patch("bob.db.database.get_config") as mock_get_config:
+            mock_config = mock_get_config.return_value
+            mock_config.embedding.dimension = "384"
+
+            with pytest.raises(ValueError, match="Invalid embedding dimension"):
+                test_db._create_vec_table()
