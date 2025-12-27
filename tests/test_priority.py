@@ -40,6 +40,37 @@ class TestInvertPriority:
 class TestPriorityFromRatio:
     """Tests for priority_from_ratio function."""
 
+    def test_min_value_greater_than_one_clamps_and_inverts(self) -> None:
+        """Non-default min_value is respected, including clamping and inversion."""
+        min_value = 2
+        max_value = 6
+
+        # Very low ratio should map near the worst priority and stay within bounds.
+        low_ratio_priority = priority_from_ratio(1, 100, min_value=min_value, max_value=max_value)
+        assert min_value <= low_ratio_priority <= max_value
+
+        # Very high ratio should map near the best priority and stay within bounds.
+        high_ratio_priority = priority_from_ratio(99, 100, min_value=min_value, max_value=max_value)
+        assert min_value <= high_ratio_priority <= max_value
+
+        # Inversion: lower ratios should yield worse (numerically higher) priorities.
+        assert low_ratio_priority >= high_ratio_priority
+
+    def test_min_value_greater_than_one_extreme_clamping(self) -> None:
+        """Ratios beyond the expected range are clamped for non-default min_value."""
+        min_value = 2
+        max_value = 6
+
+        # A ratio of 0 should clamp to the worst priority in range.
+        zero_ratio_priority = priority_from_ratio(0, 10, min_value=min_value, max_value=max_value)
+        assert zero_ratio_priority == max_value
+
+        # Ratios >= 1 should clamp to the best priority in range.
+        full_ratio_priority = priority_from_ratio(10, 10, min_value=min_value, max_value=max_value)
+        overfull_ratio_priority = priority_from_ratio(20, 10, min_value=min_value, max_value=max_value)
+        assert full_ratio_priority == min_value
+        assert overfull_ratio_priority == min_value
+
     def test_max_ratio_highest_priority(self) -> None:
         """100% ratio yields highest priority (1)."""
         assert priority_from_ratio(1.0) == 1
