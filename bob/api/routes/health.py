@@ -193,7 +193,7 @@ def _build_fix_queue_tasks(
         )
 
     for repeated in metrics.get("repeated_questions", []):
-        hashed = hashlib.sha1(repeated["question"].encode("utf-8")).hexdigest()[:10]
+        hashed = hashlib.sha256(repeated["question"].encode("utf-8")).hexdigest()[:10]
         repeated_project = repeated.get("project") or project
         tasks.append(
             FixQueueTask(
@@ -237,7 +237,7 @@ def _build_fix_queue_tasks(
             reason = f"Permission denial for '{action_name}' writing to {target_path}"
             priority = 3
 
-        task_id = hashlib.sha1(f"{reason_code}:{action_name}:{target_path}".encode()).hexdigest()[
+        task_id = hashlib.sha256(f"{reason_code}:{action_name}:{target_path}".encode()).hexdigest()[
             :10
         ]
         tasks.append(
@@ -258,7 +258,7 @@ def _build_lint_tasks(lint_issues: list[LintIssue]) -> list[FixQueueTask]:
     """Create Fix Queue tasks from capture lint issues."""
     tasks: list[FixQueueTask] = []
     for issue in lint_issues:
-        task_hash = hashlib.sha1(f"{issue.code}:{issue.file_path}".encode()).hexdigest()[:10]
+        task_hash = hashlib.sha256(f"{issue.code}:{issue.file_path}".encode()).hexdigest()[:10]
         action = "fix_metadata" if issue.code == "missing_metadata" else "fix_capture"
         tasks.append(
             FixQueueTask(
@@ -372,7 +372,7 @@ def _build_ingestion_tasks(errors: list[dict[str, Any]]) -> list[FixQueueTask]:
             continue
         seen.add(key)
         reason = _format_ingestion_task_reason(error_type, error.get("error_message"))
-        task_hash = hashlib.sha1(f"{path}:{error_type}".encode()).hexdigest()[:10]
+        task_hash = hashlib.sha256(f"{path}:{error_type}".encode()).hexdigest()[:10]
         tasks.append(
             FixQueueTask(
                 id=f"ingest-{task_hash}",
