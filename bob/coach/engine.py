@@ -10,6 +10,15 @@ from dataclasses import dataclass
 from bob.api.schemas import CoachSuggestion, Source
 from bob.config import get_config
 from bob.db.database import Database
+from bob.health.priority import (
+    priority_from_count as _priority_from_count,
+)
+from bob.health.priority import (
+    priority_from_ratio as _priority_from_ratio,
+)
+from bob.health.priority import (
+    staleness_value as _staleness_value,
+)
 
 MIN_CITED_CHUNKS = 2
 MAX_SUGGESTIONS = 3
@@ -66,23 +75,6 @@ def _coverage_suggestion(project: str | None, why: str) -> SuggestionCandidate:
     )
 
 
-def _priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) -> int:
-    normalized = max(0.0, min(1.0, value))
-    bucket = max(min_value, min(5, int(normalized * scale) or min_value))
-    return 6 - bucket
-
-
-def _priority_from_count(value: int, *, min_value: int = 1, max_value: int = 5) -> int:
-    bucket = max(min_value, min(max_value, value))
-    return max_value + min_value - bucket
-
-
-def _staleness_value(buckets: list[dict[str, object]]) -> int:
-    if not buckets:
-        return 0
-    return int(buckets[0].get("count", 0))
-
-
 def _health_suggestion_candidates(
     *, db: Database, project: str | None
 ) -> list[tuple[int, SuggestionCandidate]]:
@@ -101,7 +93,7 @@ def _health_suggestion_candidates(
                     suggestion_type="health_not_found",
                     text=(
                         f"{percent:.1f}% of recent feedback entries were marked "
-                        "\"didn't answer\". Run a Daily Check-in to capture missing context."
+                        '"didn\'t answer". Run a Daily Check-in to capture missing context.'
                     ),
                     why="Feedback logs show unanswered questions.",
                     hypothesis=True,
@@ -139,9 +131,7 @@ def _health_suggestion_candidates(
     metadata_total = db.get_missing_metadata_total(project=project)
     if metadata_total > 0:
         metadata_deficits = db.get_documents_missing_metadata(limit=1, project=project)
-        metadata_target = (
-            str(metadata_deficits[0].get("source_path")) if metadata_deficits else ""
-        )
+        metadata_target = str(metadata_deficits[0].get("source_path")) if metadata_deficits else ""
         metadata_project = (
             str(metadata_deficits[0].get("project")).strip()
             if metadata_deficits and metadata_deficits[0].get("project")
@@ -255,9 +245,7 @@ def _health_suggestion_candidates(
     stale_notes = db.get_stale_document_buckets(
         buckets_days=staleness_buckets, source_type="markdown", project=project
     )
-    stale_decisions = db.get_stale_decision_buckets(
-        buckets_days=staleness_buckets, project=project
-    )
+    stale_decisions = db.get_stale_decision_buckets(buckets_days=staleness_buckets, project=project)
     notes_count = _staleness_value(stale_notes)
     decisions_count = _staleness_value(stale_decisions)
     if notes_count or decisions_count:
@@ -304,9 +292,7 @@ def _health_suggestion_candidates(
                     ),
                     why="Indexing errors reduce coverage.",
                     hypothesis=True,
-                    project=str(ingestion_project).strip()
-                    if ingestion_project
-                    else project,
+                    project=str(ingestion_project).strip() if ingestion_project else project,
                     action=ingestion_action,
                     target=ingestion_target or None,
                 ),
@@ -331,9 +317,7 @@ def _select_staleness_citations(sources: Iterable[Source]) -> list[Source]:
     return list(sources)[:1]
 
 
-def _staleness_suggestion(
-    sources: list[Source], project: str | None
-) -> SuggestionCandidate:
+def _staleness_suggestion(sources: list[Source], project: str | None) -> SuggestionCandidate:
     return SuggestionCandidate(
         suggestion_type="staleness",
         text="Consider re-checking this topic before acting on the answer.",
@@ -356,9 +340,7 @@ def _decision_without_rationale_sources(sources: list[Source]) -> list[Source]:
     return matches
 
 
-def _capture_hygiene_suggestion(
-    sources: list[Source], project: str | None
-) -> SuggestionCandidate:
+def _capture_hygiene_suggestion(sources: list[Source], project: str | None) -> SuggestionCandidate:
     citations = sources[:2]
     return SuggestionCandidate(
         suggestion_type="capture_hygiene",
@@ -450,18 +432,13 @@ def generate_coach_suggestions(
         if len(suggestions) >= MAX_SUGGESTIONS:
             break
 
-    if (
-        len(suggestions) < MAX_SUGGESTIONS
-        and _allow_health_suggestions(
-            not_found=not_found,
-            source_count=len(sources),
-            overall_confidence=overall_confidence,
-        )
+    if len(suggestions) < MAX_SUGGESTIONS and _allow_health_suggestions(
+        not_found=not_found,
+        source_count=len(sources),
+        overall_confidence=overall_confidence,
     ):
         health_candidates = _health_suggestion_candidates(db=db, project=project)
-        health_candidates.sort(
-            key=lambda item: (item[0], 0 if item[1].routine_action else 1)
-        )
+        health_candidates.sort(key=lambda item: (item[0], 0 if item[1].routine_action else 1))
         for _, candidate in health_candidates:
             if len(suggestions) >= MAX_SUGGESTIONS:
                 break

@@ -12,6 +12,15 @@ from bob.api.schemas import FailureSignal, FixQueueResponse, FixQueueTask
 from bob.config import get_config
 from bob.db.database import get_database
 from bob.health.lint import LintIssue, collect_capture_lint_issues
+from bob.health.priority import (
+    priority_from_count as _priority_from_count,
+)
+from bob.health.priority import (
+    priority_from_ratio as _priority_from_ratio,
+)
+from bob.health.priority import (
+    staleness_value as _staleness_value,
+)
 
 router = APIRouter()
 
@@ -36,24 +45,6 @@ def health_check() -> dict[str, str | int]:
         "database": db_status,
         "indexed_documents": stats.get("document_count", 0),
     }
-
-
-def _invert_priority(bucket: int, *, min_value: int = 1, max_value: int = 5) -> int:
-    """Invert a priority bucket so higher severity yields lower priority numbers."""
-    return max_value + min_value - bucket
-
-
-def _priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) -> int:
-    """Turn a ratio into a 1-5 priority bucket (1 is highest)."""
-    normalized = max(0.0, min(1.0, value))
-    bucket = max(min_value, min(5, int(normalized * scale) or min_value))
-    return _invert_priority(bucket, min_value=min_value, max_value=5)
-
-
-def _priority_from_count(value: int, *, min_value: int = 1, max_value: int = 5) -> int:
-    """Turn a count into a 1-5 priority bucket (1 is highest)."""
-    bucket = max(min_value, min(max_value, value))
-    return _invert_priority(bucket, min_value=min_value, max_value=max_value)
 
 
 def _format_permission_denial_details(metrics: dict[str, Any]) -> str:
@@ -139,9 +130,7 @@ def _format_ingestion_error_details(metrics: dict[str, Any]) -> str:
     recent = metrics.get("recent", [])
     if recent:
         preview = ", ".join(
-            Path(item["source_path"]).name
-            for item in recent[:3]
-            if item.get("source_path")
+            Path(item["source_path"]).name for item in recent[:3] if item.get("source_path")
         )
         if preview:
             detail = f"{detail}. Recent: {preview}"
@@ -168,13 +157,6 @@ def _priority_for_ingestion_error(error_type: str | None) -> int:
     if error_type == "oversize":
         return 3
     return 4
-
-
-def _staleness_value(buckets: list[dict[str, Any]]) -> int:
-    """Use the smallest bucket (most inclusive) count as the signal value."""
-    if not buckets:
-        return 0
-    return int(buckets[0]["count"])
 
 
 def _build_fix_queue_tasks(
@@ -441,9 +423,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     stale_notes = db.get_stale_document_buckets(
         buckets_days=staleness_buckets, source_type="markdown", project=project
     )
-    stale_decisions = db.get_stale_decision_buckets(
-        buckets_days=staleness_buckets, project=project
-    )
+    stale_decisions = db.get_stale_decision_buckets(buckets_days=staleness_buckets, project=project)
     ingestion_metrics = db.get_ingestion_error_metrics(
         project=project,
         window_hours=config.health.ingestion_error_window_hours,
