@@ -628,7 +628,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Provide a minimal MCP-compatible local tool server for agent ecosystems.
 
-### Status: 🔜 Not Started
+### Status: ✅ Complete
 
 ### Prerequisites
 
@@ -672,7 +672,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Add an optional, non-intrusive coaching layer that provides bounded suggestions without weakening grounded answers.
 
-### Status: 🔜 Not Started
+### Status: ✅ Complete
 
 ### Prerequisites
 
@@ -682,40 +682,40 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Mode + UX Controls**
 
-   - [ ] Default mode is **Boring B.O.B** (neutral, no unsolicited suggestions)
-   - [ ] Coach Mode is opt-in per session (Ask screen toggle)
-   - [ ] Persisted setting with per-project overrides
+   - [x] Default mode is **Boring B.O.B** (neutral, no unsolicited suggestions)
+   - [x] Coach Mode is opt-in per session (Ask screen toggle)
+   - [x] Persisted setting with per-project overrides
 
 2. **Suggestion Engine (Deterministic)**
 
-   - [ ] Generate suggestions from retrieval metadata, indexing stats, health signals, and decision gaps
-   - [ ] No LLM required for Phase 1; deterministic rules only
+   - [x] Generate suggestions from retrieval metadata, indexing stats, health signals, and decision gaps
+   - [x] No LLM required for Phase 1; deterministic rules only
    - [ ] Optional LLM-assisted phrasing later, post-filtered
 
 3. **Output Constraints**
 
-   - [ ] Suggestions never alter the grounded answer
-   - [ ] Suggestions appear only in a separate "Suggestions (Coach Mode)" section
-   - [ ] Max 3 suggestions, each with a "Why" line
+   - [x] Suggestions never alter the grounded answer
+   - [x] Suggestions appear only in a separate "Suggestions (Coach Mode)" section
+   - [x] Max 3 suggestions, each with a "Why" line
 
 4. **Gating + Cooldowns**
 
-   - [ ] Respect gating rules (low confidence, low source count, not-found)
-   - [ ] Cooldown per suggestion type per project (default 7 days)
+   - [x] Respect gating rules (low confidence, low source count, not-found)
+   - [x] Cooldown per suggestion type per project (default 7 days)
 
 5. **Storage**
 
-   - [ ] Persist user settings (global + per-project)
-   - [ ] Log suggestion fingerprints to prevent repeats
+   - [x] Persist user settings (global + per-project)
+   - [x] Log suggestion fingerprints to prevent repeats
 
 ### Acceptance Criteria
 
-- [ ] Coach Mode off yields zero suggestions
-- [ ] Coach Mode on shows suggestions in a separate section (max 3)
-- [ ] Suggestions never violate citation rules or alter base answer
-- [ ] "Not found in sources" answers only get coverage/capture suggestions
-- [ ] Cooldown prevents repeated suggestions within the configured window
-- [ ] Default mode remains Boring B.O.B across sessions and projects
+- [x] Coach Mode off yields zero suggestions
+- [x] Coach Mode on shows suggestions in a separate section (max 3)
+- [x] Suggestions never violate citation rules or alter base answer
+- [x] "Not found in sources" answers only get coverage/capture suggestions
+- [x] Cooldown prevents repeated suggestions within the configured window
+- [x] Default mode remains Boring B.O.B across sessions and projects
 
 ### Test Plan
 
@@ -737,10 +737,10 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] Coach Mode is opt-in with persisted per-project settings
-- [ ] Suggestions are bounded, deterministic, and citation-safe
-- [ ] Cooldowns prevent repeated prompts within 7 days
-- [ ] Documentation in COACH_MODE_SPEC.md complete
+- [x] Coach Mode is opt-in with persisted per-project settings
+- [x] Suggestions are bounded, deterministic, and citation-safe
+- [x] Cooldowns prevent repeated prompts within 7 days
+- [x] Documentation in COACH_MODE_SPEC.md complete
 
 ---
 
