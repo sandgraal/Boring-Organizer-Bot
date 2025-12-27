@@ -53,7 +53,6 @@ def _resolve_source_type(path: Path, parser: object | None) -> str | None:
 
 def _iter_indexable_files(path: Path) -> Iterator[Path]:
     """Yield files to index under a directory, respecting ignore rules."""
-
     try:
         for entry in path.iterdir():
             if should_ignore(entry):
@@ -68,7 +67,6 @@ def _iter_indexable_files(path: Path) -> Iterator[Path]:
 
 def count_indexable_targets(paths: list[Path | str]) -> int:
     """Estimate how many files/targets will be indexed."""
-
     total = 0
     for target in paths:
         target_str = normalize_git_url(str(target))

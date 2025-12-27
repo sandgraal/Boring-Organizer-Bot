@@ -110,7 +110,6 @@ class IndexJobManager:
 
     def set_stats(self, stats: dict[str, int]) -> None:
         """Store cumulative stats for the job."""
-
         with self._lock:
             if self._current_job:
                 self._current_job["stats"] = stats
