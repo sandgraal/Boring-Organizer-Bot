@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make check:*)",
+      "Bash(pip install:*)",
+      "Bash(python3 -m pip install:*)",
+      "Bash(if [ -d \".venv\" ])",
+      "Bash(then echo \"exists\")",
+      "Bash(else python3 -m venv .venv)",
+      "Bash(fi)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(ruff check:*)",
+      "Bash(pytest:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(bob index --help:*)",
+      "Bash(bob ask --help:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git push:*)",
+      "Bash(git checkout:*)"
+    ]
+  }
+}
