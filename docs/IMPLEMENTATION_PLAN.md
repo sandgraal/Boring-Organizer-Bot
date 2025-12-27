@@ -549,7 +549,7 @@ These are explicit non-goals to avoid scope creep:
    - [x] Decision
    - [x] Experiment / evaluation
    - [x] Trip debrief
-   - [ ] Trip plan
+   - [x] Trip plan
    - [x] Recipe (structured fields)
    - [x] Meeting / daily log
 
