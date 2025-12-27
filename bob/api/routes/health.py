@@ -12,6 +12,7 @@ from bob.api.schemas import FailureSignal, FixQueueResponse, FixQueueTask
 from bob.config import get_config
 from bob.db.database import get_database
 from bob.health.lint import LintIssue, collect_capture_lint_issues
+from bob.health.priority import priority_from_count, priority_from_ratio, staleness_value
 
 router = APIRouter()
 
@@ -36,24 +37,6 @@ def health_check() -> dict[str, str | int]:
         "database": db_status,
         "indexed_documents": stats.get("document_count", 0),
     }
-
-
-def _invert_priority(bucket: int, *, min_value: int = 1, max_value: int = 5) -> int:
-    """Invert a priority bucket so higher severity yields lower priority numbers."""
-    return max_value + min_value - bucket
-
-
-def _priority_from_ratio(value: float, scale: int = 10, *, min_value: int = 1) -> int:
-    """Turn a ratio into a 1-5 priority bucket (1 is highest)."""
-    normalized = max(0.0, min(1.0, value))
-    bucket = max(min_value, min(5, int(normalized * scale) or min_value))
-    return _invert_priority(bucket, min_value=min_value, max_value=5)
-
-
-def _priority_from_count(value: int, *, min_value: int = 1, max_value: int = 5) -> int:
-    """Turn a count into a 1-5 priority bucket (1 is highest)."""
-    bucket = max(min_value, min(max_value, value))
-    return _invert_priority(bucket, min_value=min_value, max_value=max_value)
 
 
 def _format_permission_denial_details(metrics: dict[str, Any]) -> str:
@@ -139,9 +122,7 @@ def _format_ingestion_error_details(metrics: dict[str, Any]) -> str:
     recent = metrics.get("recent", [])
     if recent:
         preview = ", ".join(
-            Path(item["source_path"]).name
-            for item in recent[:3]
-            if item.get("source_path")
+            Path(item["source_path"]).name for item in recent[:3] if item.get("source_path")
         )
         if preview:
             detail = f"{detail}. Recent: {preview}"
@@ -170,13 +151,6 @@ def _priority_for_ingestion_error(error_type: str | None) -> int:
     return 4
 
 
-def _staleness_value(buckets: list[dict[str, Any]]) -> int:
-    """Use the smallest bucket (most inclusive) count as the signal value."""
-    if not buckets:
-        return 0
-    return int(buckets[0]["count"])
-
-
 def _build_fix_queue_tasks(
     metrics: dict[str, Any],
     metadata_deficits: list[dict[str, Any]],
@@ -201,7 +175,7 @@ def _build_fix_queue_tasks(
                     f"{freq * 100:.1f}% of feedback entries "
                     f"from {project_label} were 'didn't answer'"
                 ),
-                priority=_priority_from_ratio(freq),
+                priority=priority_from_ratio(freq),
             )
         )
 
@@ -219,7 +193,7 @@ def _build_fix_queue_tasks(
         )
 
     for repeated in metrics.get("repeated_questions", []):
-        hashed = hashlib.sha1(repeated["question"].encode("utf-8")).hexdigest()[:10]
+        hashed = hashlib.sha256(repeated["question"].encode("utf-8")).hexdigest()[:10]
         repeated_project = repeated.get("project") or project
         tasks.append(
             FixQueueTask(
@@ -228,7 +202,7 @@ def _build_fix_queue_tasks(
                 target=repeated["question"],
                 project=repeated_project,
                 reason=f"Question repeated {repeated['count']} times in the last 48h",
-                priority=_priority_from_count(repeated["count"]),
+                priority=priority_from_count(repeated["count"]),
             )
         )
 
@@ -263,7 +237,7 @@ def _build_fix_queue_tasks(
             reason = f"Permission denial for '{action_name}' writing to {target_path}"
             priority = 3
 
-        task_id = hashlib.sha1(f"{reason_code}:{action_name}:{target_path}".encode()).hexdigest()[
+        task_id = hashlib.sha256(f"{reason_code}:{action_name}:{target_path}".encode()).hexdigest()[
             :10
         ]
         tasks.append(
@@ -284,7 +258,7 @@ def _build_lint_tasks(lint_issues: list[LintIssue]) -> list[FixQueueTask]:
     """Create Fix Queue tasks from capture lint issues."""
     tasks: list[FixQueueTask] = []
     for issue in lint_issues:
-        task_hash = hashlib.sha1(f"{issue.code}:{issue.file_path}".encode()).hexdigest()[:10]
+        task_hash = hashlib.sha256(f"{issue.code}:{issue.file_path}".encode()).hexdigest()[:10]
         action = "fix_metadata" if issue.code == "missing_metadata" else "fix_capture"
         tasks.append(
             FixQueueTask(
@@ -304,8 +278,8 @@ def _build_staleness_task(
     project: str | None,
 ) -> FixQueueTask | None:
     """Create a Fix Queue task that prompts a weekly review for stale content."""
-    notes_count = _staleness_value(stale_notes)
-    decisions_count = _staleness_value(stale_decisions)
+    notes_count = staleness_value(stale_notes)
+    decisions_count = staleness_value(stale_decisions)
     if notes_count == 0 and decisions_count == 0:
         return None
 
@@ -323,7 +297,7 @@ def _build_staleness_task(
         target="routines/weekly-review",
         project=project,
         reason=reason,
-        priority=_priority_from_count(max(notes_count, decisions_count)),
+        priority=priority_from_count(max(notes_count, decisions_count)),
     )
 
 
@@ -341,7 +315,7 @@ def _build_indexing_tasks(
         project = item.get("project") or "unknown"
         doc_count = int(item.get("document_count", 0))
         gap = max(0, low_volume_threshold - doc_count)
-        priority = _priority_from_count(gap) if gap else 5
+        priority = priority_from_count(gap) if gap else 5
         task_id = f"index-volume-{project.replace(' ', '-')}"
         tasks.append(
             FixQueueTask(
@@ -365,7 +339,7 @@ def _build_indexing_tasks(
             if low_hit_rate_threshold > 0
             else 0.0
         )
-        priority = _priority_from_ratio(severity)
+        priority = priority_from_ratio(severity)
         task_id = f"index-hit-rate-{project.replace(' ', '-')}"
         tasks.append(
             FixQueueTask(
@@ -398,7 +372,7 @@ def _build_ingestion_tasks(errors: list[dict[str, Any]]) -> list[FixQueueTask]:
             continue
         seen.add(key)
         reason = _format_ingestion_task_reason(error_type, error.get("error_message"))
-        task_hash = hashlib.sha1(f"{path}:{error_type}".encode()).hexdigest()[:10]
+        task_hash = hashlib.sha256(f"{path}:{error_type}".encode()).hexdigest()[:10]
         tasks.append(
             FixQueueTask(
                 id=f"ingest-{task_hash}",
@@ -441,9 +415,7 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
     stale_notes = db.get_stale_document_buckets(
         buckets_days=staleness_buckets, source_type="markdown", project=project
     )
-    stale_decisions = db.get_stale_decision_buckets(
-        buckets_days=staleness_buckets, project=project
-    )
+    stale_decisions = db.get_stale_decision_buckets(buckets_days=staleness_buckets, project=project)
     ingestion_metrics = db.get_ingestion_error_metrics(
         project=project,
         window_hours=config.health.ingestion_error_window_hours,
@@ -471,12 +443,12 @@ def health_fix_queue(project: str | None = None) -> FixQueueResponse:
         ),
         FailureSignal(
             name="stale_notes",
-            value=_staleness_value(stale_notes),
+            value=staleness_value(stale_notes),
             details=_format_staleness_details(stale_notes, "Notes"),
         ),
         FailureSignal(
             name="stale_decisions",
-            value=_staleness_value(stale_decisions),
+            value=staleness_value(stale_decisions),
             details=_format_staleness_details(stale_decisions, "Decisions"),
         ),
         FailureSignal(

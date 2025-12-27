@@ -133,6 +133,14 @@ class BookmarksParser(Parser):
     extensions = [".html", ".htm"]
 
     def parse(self, path: Path) -> ParsedDocument:
+        """Parse a bookmarks HTML export file into a structured document.
+
+        Args:
+            path: Path to the bookmarks HTML file.
+
+        Returns:
+            ParsedDocument with each bookmark as a section.
+        """
         content = path.read_text(encoding="utf-8", errors="ignore")
         entries = parse_bookmarks_html(content)
 
@@ -168,6 +176,14 @@ class BookmarksParser(Parser):
         )
 
     def can_parse(self, path: Path) -> bool:
+        """Check if a file is a parseable bookmarks export.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            True if the file appears to be a bookmarks HTML export.
+        """
         if path.suffix.lower() not in self.extensions:
             return False
         try:
