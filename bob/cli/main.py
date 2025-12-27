@@ -1471,5 +1471,141 @@ def mcp(host: str | None, port: int | None) -> None:
     run_server(host=host, port=port)
 
 
+@cli.group()
+def eval() -> None:
+    """Evaluation harness for retrieval quality."""
+
+
+@eval.command(name="run")
+@click.argument("golden_path", type=click.Path(exists=True, path_type=Path))
+@click.option("-k", "--top-k", default=5, type=int, help="Number of results to consider")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    help="Output JSON file for results",
+)
+def eval_run(golden_path: Path, top_k: int, output: Path | None) -> None:
+    """Run evaluation against a golden dataset.
+
+    GOLDEN_PATH: Path to JSONL file with Q/A pairs
+    """
+    from bob.eval.runner import run_evaluation
+
+    console.print(f"[bold blue]Running evaluation against {golden_path}...[/]")
+
+    try:
+        result = run_evaluation(golden_path, k=top_k)
+
+        console.print()
+        console.print("[bold green]Evaluation Complete[/]")
+        console.print()
+        console.print(f"  [cyan]Queries:[/] {result.num_queries}")
+        console.print(f"  [cyan]Passed:[/]  {result.num_passed}")
+        console.print(f"  [cyan]Failed:[/]  {result.num_failed}")
+        console.print()
+        console.print("[bold]Metrics (mean ± std):[/]")
+        console.print(f"  Recall@{top_k}:    {result.recall_mean:.3f} ± {result.recall_std:.3f}")
+        console.print(
+            f"  Precision@{top_k}: {result.precision_mean:.3f} ± {result.precision_std:.3f}"
+        )
+        console.print(f"  MRR:            {result.mrr_mean:.3f} ± {result.mrr_std:.3f}")
+
+        if output:
+            output.write_text(result.to_json())
+            console.print(f"\n[green]Results saved to {output}[/]")
+
+    except FileNotFoundError:
+        console.print(f"[red]Error:[/] Golden set not found: {golden_path}")
+        sys.exit(1)
+    except ValueError as e:
+        console.print(f"[red]Error:[/] {e}")
+        sys.exit(1)
+
+
+@eval.command(name="compare")
+@click.argument("current_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("baseline_path", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--tolerance",
+    "-t",
+    default=0.05,
+    type=float,
+    help="Acceptable regression threshold (default 5%)",
+)
+def eval_compare(current_path: Path, baseline_path: Path, tolerance: float) -> None:
+    """Compare current results to a baseline.
+
+    CURRENT_PATH: Path to current eval results JSON
+    BASELINE_PATH: Path to baseline eval results JSON
+    """
+    import json
+
+    from bob.eval.runner import EvalResult, compare_results
+
+    try:
+        current_data = json.loads(current_path.read_text())
+        baseline_data = json.loads(baseline_path.read_text())
+
+        # Reconstruct EvalResult objects
+        current = EvalResult(
+            recall_mean=current_data["recall_mean"],
+            recall_std=current_data["recall_std"],
+            precision_mean=current_data["precision_mean"],
+            precision_std=current_data["precision_std"],
+            mrr_mean=current_data["mrr_mean"],
+            mrr_std=current_data["mrr_std"],
+            num_queries=current_data["num_queries"],
+            num_passed=current_data["num_passed"],
+            num_failed=current_data["num_failed"],
+            k=current_data["k"],
+            golden_path=current_data["golden_path"],
+            timestamp=current_data.get("timestamp", ""),
+        )
+        baseline = EvalResult(
+            recall_mean=baseline_data["recall_mean"],
+            recall_std=baseline_data["recall_std"],
+            precision_mean=baseline_data["precision_mean"],
+            precision_std=baseline_data["precision_std"],
+            mrr_mean=baseline_data["mrr_mean"],
+            mrr_std=baseline_data["mrr_std"],
+            num_queries=baseline_data["num_queries"],
+            num_passed=baseline_data["num_passed"],
+            num_failed=baseline_data["num_failed"],
+            k=baseline_data["k"],
+            golden_path=baseline_data["golden_path"],
+            timestamp=baseline_data.get("timestamp", ""),
+        )
+
+        comparison = compare_results(current, baseline, tolerance=tolerance)
+
+        console.print()
+        console.print("[bold]Comparison Results[/]")
+        console.print()
+
+        def delta_str(val: float) -> str:
+            sign = "+" if val >= 0 else ""
+            return f"{sign}{val:.3f}"
+
+        recall_status = "[green]✓[/]" if comparison["recall_passed"] else "[red]✗[/]"
+        prec_status = "[green]✓[/]" if comparison["precision_passed"] else "[red]✗[/]"
+        mrr_status = "[green]✓[/]" if comparison["mrr_passed"] else "[red]✗[/]"
+
+        console.print(f"  {recall_status} Recall:    {delta_str(comparison['recall_delta'])}")
+        console.print(f"  {prec_status} Precision: {delta_str(comparison['precision_delta'])}")
+        console.print(f"  {mrr_status} MRR:       {delta_str(comparison['mrr_delta'])}")
+        console.print()
+
+        if comparison["overall_passed"]:
+            console.print("[bold green]PASSED[/] - No significant regression detected")
+        else:
+            console.print(f"[bold red]FAILED[/] - Regression exceeds {tolerance * 100:.0f}% tolerance")
+            sys.exit(1)
+
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        console.print(f"[red]Error:[/] {e}")
+        sys.exit(1)
+
+
 if __name__ == "__main__":
     cli()

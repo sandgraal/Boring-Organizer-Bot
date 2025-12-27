@@ -973,17 +973,17 @@ These are explicit non-goals to avoid scope creep:
 
 1. **Golden Dataset**
 
-   - [ ] JSON Lines format for Q/A pairs
-   - [ ] Fields: question, expected_chunks, expected_answer (optional)
+   - [x] JSON Lines format for Q/A pairs
+   - [x] Fields: question, expected_chunks, expected_answer (optional)
    - [ ] Small golden sets per domain (Food/Travel/CDC/Construction/Business)
    - [ ] Tool to create Q/A pairs from existing indexed content
 
 2. **Retrieval Metrics**
 
-   - [ ] Recall@k — Are expected chunks in top k?
-   - [ ] Precision@k — What fraction of top k is relevant?
-   - [ ] MRR — Mean Reciprocal Rank of first relevant chunk
-   - [ ] Per-query breakdown for debugging
+   - [x] Recall@k — Are expected chunks in top k?
+   - [x] Precision@k — What fraction of top k is relevant?
+   - [x] MRR — Mean Reciprocal Rank of first relevant chunk
+   - [x] Per-query breakdown for debugging
 
 3. **Generation Metrics** (Phase 4+)
 
@@ -993,9 +993,9 @@ These are explicit non-goals to avoid scope creep:
 
 4. **Regression Runner**
 
-   - [ ] `bob eval run` — Run all evaluations
-   - [ ] `bob eval compare <baseline>` — Compare against previous run
-   - [ ] Output: summary table + detailed JSON
+   - [x] `bob eval run` — Run all evaluations
+   - [x] `bob eval compare <baseline>` — Compare against previous run
+   - [x] Output: summary table + detailed JSON
    - [ ] CI integration (run on PR)
 
 5. **Drift Detection UI**
@@ -1005,17 +1005,17 @@ These are explicit non-goals to avoid scope creep:
    - [ ] Per-domain delta summary
 
 6. **Artifacts**
-   - [ ] `docs/eval/example_gold.jsonl` — Example golden set
-   - [ ] `tests/test_eval_runner.py` — Evaluation runner tests
-   - [ ] `bob/eval/` — Evaluation module
+   - [x] `docs/eval/example_gold.jsonl` — Example golden set
+   - [x] `tests/test_eval_runner.py` — Evaluation runner tests
+   - [x] `bob/eval/` — Evaluation module
 
 ### Acceptance Criteria
 
-- [ ] Example golden set with at least 20 Q/A pairs
+- [x] Example golden set with at least 20 Q/A pairs
 - [ ] Golden sets exist for core domains
-- [ ] `bob eval run` produces metrics report
-- [ ] Metrics are reproducible (same input → same output)
-- [ ] Regressions detected on golden set changes
+- [x] `bob eval run` produces metrics report
+- [x] Metrics are reproducible (same input → same output)
+- [x] Regressions detected on golden set changes
 - [ ] UI shows regressions and answer drift deltas
 
 ### Test Plan
