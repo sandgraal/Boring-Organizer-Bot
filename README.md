@@ -311,8 +311,8 @@ All features work offline — no external network requests.
 B.O.B uses explicit permission scopes so deeper access stays safe and intentional:
 
 - **Level 0**: read-only vault indexing/search
-- **Level 1**: optional calendar import (local ICS/Caldav file import)
-- **Level 2**: optional manual browser saves (explicit “save to vault” action)
+- **Level 1**: optional calendar import (local ICS/Caldav file import) — *planned, not yet implemented*
+- **Level 2**: optional manual browser saves (explicit "save to vault" action)
 - **Level 3**: template-bound note writing only (no arbitrary edits)
 - **Level 4**: external accounts (out of scope for now)
 
@@ -394,6 +394,7 @@ Environment variables override config:
 ## Documentation
 
 - [Current State](docs/CURRENT_STATE.md) — Live CLI/API/UI surface and known gaps.
+- [Troubleshooting](docs/TROUBLESHOOTING.md) — Common issues and solutions
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) — Phased roadmap (UI + routines + health prioritized)
 - [UI Plan](docs/UI_PLAN.md) — Interface design specification
 - [API Contract](docs/API_CONTRACT.md) — HTTP API endpoints and schemas

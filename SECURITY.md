@@ -11,7 +11,9 @@
 If you discover a security vulnerability in B.O.B, please report it responsibly:
 
 1. **Do not** open a public GitHub issue
-2. Email the maintainers directly (add email when available)
+2. Report via GitHub Security Advisories:
+   - Go to https://github.com/sandgraal/Boring-Organizer-Bot/security/advisories
+   - Click "Report a vulnerability"
 3. Include:
    - Description of the vulnerability
    - Steps to reproduce
