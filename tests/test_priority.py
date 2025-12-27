@@ -6,8 +6,6 @@ Coach Mode suggestion engine and Fix Queue task builder.
 
 from __future__ import annotations
 
-import pytest
-
 from bob.health.priority import (
     invert_priority,
     priority_from_count,
@@ -145,7 +143,7 @@ class TestPriorityConsistency:
         prev = priority_from_ratio(0.0)
         for ratio in [0.2, 0.4, 0.6, 0.8, 1.0]:
             current = priority_from_ratio(ratio)
-            assert current <= prev, f"Priority should decrease with higher ratio"
+            assert current <= prev, "Priority should decrease with higher ratio"
             prev = current
 
     def test_higher_count_means_higher_priority(self) -> None:
@@ -153,7 +151,7 @@ class TestPriorityConsistency:
         prev = priority_from_count(1)
         for count in [2, 3, 4, 5]:
             current = priority_from_count(count)
-            assert current <= prev, f"Priority should decrease with higher count"
+            assert current <= prev, "Priority should decrease with higher count"
             prev = current
 
     def test_priority_range_is_1_to_5(self) -> None:
