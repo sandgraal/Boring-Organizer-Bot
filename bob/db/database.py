@@ -181,6 +181,7 @@ class Database:
         if not isinstance(dimension, int) or dimension <= 0:
             raise ValueError(f"Invalid embedding dimension: {dimension}")
 
+        # Safe to use dimension in f-string after validation ensures it's a positive integer
         try:
             self.conn.execute(f"""
                 CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embeddings USING vec0(
