@@ -351,18 +351,9 @@ class Database:
 
         with self.transaction():
             # Delete from vector table
-            if self.has_vec:
-                for chunk_id in chunk_ids:
-                    self.conn.execute(
-                        "DELETE FROM chunk_embeddings WHERE chunk_id = ?",
-                        (chunk_id,),
-                    )
-            else:
-                for chunk_id in chunk_ids:
-                    self.conn.execute(
-                        "DELETE FROM chunk_embeddings_fallback WHERE chunk_id = ?",
-                        (chunk_id,),
-                    )
+            table = "chunk_embeddings" if self.has_vec else "chunk_embeddings_fallback"
+            for chunk_id in chunk_ids:
+                self.conn.execute(f"DELETE FROM {table} WHERE chunk_id = ?", (chunk_id,))
 
             # Delete chunks (cascades to decisions)
             self.conn.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
@@ -423,21 +414,11 @@ class Database:
             chunk_id: Chunk ID.
             embedding: Embedding vector.
         """
-        if self.has_vec:
-            # Use sqlite-vec
-            self.conn.execute(
-                "INSERT INTO chunk_embeddings (chunk_id, embedding) VALUES (?, ?)",
-                (chunk_id, embedding.tobytes()),
-            )
-        else:
-            # Fallback to blob storage
-            self.conn.execute(
-                """
-                INSERT INTO chunk_embeddings_fallback (chunk_id, embedding)
-                VALUES (?, ?)
-                """,
-                (chunk_id, embedding.tobytes()),
-            )
+        table = "chunk_embeddings" if self.has_vec else "chunk_embeddings_fallback"
+        self.conn.execute(
+            f"INSERT INTO {table} (chunk_id, embedding) VALUES (?, ?)",
+            (chunk_id, embedding.tobytes()),
+        )
         self.conn.commit()
 
     def search_similar(
