@@ -2,8 +2,8 @@
 
 > Local-only HTTP specification for the B.O.B FastAPI server.
 
-**Last Updated:** 2025-12-25  
-**Status:** Live (Phase 2) – this document describes the endpoints that exist in the repository today.
+**Last Updated:** 2025-12-27
+**Status:** Live – this document describes the endpoints that exist in the repository today.
 
 For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`](CURRENT_STATE.md).
 
@@ -20,23 +20,26 @@ For the current CLI/API/UI surface and known gaps, see [`docs/CURRENT_STATE.md`]
    4. [GET /index/{job_id}](#get-indexjob_id)
    5. [GET /projects](#get-projects)
    6. [GET /documents](#get-documents)
-   7. [POST /open](#post-open)
-   8. [POST /routines/daily-checkin](#post-routinesdaily-checkin)
-   9. [POST /routines/daily-debrief](#post-routinesdaily-debrief)
-   10. [POST /routines/weekly-review](#post-routinesweekly-review)
-   11. [POST /routines/meeting-prep](#post-routinesmeeting-prep)
-   12. [POST /routines/meeting-debrief](#post-routinesmeeting-debrief)
-   13. [POST /routines/new-decision](#post-routinesnew-decision)
-   14. [POST /routines/trip-debrief](#post-routinestrip-debrief)
-   15. [POST /notes/create](#post-notescreate)
-   16. [POST /connectors/bookmarks/import](#post-connectorsbookmarksimport)
-   17. [POST /connectors/highlights](#post-connectorshighlights)
-   18. [GET /permissions](#get-permissions)
-   19. [GET /settings](#get-settings)
-   20. [PUT /settings](#put-settings)
-   21. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
-   22. [POST /feedback](#post-feedback)
-   23. [GET /health/fix-queue](#get-healthfix-queue)
+   7. [GET /decisions](#get-decisions)
+   8. [GET /decisions/{decision_id}/history](#get-decisionsdecision_idhistory)
+   9. [POST /open](#post-open)
+   10. [POST /routines/daily-checkin](#post-routinesdaily-checkin)
+   11. [POST /routines/daily-debrief](#post-routinesdaily-debrief)
+   12. [POST /routines/weekly-review](#post-routinesweekly-review)
+   13. [POST /routines/meeting-prep](#post-routinesmeeting-prep)
+   14. [POST /routines/meeting-debrief](#post-routinesmeeting-debrief)
+   15. [POST /routines/new-decision](#post-routinesnew-decision)
+   16. [POST /routines/trip-debrief](#post-routinestrip-debrief)
+   17. [POST /routines/trip-plan](#post-routinestrip-plan)
+   18. [POST /notes/create](#post-notescreate)
+   19. [POST /connectors/bookmarks/import](#post-connectorsbookmarksimport)
+   20. [POST /connectors/highlights](#post-connectorshighlights)
+   21. [GET /permissions](#get-permissions)
+   22. [GET /settings](#get-settings)
+   23. [PUT /settings](#put-settings)
+   24. [POST /suggestions/{suggestion_id}/dismiss](#post-suggestionssuggestion_iddismiss)
+   25. [POST /feedback](#post-feedback)
+   26. [GET /health/fix-queue](#get-healthfix-queue)
 4. [Models & Schemas](#models--schemas)
 5. [Error Handling](#error-handling)
 6. [Future Work](#future-work)
@@ -123,6 +126,31 @@ After the background thread finishes, the job status moves to `completed` or `fa
 - **Implementation:** `bob/api/routes/documents.py` builds SQL WHERE clauses and returns ISO-formatted timestamps.
 - **Response:** `DocumentListResponse` with `documents`, `total`, `page`, and `page_size`. Each `DocumentInfo` includes the path, source type, project, and parsed `source_date`, `created_at`, `updated_at`.
 
+### GET /decisions
+
+- **Purpose:** List extracted decisions with optional filtering by project, status, and age.
+- **Query params:**
+  - `project` (optional): Filter by project name.
+  - `status` (optional): Filter by status (`active`, `superseded`, `deprecated`).
+  - `older_than_days` (optional): Filter decisions older than N days (for review cadence workflows).
+  - `limit` (default 100, max 500): Maximum number of results.
+- **Implementation:** `bob/api/routes/decisions.py` calls `get_decisions()` from `bob.extract.decisions`.
+- **Response model:** `DecisionListResponse` with:
+  - `decisions`: list of `DecisionDetail` objects containing `id`, `chunk_id`, `decision_text`, `context`, `decision_type`, `status`, `superseded_by`, `decision_date`, `confidence`, `extracted_at`, `source_path`, and `project`.
+  - `total`: count of returned decisions.
+  - `filters`: applied filter values for reference.
+
+### GET /decisions/{decision_id}/history
+
+- **Purpose:** Retrieve the supersession history for a specific decision, showing predecessors and successors in the decision chain.
+- **Path params:** `decision_id` (integer): ID of the decision.
+- **Implementation:** `bob/api/routes/decisions.py` uses `get_decision()`, `get_supersession_chain()`, and `get_decisions_superseded_by()` to build the full chain.
+- **Response model:** `DecisionHistoryResponse` with:
+  - `decision`: the requested `DecisionDetail`.
+  - `predecessors`: list of decisions that this decision superseded (oldest first).
+  - `successors`: list of decisions that supersede this decision (oldest first).
+- **Errors:** HTTP 404 if the decision ID is not found.
+
 ### POST /open
 
 - **Purpose:** Launch a local editor for a chunk’s source.
@@ -187,10 +215,25 @@ After the background thread finishes, the job status moves to `completed` or `fa
 ### POST /routines/trip-debrief
 
 - **Purpose:** Document a trip debrief by rendering `docs/templates/trip.md`, injecting the trip name, and saving `vault/trips/{{trip-slug}}/debrief.md`.
-- **Implementation:** `_trip_target_path` builds the destination folder from `trip_slug`, `slug`, or a sanitized version of `trip_name`, rewrites the template’s `source` tag to `routine/trip-debrief`, and runs three queries (`"trip notes"` capped at the last 30 days, `"trip recipes"`, `"trip open loops"`) to gather context.
+- **Implementation:** `_trip_target_path` builds the destination folder from `trip_slug`, `slug`, or a sanitized version of `trip_name`, rewrites the template's `source` tag to `routine/trip-debrief`, and runs three queries (`"trip notes"` capped at the last 30 days, `"trip recipes"`, `"trip open loops"`) to gather context.
 - **Request model:** `RoutineRequest` with optional `trip_name`, `trip_slug`, and `slug`.
 - **Response model:** `RoutineResponse` holding the retrieval buckets and warnings.
 - **Behavior:** The handler ensures `trip_name` is populated in the template, the `trip notes` query honors the 30-day lookback, and the note is written under the slugified trip folder.
+- **Errors:** Same 500/403 semantics as the other routine endpoints when templates/searches/writes fail or scope/path checks reject the action.
+
+### POST /routines/trip-plan
+
+- **Purpose:** Create a trip planning note by rendering `docs/templates/trip-plan.md`, gathering previous trip learnings, destination notes, and packing lists, and saving `vault/trips/{{trip-slug}}/plan.md`.
+- **Implementation:** `bob/api/routes/routines.py` uses `_trip_plan_target_path` to build the destination folder from `trip_slug`, `slug`, or a sanitized version of `trip_name`, rewrites the template's `source` tag to `routine/trip-plan`, and runs three queries (`"trip learnings"`, `"destination travel"`, `"packing checklist"`) to gather context.
+- **Request model:** `RoutineRequest` with optional `trip_name`, `trip_slug`, `slug`, and `trip_dates`.
+- **Response model:** `RoutineResponse` with:
+  - `routine`: `"trip-plan"`
+  - `file_path`: the written note path.
+  - `template`: path to the template file.
+  - `content`: the rendered note content.
+  - `retrievals`: list of `RoutineRetrieval` objects for each query (`previous_trips`, `destination_notes`, `packing_lists`).
+  - `warnings`: list of any warnings (empty retrievals, overwritten notes).
+- **Behavior:** The handler populates `trip_name` and `trip_dates` in the template, runs the retrieval queries without date bounds (to capture historical learnings), and writes the note under the slugified trip folder as `plan.md`.
 - **Errors:** Same 500/403 semantics as the other routine endpoints when templates/searches/writes fail or scope/path checks reject the action.
 
 ### POST /notes/create
