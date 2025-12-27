@@ -82,7 +82,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Index documents, search with embeddings, return cited passages without generation.
 
-### Status: 🔄 In Progress
+### Status: ✅ Complete
 
 ### Features
 
@@ -123,11 +123,11 @@ These are explicit non-goals to avoid scope creep:
 
 ### Acceptance Criteria
 
-- [ ] `bob index ./docs --project test` indexes all supported file types
-- [ ] `bob ask "question"` returns relevant passages with citations
-- [ ] Every result includes: source file, locator, date, confidence
-- [ ] Re-indexing unchanged files is skipped (content hash check)
-- [ ] `make test` passes with >80% coverage on core modules
+- [x] `bob index ./docs --project test` indexes all supported file types
+- [x] `bob ask "question"` returns relevant passages with citations
+- [x] Every result includes: source file, locator, date, confidence
+- [x] Re-indexing unchanged files is skipped (content hash check)
+- [x] `make test` passes with >80% coverage on core modules
 
 ### Test Plan
 
@@ -776,7 +776,7 @@ These are explicit non-goals to avoid scope creep:
    - [x] Parse dates from document content (not just file metadata)
    - [ ] Detect "as of" and "updated" statements
    - [ ] Inherit date from parent document for sub-sections
-   - [ ] Add `--max-age` filter to search
+   - [x] Add `--max-age` filter to search
 
 5. **Search Improvements**
    - [x] Support quoted phrases for exact matching
