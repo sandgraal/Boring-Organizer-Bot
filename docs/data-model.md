@@ -256,6 +256,9 @@ Migrations are stored in `bob/db/migrations/` as SQL files:
 - `003_coach_mode.sql` - Coach Mode settings and cooldown log
 - `004_feedback_log.sql` - Feedback log for Fix Queue metrics
 - `005_permission_denials.sql` - Permission denial log for Fix Queue metrics
+- `006_search_history.sql` - Search history tracking table
+- `007_search_history_not_found.sql` - Add not_found column to search history
+- `008_ingestion_errors.sql` - Ingestion errors for health metrics
 
 Run migrations with:
 
