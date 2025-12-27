@@ -177,6 +177,10 @@ class Database:
         """Create the vector similarity table using sqlite-vec."""
         dimension = get_config().embedding.dimension
 
+        # Validate dimension is an integer to prevent SQL injection
+        if not isinstance(dimension, int) or dimension <= 0:
+            raise ValueError(f"Invalid embedding dimension: {dimension}")
+
         try:
             self.conn.execute(f"""
                 CREATE VIRTUAL TABLE IF NOT EXISTS chunk_embeddings USING vec0(
@@ -213,9 +217,47 @@ class Database:
         return f"ALTER TABLE {table_token} ADD COLUMN {column_token} {definition}"
 
     def _column_exists(self, table: str, column: str) -> bool:
-        """Check if a column exists on a table."""
+        """Check if a column exists on a table.
+
+        Args:
+            table: Table name to check (must be a valid SQL identifier).
+            column: Column name to check.
+
+        Returns:
+            True if the column exists in the table.
+        """
+        # Validate table name to prevent SQL injection
+        # SQLite identifiers can contain: letters, digits, underscores
+        # Must not start with a digit or sqlite_
+        if not table or not self._is_valid_identifier(table):
+            raise ValueError(f"Invalid table name: {table}")
+
         cursor = self.conn.execute(f"PRAGMA table_info({table})")
         return any(row["name"] == column for row in cursor.fetchall())
+
+    def _is_valid_identifier(self, identifier: str) -> bool:
+        """Check if a string is a valid SQL identifier.
+
+        Args:
+            identifier: The identifier to validate.
+
+        Returns:
+            True if the identifier is valid and safe to use.
+        """
+        if not identifier:
+            return False
+
+        # Check for valid SQL identifier pattern
+        # Allow: letters, digits, underscores
+        # Must start with letter or underscore
+        # Must not start with 'sqlite_' (reserved prefix)
+        if identifier.startswith("sqlite_"):
+            return False
+
+        if not identifier[0].isalpha() and identifier[0] != "_":
+            return False
+
+        return all(c.isalnum() or c == "_" for c in identifier)
 
     # Document operations
 
