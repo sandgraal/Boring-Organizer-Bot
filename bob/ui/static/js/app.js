@@ -3043,6 +3043,13 @@
 
     // Refresh projects list
     loadProjects();
+
+    // Refresh health metrics so Fix Queue reflects new indexing
+    state.fixQueue = null;
+    state.fixQueueProjectLoaded = null;
+    if (state.currentPage === "health") {
+      loadFixQueue(true);
+    }
   }
 
   /**

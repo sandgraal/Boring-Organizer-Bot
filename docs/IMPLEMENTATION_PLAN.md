@@ -467,7 +467,7 @@ These are explicit non-goals to avoid scope creep:
 
 **Goal:** Provide a reliability dashboard for coverage, metadata hygiene, staleness, and ingestion breakage.
 
-### Status: 🔄 In Progress (Health/Fix Queue signals + UI panel implemented; deeper metrics pending)
+### Status: ✅ Complete
 
 ### Prerequisites
 
@@ -504,9 +504,9 @@ These are explicit non-goals to avoid scope creep:
 
 ### Acceptance Criteria
 
-- [ ] Dashboard page shows coverage, hygiene, staleness, failures
+- [x] Dashboard page shows coverage, hygiene, staleness, failures
 - [x] Fix queue lists actionable items (run-routine tasks available today)
-- [ ] Metrics update after indexing runs
+- [x] Metrics update after indexing runs
 
 ### Test Plan
 
