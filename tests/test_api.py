@@ -1538,3 +1538,122 @@ class TestUIEndpoint:
         response = client.get("/static/js/app.js")
         assert response.status_code == 200
         assert "javascript" in response.headers["content-type"]
+
+
+class TestDecisionsEndpoint:
+    """Tests for decisions history endpoint."""
+
+    def test_decision_history_not_found(self, client: TestClient):
+        """GET /decisions/{id}/history returns 404 for unknown decision."""
+        with patch("bob.api.routes.decisions.get_decision", return_value=None):
+            response = client.get("/decisions/999/history")
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Decision not found"
+
+    def test_decision_history_returns_chain(self, client: TestClient):
+        """GET /decisions/{id}/history returns predecessors and successors."""
+        from bob.extract.decisions import StoredDecision
+
+        main_decision = StoredDecision(
+            id=2,
+            chunk_id=10,
+            decision_text="Use PostgreSQL",
+            context="Database choice",
+            decision_type="technical",
+            status="active",
+            superseded_by=None,
+            decision_date=datetime(2025, 2, 1),
+            confidence=0.9,
+            extracted_at=datetime(2025, 2, 1),
+            source_path="/docs/adr-002.md",
+            project="infra",
+        )
+
+        predecessor = StoredDecision(
+            id=1,
+            chunk_id=5,
+            decision_text="Use SQLite",
+            context="Database choice",
+            decision_type="technical",
+            status="superseded",
+            superseded_by=2,
+            decision_date=datetime(2025, 1, 1),
+            confidence=0.85,
+            extracted_at=datetime(2025, 1, 1),
+            source_path="/docs/adr-001.md",
+            project="infra",
+        )
+
+        def mock_chain(decision_id: int) -> list:
+            # When querying the main decision chain, return just the main decision
+            # When querying the predecessor's chain, return the predecessor
+            if decision_id == 2:
+                return [main_decision]
+            elif decision_id == 1:
+                return [predecessor]
+            return []
+
+        with (
+            patch("bob.api.routes.decisions.get_decision", return_value=main_decision),
+            patch("bob.api.routes.decisions.get_supersession_chain", side_effect=mock_chain),
+            patch("bob.api.routes.decisions.get_decisions_superseded_by", return_value=[predecessor]),
+        ):
+            response = client.get("/decisions/2/history")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["decision"]["id"] == 2
+        assert data["decision"]["decision_text"] == "Use PostgreSQL"
+        assert len(data["predecessors"]) == 1
+        assert data["predecessors"][0]["id"] == 1
+        assert data["predecessors"][0]["decision_text"] == "Use SQLite"
+        assert data["successors"] == []
+
+    def test_decision_history_with_successors(self, client: TestClient):
+        """GET /decisions/{id}/history includes successors."""
+        from bob.extract.decisions import StoredDecision
+
+        old_decision = StoredDecision(
+            id=1,
+            chunk_id=5,
+            decision_text="Use SQLite",
+            context="Database choice",
+            decision_type="technical",
+            status="superseded",
+            superseded_by=2,
+            decision_date=datetime(2025, 1, 1),
+            confidence=0.85,
+            extracted_at=datetime(2025, 1, 1),
+            source_path="/docs/adr-001.md",
+            project="infra",
+        )
+
+        successor = StoredDecision(
+            id=2,
+            chunk_id=10,
+            decision_text="Use PostgreSQL",
+            context="Database choice",
+            decision_type="technical",
+            status="active",
+            superseded_by=None,
+            decision_date=datetime(2025, 2, 1),
+            confidence=0.9,
+            extracted_at=datetime(2025, 2, 1),
+            source_path="/docs/adr-002.md",
+            project="infra",
+        )
+
+        with (
+            patch("bob.api.routes.decisions.get_decision", return_value=old_decision),
+            patch("bob.api.routes.decisions.get_supersession_chain", return_value=[old_decision, successor]),
+            patch("bob.api.routes.decisions.get_decisions_superseded_by", return_value=[]),
+        ):
+            response = client.get("/decisions/1/history")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["decision"]["id"] == 1
+        assert len(data["successors"]) == 1
+        assert data["successors"][0]["id"] == 2
+        assert data["predecessors"] == []

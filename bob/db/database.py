@@ -5,6 +5,7 @@ Handles SQLite database connections, migrations, and vector storage.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import re
@@ -109,11 +110,8 @@ class Database:
             self._connections.clear()
 
         for conn in connections:
-            try:
+            with contextlib.suppress(sqlite3.ProgrammingError):
                 conn.close()
-            except sqlite3.ProgrammingError:
-                # Connection was created in a different thread; ignore
-                pass
 
         if hasattr(self._local, "conn"):
             del self._local.conn

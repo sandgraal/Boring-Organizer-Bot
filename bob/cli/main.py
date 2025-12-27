@@ -1073,6 +1073,139 @@ def show_decision(decision_id: int, output_json: bool) -> None:
         sys.exit(1)
 
 
+@cli.command("decision-history")
+@click.argument("decision_id", type=int)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output as JSON",
+)
+def decision_history(decision_id: int, output_json: bool) -> None:
+    """Show the supersession chain for a decision.
+
+    DECISION_ID: ID of the decision to trace history for.
+
+    Shows the full chain of decisions that have superseded each other,
+    from oldest to newest.
+    """
+    import json
+
+    from bob.extract.decisions import (
+        get_decision,
+        get_supersession_chain,
+    )
+
+    try:
+        decision = get_decision(decision_id)
+        if not decision:
+            console.print(f"[red]Decision {decision_id} not found.[/]")
+            sys.exit(1)
+
+        # Get the full chain (decisions this one supersedes)
+        chain = get_supersession_chain(decision_id)
+
+        # Get decisions that supersede this one (reverse direction)
+        superseded_by = []
+        current = decision
+        while current.superseded_by:
+            parent = get_decision(current.superseded_by)
+            if parent:
+                superseded_by.append(parent)
+                current = parent
+            else:
+                break
+
+        # Build complete timeline: oldest superseded -> current -> newest superseder
+        # chain is: current -> what it supersedes (oldest last)
+        # superseded_by is: current -> what supersedes it (newest last)
+
+        # Reverse chain to show oldest first
+        predecessors = list(reversed(chain[1:])) if len(chain) > 1 else []
+        successors = superseded_by
+
+        if output_json:
+            output = {
+                "decision_id": decision_id,
+                "decision_text": decision.decision_text,
+                "status": decision.status,
+                "predecessors": [
+                    {
+                        "id": d.id,
+                        "decision_text": d.decision_text,
+                        "status": d.status,
+                        "decision_date": d.decision_date.isoformat() if d.decision_date else None,
+                    }
+                    for d in predecessors
+                ],
+                "successors": [
+                    {
+                        "id": d.id,
+                        "decision_text": d.decision_text,
+                        "status": d.status,
+                        "decision_date": d.decision_date.isoformat() if d.decision_date else None,
+                    }
+                    for d in successors
+                ],
+            }
+            console.print(json.dumps(output, indent=2))
+        else:
+            console.print(f"[bold blue]Decision History for #{decision_id}[/]\n")
+
+            if not predecessors and not successors:
+                console.print("[dim]This decision has no supersession history.[/]")
+                console.print(f"\n[bold]Current:[/] #{decision.id}")
+                text = (
+                    decision.decision_text[:80] + "..."
+                    if len(decision.decision_text) > 80
+                    else decision.decision_text
+                )
+                console.print(f"  {text}")
+                return
+
+            console.print("[bold]Timeline (oldest → newest):[/]\n")
+
+            # Show predecessors (what this decision superseded)
+            for d in predecessors:
+                text = d.decision_text[:60] + "..." if len(d.decision_text) > 60 else d.decision_text
+                date_str = d.decision_date.strftime("%Y-%m-%d") if d.decision_date else "unknown"
+                console.print(f"  [dim]#{d.id}[/] ({date_str}) [yellow]superseded[/]")
+                console.print(f"    {text}")
+                console.print("    ↓")
+
+            # Show current decision
+            text = (
+                decision.decision_text[:60] + "..."
+                if len(decision.decision_text) > 60
+                else decision.decision_text
+            )
+            date_str = (
+                decision.decision_date.strftime("%Y-%m-%d") if decision.decision_date else "unknown"
+            )
+            status_color = "green" if decision.status == "active" else "yellow"
+            console.print(f"  [bold]#{decision.id}[/] ({date_str}) [{status_color}]{decision.status}[/] ← you are here")
+            console.print(f"    {text}")
+
+            # Show successors (what superseded this decision)
+            for d in successors:
+                console.print("    ↓")
+                text = d.decision_text[:60] + "..." if len(d.decision_text) > 60 else d.decision_text
+                date_str = d.decision_date.strftime("%Y-%m-%d") if d.decision_date else "unknown"
+                status_color = "green" if d.status == "active" else "yellow"
+                console.print(f"  [bold]#{d.id}[/] ({date_str}) [{status_color}]{d.status}[/]")
+                console.print(f"    {text}")
+
+            console.print()
+            total = len(predecessors) + 1 + len(successors)
+            console.print(f"[dim]{total} decisions in this chain[/]")
+
+    except Exception as e:
+        console.print(f"[red]Error showing decision history:[/] {e}")
+        if get_config().logging.level == "DEBUG":
+            console.print_exception()
+        sys.exit(1)
+
+
 @cli.command("supersede")
 @click.argument("old_id", type=int)
 @click.argument("new_id", type=int)
@@ -1137,179 +1270,6 @@ def supersede_decision_cmd(old_id: int, new_id: int, reason: str | None) -> None
         console.print(f"[red]Error superseding decision:[/] {e}")
         if get_config().logging.level == "DEBUG":
             console.print_exception()
-        sys.exit(1)
-
-
-@cli.group()
-def eval() -> None:
-    """Evaluation commands for measuring retrieval quality."""
-    pass
-
-
-@eval.command("run")
-@click.argument("golden_path", type=click.Path(exists=True))
-@click.option(
-    "--k",
-    "-k",
-    default=5,
-    type=int,
-    help="Number of results to evaluate (default: 5)",
-)
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    help="Output results as JSON",
-)
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(),
-    help="Write results to file",
-)
-def eval_run(golden_path: str, k: int, output_json: bool, output: str | None) -> None:
-    """Run evaluation against a golden dataset.
-
-    GOLDEN_PATH: Path to the golden dataset JSONL file.
-
-    Each line should be JSON with 'question' and optionally 'expected_chunks'.
-    """
-    from rich.table import Table
-
-    from bob.eval.runner import run_evaluation
-
-    console.print("[bold blue]Running evaluation...[/]\n")
-
-    try:
-        result = run_evaluation(golden_path=golden_path, k=k)
-
-        if output_json:
-            # JSON output using built-in serialization
-            json_str = result.to_json()
-
-            if output:
-                Path(output).write_text(json_str)
-                console.print(f"[green]✓[/] Results written to [cyan]{output}[/]")
-            else:
-                console.print(json_str)
-        else:
-            # Human-readable output
-            console.print(f"Golden dataset: [cyan]{golden_path}[/]")
-            console.print(f"Queries evaluated: [cyan]{result.num_queries}[/]")
-            console.print(f"Top-k: [cyan]{k}[/]\n")
-
-            # Metrics table
-            table = Table(title="Evaluation Metrics")
-            table.add_column("Metric", style="cyan")
-            table.add_column("Mean", style="green")
-            table.add_column("Std Dev", style="yellow")
-
-            table.add_row("Recall@k", f"{result.recall_mean:.4f}", f"±{result.recall_std:.4f}")
-            table.add_row(
-                "Precision@k", f"{result.precision_mean:.4f}", f"±{result.precision_std:.4f}"
-            )
-            table.add_row("MRR", f"{result.mrr_mean:.4f}", f"±{result.mrr_std:.4f}")
-
-            console.print(table)
-
-            # Pass/fail summary
-            console.print()
-            console.print(f"Passed: [green]{result.num_passed}[/] / {result.num_queries}")
-            console.print(f"Failed: [red]{result.num_failed}[/] / {result.num_queries}")
-
-            # Quality assessment
-            console.print()
-            if result.recall_mean >= 0.8:
-                console.print("[green]✓[/] Retrieval quality is good")
-            elif result.recall_mean >= 0.5:
-                console.print("[yellow]![/] Retrieval quality is moderate")
-            else:
-                console.print("[red]✗[/] Retrieval quality needs improvement")
-
-            if output:
-                # Write detailed JSON even in human-readable mode
-                Path(output).write_text(result.to_json())
-                console.print(f"\n[dim]Results also written to {output}[/]")
-
-    except Exception as e:
-        console.print(f"[red]Error during evaluation:[/] {e}")
-        if get_config().logging.level == "DEBUG":
-            console.print_exception()
-        sys.exit(1)
-
-
-@eval.command("compare")
-@click.argument("baseline_path", type=click.Path(exists=True))
-@click.argument("current_path", type=click.Path(exists=True))
-@click.option(
-    "--json",
-    "output_json",
-    is_flag=True,
-    help="Output results as JSON",
-)
-def eval_compare(baseline_path: str, current_path: str, output_json: bool) -> None:
-    """Compare two evaluation result files.
-
-    BASELINE_PATH: Path to the baseline evaluation JSON file.
-    CURRENT_PATH: Path to the current evaluation JSON file.
-    """
-    import json
-
-    from rich.table import Table
-
-    try:
-        baseline = json.loads(Path(baseline_path).read_text())
-        current = json.loads(Path(current_path).read_text())
-
-        metrics = ["recall_mean", "precision_mean", "mrr_mean"]
-
-        if output_json:
-            comparison = {
-                "baseline": {m: baseline.get(m, 0) for m in metrics},
-                "current": {m: current.get(m, 0) for m in metrics},
-                "delta": {m: current.get(m, 0) - baseline.get(m, 0) for m in metrics},
-            }
-            console.print(json.dumps(comparison, indent=2))
-        else:
-            console.print("[bold blue]Evaluation Comparison[/]\n")
-
-            table = Table(title="Metrics Comparison")
-            table.add_column("Metric", style="cyan")
-            table.add_column("Baseline", style="yellow")
-            table.add_column("Current", style="green")
-            table.add_column("Delta", style="magenta")
-
-            for key in metrics:
-                baseline_val = baseline.get(key, 0)
-                current_val = current.get(key, 0)
-                delta = current_val - baseline_val
-
-                delta_str = f"{delta:+.4f}"
-                if delta > 0:
-                    delta_str = f"[green]{delta_str}[/]"
-                elif delta < 0:
-                    delta_str = f"[red]{delta_str}[/]"
-
-                table.add_row(
-                    key,
-                    f"{baseline_val:.4f}",
-                    f"{current_val:.4f}",
-                    delta_str,
-                )
-
-            console.print(table)
-
-            # Summary
-            recall_delta = current.get("recall_mean", 0) - baseline.get("recall_mean", 0)
-            if recall_delta > 0.05:
-                console.print("\n[green]✓[/] Significant improvement in recall")
-            elif recall_delta < -0.05:
-                console.print("\n[red]✗[/] Regression detected in recall")
-            else:
-                console.print("\n[yellow]~[/] No significant change")
-
-    except Exception as e:
-        console.print(f"[red]Error comparing results:[/] {e}")
         sys.exit(1)
 
 
