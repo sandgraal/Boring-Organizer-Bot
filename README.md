@@ -248,6 +248,30 @@ bob eval
 bob eval --project "cdc"
 ```
 
+### Backup and Restore
+
+Protect your local knowledge base with regular backups:
+
+```bash
+# Create a backup
+bob backup backups/bob-2025-12-27.db
+
+# Create a compressed backup (recommended for storage)
+bob backup backups/bob-2025-12-27.db --compress
+
+# Restore from a backup
+bob restore backups/bob-2025-12-27.db
+
+# Force restore without confirmation
+bob restore backups/bob-2025-12-27.db --force
+```
+
+**Backup best practices:**
+- Backups use SQLite's backup API for consistency
+- Compressed backups (.gz) save disk space
+- Restore automatically backs up your current database first
+- Schedule regular backups (e.g., via cron) for important data
+
 ## API Server (local-only)
 
 ```bash
@@ -324,8 +348,8 @@ All features work offline — no external network requests.
 B.O.B uses explicit permission scopes so deeper access stays safe and intentional:
 
 - **Level 0**: read-only vault indexing/search
-- **Level 1**: optional calendar import (local ICS/Caldav file import)
-- **Level 2**: optional manual browser saves (explicit “save to vault” action)
+- **Level 1**: optional calendar import (local ICS/Caldav file import) — *planned, not yet implemented*
+- **Level 2**: optional manual browser saves (explicit "save to vault" action)
 - **Level 3**: template-bound note writing only (no arbitrary edits)
 - **Level 4**: external accounts (out of scope for now)
 
@@ -407,6 +431,7 @@ Environment variables override config:
 ## Documentation
 
 - [Current State](docs/CURRENT_STATE.md) — Live CLI/API/UI surface and known gaps.
+- [Troubleshooting](docs/TROUBLESHOOTING.md) — Common issues and solutions
 - [Implementation Plan](docs/IMPLEMENTATION_PLAN.md) — Phased roadmap (UI + routines + health prioritized)
 - [UI Plan](docs/UI_PLAN.md) — Interface design specification
 - [API Contract](docs/API_CONTRACT.md) — HTTP API endpoints and schemas

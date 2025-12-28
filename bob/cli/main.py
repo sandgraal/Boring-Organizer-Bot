@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -1572,6 +1573,138 @@ def eval_compare(current_path: Path, baseline_path: Path, tolerance: float) -> N
 
     except (FileNotFoundError, json.JSONDecodeError) as e:
         console.print(f"[red]Error:[/] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument("backup_path", type=click.Path())
+@click.option("--compress", is_flag=True, help="Compress backup with gzip")
+def backup(backup_path: str, compress: bool) -> None:
+    """Backup the database to a file.
+
+    Creates a consistent backup of the SQLite database using SQLite's backup API.
+    This is safer than copying the file directly, especially if the database is in use.
+
+    Example: bob backup backups/bob-2025-12-27.db
+    """
+    import gzip
+    import shutil
+
+    from bob.db import get_database
+
+    console.print("[bold blue]Creating database backup...[/]")
+
+    try:
+        db = get_database()
+        backup_file = Path(backup_path)
+        backup_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Create a temporary backup using SQLite's backup API
+        temp_backup = backup_file.with_suffix(backup_file.suffix + ".tmp")
+
+        # Use SQLite backup API for safe backup
+        backup_conn = sqlite3.connect(str(temp_backup))
+        with backup_conn:
+            db.conn.backup(backup_conn)
+        backup_conn.close()
+
+        if compress:
+            # Compress the backup
+            console.print("[cyan]Compressing backup...[/]")
+            compressed_path = backup_file.with_suffix(backup_file.suffix + ".gz")
+            with open(temp_backup, "rb") as f_in, gzip.open(compressed_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+            temp_backup.unlink()
+            final_path = compressed_path
+        else:
+            # Move temp backup to final location
+            temp_backup.rename(backup_file)
+            final_path = backup_file
+
+        # Get file size
+        size_mb = final_path.stat().st_size / (1024 * 1024)
+        console.print(f"[green]✓[/] Backup created at [cyan]{final_path}[/] ({size_mb:.2f} MB)")
+
+    except Exception as e:
+        console.print(f"[red]Error creating backup:[/] {e}")
+        sys.exit(1)
+
+
+@cli.command()
+@click.argument("backup_path", type=click.Path(exists=True))
+@click.option("--force", is_flag=True, help="Overwrite existing database without confirmation")
+def restore(backup_path: str, force: bool) -> None:
+    """Restore the database from a backup file.
+
+    Restores a database backup created with 'bob backup'.
+    Automatically detects and decompresses gzip-compressed backups.
+
+    WARNING: This will replace your current database!
+
+    Example: bob restore backups/bob-2025-12-27.db
+    """
+    import gzip
+    import shutil
+
+    from bob.db import get_database
+
+    backup_file = Path(backup_path)
+
+    if not backup_file.exists():
+        console.print(f"[red]Error:[/] Backup file not found: {backup_file}")
+        sys.exit(1)
+
+    db = get_database()
+
+    # Check if database exists and ask for confirmation
+    if db.db_path.exists() and not force:
+        console.print("[yellow]Warning:[/] This will replace your current database at:")
+        console.print(f"  [cyan]{db.db_path}[/]")
+
+        if not click.confirm("Are you sure you want to continue?"):
+            console.print("[yellow]Restore cancelled[/]")
+            return
+
+    console.print("[bold blue]Restoring database from backup...[/]")
+
+    current_backup = None
+    try:
+        # Close existing connections
+        db.close()
+
+        # Create backup of current database if it exists
+        if db.db_path.exists():
+            current_backup = db.db_path.with_suffix(db.db_path.suffix + ".pre-restore")
+            console.print(f"[cyan]Backing up current database to:[/] {current_backup}")
+            shutil.copy2(db.db_path, current_backup)
+
+        # Ensure parent directory exists
+        db.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Restore from backup (decompress if needed)
+        if backup_file.suffix == ".gz":
+            console.print("[cyan]Decompressing backup...[/]")
+            with gzip.open(backup_file, "rb") as f_in, open(db.db_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        else:
+            shutil.copy2(backup_file, db.db_path)
+
+        console.print(f"[green]✓[/] Database restored from [cyan]{backup_file}[/]")
+        console.print("\n[bold green]Restore complete![/]")
+        console.print("Run [cyan]bob status[/] to verify the restored data.")
+
+    except Exception as e:
+        console.print(f"[red]Error restoring database:[/] {e}")
+
+        # Try to restore from pre-restore backup if it exists
+        if current_backup and current_backup.exists():
+            console.print("[yellow]Attempting to restore previous database...[/]")
+            try:
+                shutil.copy2(current_backup, db.db_path)
+                console.print("[green]✓[/] Previous database restored")
+            except Exception as restore_error:
+                console.print(f"[red]Failed to restore previous database:[/] {restore_error}")
+
         sys.exit(1)
 
 

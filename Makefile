@@ -1,4 +1,4 @@
-.PHONY: install dev lint format test check clean run help
+.PHONY: install dev lint format test check clean run help backup
 
 # Default target
 help:
@@ -12,12 +12,15 @@ help:
 	@echo "  make check      Run all checks (lint + test)"
 	@echo "  make clean      Clean build artifacts"
 	@echo "  make init       Initialize the database"
+	@echo "  make backup     Create a compressed backup"
 	@echo ""
 	@echo "CLI Commands (after install):"
 	@echo "  bob init                    Initialize database"
 	@echo "  bob index <paths>           Index documents"
 	@echo "  bob ask '<question>'        Ask a question"
 	@echo "  bob status                  Show status"
+	@echo "  bob backup <path>           Backup database"
+	@echo "  bob restore <path>          Restore database"
 
 # Installation
 install:
@@ -63,6 +66,12 @@ clean:
 # Database
 init:
 	bob init
+
+backup:
+	@mkdir -p backups
+	@echo "Creating backup..."
+	bob backup backups/bob-$$(date +%Y-%m-%d-%H%M%S).db --compress
+	@echo "Backup complete!"
 
 # Development helpers
 shell:
