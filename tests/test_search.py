@@ -231,6 +231,64 @@ class TestSearch:
         finally:
             search_mod.get_database = original
 
+    def test_search_filters_by_decision_status(
+        self, indexed_docs: tuple[Path, Database]
+    ) -> None:
+        """Search supports decision status filtering."""
+        search_mod = get_search_module()
+
+        docs, test_db = indexed_docs
+
+        original = search_mod.get_database
+        search_mod.get_database = lambda: test_db
+
+        def _insert_decision(path: Path, status: str) -> None:
+            row = test_db.conn.execute(
+                """
+                SELECT c.id
+                FROM chunks c
+                JOIN documents d ON d.id = c.document_id
+                WHERE d.source_path = ?
+                ORDER BY c.chunk_index ASC
+                LIMIT 1
+                """,
+                (str(path),),
+            ).fetchone()
+            assert row is not None
+            test_db.conn.execute(
+                """
+                INSERT INTO decisions (
+                    chunk_id, decision_text, context, decision_type, status, confidence
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    "Use this approach.",
+                    "Decision context.",
+                    "process",
+                    status,
+                    0.9,
+                ),
+            )
+            test_db.conn.commit()
+
+        try:
+            _insert_decision(docs / "python.md", "active")
+            _insert_decision(docs / "databases.md", "superseded")
+
+            active_results = search_mod.search("decision:active python", top_k=5)
+            assert active_results
+            assert all("python.md" in result.source_path for result in active_results)
+
+            superseded_results = search_mod.search("decision:superseded database", top_k=5)
+            assert superseded_results
+            assert all("databases.md" in result.source_path for result in superseded_results)
+
+            no_match = search_mod.search("decision:active database", top_k=5)
+            assert no_match == []
+        finally:
+            search_mod.get_database = original
+
     def test_search_filters_by_source_type(self, indexed_docs: tuple[Path, Database]) -> None:
         """Test that source type filter works."""
         search_mod = get_search_module()

@@ -57,13 +57,27 @@ class TestParseQuery:
         parsed = parse_query("search PROJECT:MyProject")
         assert parsed.project_filter == "MyProject"
 
+    def test_decision_status_filter(self):
+        """Decision status filter is extracted."""
+        parsed = parse_query("decision:active review notes")
+        assert parsed.text == "review notes"
+        assert parsed.decision_status == "active"
+        assert parsed.has_filters()
+
+    def test_invalid_decision_status_ignored(self):
+        """Invalid decision status is ignored."""
+        parsed = parse_query("decision:unknown review notes")
+        assert parsed.decision_status is None
+        assert "decision:unknown" in parsed.text
+
     def test_combined_syntax(self):
         """All syntax elements work together."""
-        parsed = parse_query('"exact phrase" other words -exclude project:myproj')
+        parsed = parse_query('"exact phrase" other words -exclude project:myproj decision:superseded')
         assert parsed.text == "other words"
         assert parsed.required_phrases == ["exact phrase"]
         assert parsed.excluded_terms == ["exclude"]
         assert parsed.project_filter == "myproj"
+        assert parsed.decision_status == "superseded"
 
     def test_empty_quoted_phrase_ignored(self):
         """Empty quotes don't add to required phrases."""

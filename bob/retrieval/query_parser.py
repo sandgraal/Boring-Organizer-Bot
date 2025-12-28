@@ -4,6 +4,7 @@ Supports:
 - Quoted phrases: "exact match"
 - Term exclusion: -unwanted
 - Project filter: project:name
+- Decision status filter: decision:active|superseded|deprecated
 - Combinations: "exact phrase" -exclude project:docs
 """
 
@@ -30,12 +31,20 @@ class ParsedQuery:
     # Project filter (from project:name)
     project_filter: str | None = None
 
+    # Decision status filter (from decision:active|superseded|deprecated)
+    decision_status: str | None = None
+
     # Original query for reference
     original: str = ""
 
     def has_filters(self) -> bool:
         """Check if query has any special filters."""
-        return bool(self.required_phrases or self.excluded_terms or self.project_filter)
+        return bool(
+            self.required_phrases
+            or self.excluded_terms
+            or self.project_filter
+            or self.decision_status
+        )
 
 
 def parse_query(query: str) -> ParsedQuery:
@@ -45,6 +54,7 @@ def parse_query(query: str) -> ParsedQuery:
         - "phrase": Exact phrase match (content must contain this)
         - -term: Exclude results containing this term
         - project:name: Filter to specific project
+        - decision:active|superseded|deprecated: Filter by decision status
 
     Examples:
         >>> parse_query('how to configure')
@@ -57,6 +67,9 @@ def parse_query(query: str) -> ParsedQuery:
         >>> parse_query('search query project:docs')
         ParsedQuery(text='search query', project_filter='docs', ...)
 
+        >>> parse_query('decision:active decisions')
+        ParsedQuery(text='decisions', decision_status='active', ...)
+
     Args:
         query: Raw query string.
 
@@ -67,6 +80,7 @@ def parse_query(query: str) -> ParsedQuery:
     required_phrases: list[str] = []
     excluded_terms: list[str] = []
     project_filter: str | None = None
+    decision_status: str | None = None
 
     # Extract quoted phrases: "exact phrase"
     phrase_pattern = r'"([^"]+)"'
@@ -83,6 +97,15 @@ def parse_query(query: str) -> ParsedQuery:
     if project_match:
         project_filter = project_match.group(1)
         query = re.sub(project_pattern, " ", query, flags=re.IGNORECASE)
+
+    # Extract decision status filter: decision:active|superseded|deprecated
+    status_pattern = r"\bdecision:(\S+)"
+    status_match = re.search(status_pattern, query, re.IGNORECASE)
+    if status_match:
+        candidate = status_match.group(1).strip().lower()
+        if candidate in {"active", "superseded", "deprecated"}:
+            decision_status = candidate
+            query = re.sub(status_pattern, " ", query, flags=re.IGNORECASE)
 
     # Extract excluded terms: -term
     exclude_pattern = r"(?:^|\s)-(\S+)"
@@ -105,6 +128,7 @@ def parse_query(query: str) -> ParsedQuery:
         required_phrases=required_phrases,
         excluded_terms=excluded_terms,
         project_filter=project_filter,
+        decision_status=decision_status,
         original=original,
     )
 

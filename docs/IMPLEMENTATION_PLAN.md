@@ -862,7 +862,7 @@ These are explicit non-goals to avoid scope creep:
 - [x] Decision states include active/superseded/deprecated
 - [x] Superseded decisions link to replacements with chronology
 - [x] Review cadence view lists older decisions by project
-- [ ] Search can filter by decision lifecycle state
+- [x] Search can filter by decision lifecycle state
 
 ### Test Plan
 
@@ -882,9 +882,9 @@ These are explicit non-goals to avoid scope creep:
 
 ### Definition of Done
 
-- [ ] Decision lifecycle implemented with active/superseded/deprecated states
+- [x] Decision lifecycle implemented with active/superseded/deprecated states
 - [ ] Supersession relationships tracked with chronology
-- [ ] Review cadence queries documented
+- [x] Review cadence queries documented
 - [ ] Extraction precision remains >80%
 
 ---

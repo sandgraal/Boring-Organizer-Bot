@@ -7,7 +7,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 2. **Indexing** – `bob index <paths>` or `bob index --watchlist` drives `bob.index.index_paths`, chunking/embedding documents and respecting the `.bob_watchlist.yaml` targets as needed.
 3. **Watchlist helpers** – `bob watchlist list/add/remove/clear` live-manages watchlist entries, normalizing absolute paths for deduplication.
 4. **Connectors** – `bob connectors bookmarks` and `bob connectors highlight` import browser bookmarks and save manual highlights (scope level 2 + `browser_saves` toggle).
-5. **Querying** – `bob ask` synthesizes an answer (snippet + citations) while `bob search` surfaces raw chunks with decision badges, highlighting outdated sources and respecting max-age filters.
+5. **Querying** – `bob ask` synthesizes an answer (snippet + citations) while `bob search` surfaces raw chunks with decision badges, highlighting outdated sources, respecting max-age filters, and supporting `decision:active|superseded|deprecated` query filters.
 6. **Decision management** – `bob extract-decisions`, `bob decisions` (including `--older-than` cadence filters), `bob decision`, and `bob supersede` wrap the NLP-based extractor (`bob.extract.decisions`) plus the decision table stored with metadata.
 7. **Evaluation** – `bob eval run` and `bob eval compare` execute the evaluation harness (`tests`/`bob.eval.runner`) and expose metrics/JSON exports for regressions.
 8. **Status & Server** – `bob status` reports database stats, project breakdowns, and vector capability; `bob serve` boots the FastAPI app (with optional reload) that powers both the CLI’s API target and the static UI.
@@ -31,9 +31,9 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 - Static UI (`GET /`) + `/static/*` – `bob/api.app.create_app` mounts `bob/ui/static` and serves `bob/ui/index.html`.
 
 ## Web UI (`bob/ui/`)
-- Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar, answer + footer, suggestion list, and a sources panel with an Audit tab for retrieved vs used chunks; answers now flag unsupported spans when detected.
+- Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar (projects, types, language, date, decision status), answer + footer, suggestion list, and a sources panel with an Audit tab for retrieved vs used chunks; answers now flag unsupported spans when detected.
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, `notes/create`, and `health/fix-queue` endpoints today.
-- Coach Mode toggle, suggestion list (with routine run actions when available), source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines (debrief and plan) with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks, with run routine, run query, and open-file actions where applicable.
+- Coach Mode toggle, suggestion list (with routine run actions when available), source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines (debrief and plan) with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks, with run routine, run query, open-file, and permission-settings actions where applicable.
 - Global "New note" action renders canonical templates into vault paths via `POST /notes/create`, echoing warnings and open actions for capture.
 - Settings now includes a permissions summary (scope, vault root, allowed paths, connector states) plus connector import actions for bookmarks/highlights (gated by `browser_saves`).
 

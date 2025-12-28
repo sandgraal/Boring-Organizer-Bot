@@ -184,6 +184,16 @@ bob search "authentication" --max-age 90
 bob search "error handling" --json
 ```
 
+### Decision Review Cadence
+
+```bash
+# Review decisions older than 6 months
+bob decisions --older-than 6m
+
+# Review active decisions for a project
+bob decisions --status active --older-than 90d --project cdc
+```
+
 ### Advanced Search Syntax
 
 ```bash
@@ -195,6 +205,9 @@ bob ask "python tutorial -beginner -introduction"
 
 # Inline project filter - same as --project flag
 bob ask "deployment guide project:devops"
+
+# Filter by decision status
+bob ask "decision:active decisions about logging"
 
 # Combine all syntax types
 bob ask '"error handling" best practices -deprecated project:docs'

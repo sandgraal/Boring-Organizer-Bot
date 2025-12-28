@@ -27,6 +27,12 @@ def test_fix_queue_query_action_hook_exists() -> None:
     assert "handleFixQueueQuery" in js
 
 
+def test_fix_queue_settings_action_hook_exists() -> None:
+    """Fix Queue supports permission remediation actions."""
+    js = Path("bob/ui/static/js/app.js").read_text(encoding="utf-8")
+    assert "data-fixqueue-settings" in js
+
+
 def test_fix_queue_project_filter_exists() -> None:
     """Health view exposes a Fix Queue project filter."""
     html = Path("bob/ui/index.html").read_text(encoding="utf-8")
@@ -37,6 +43,12 @@ def test_language_filter_markup_exists() -> None:
     """Ask filters include a language input."""
     html = Path("bob/ui/index.html").read_text(encoding="utf-8")
     assert 'id="language-filter"' in html
+
+
+def test_decision_status_filter_markup_exists() -> None:
+    """Ask filters include a decision status selector."""
+    html = Path("bob/ui/index.html").read_text(encoding="utf-8")
+    assert 'id="decision-status-filter"' in html
 
 
 def test_locator_format_handles_section_and_line() -> None:

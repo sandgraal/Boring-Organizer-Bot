@@ -437,7 +437,13 @@ def ask(
 ) -> None:
     """Ask a question and get answers with citations.
 
-    QUESTION: The question to ask.
+    QUESTION: The question to ask. Supports advanced syntax:
+
+    \b
+    Exact phrases:    "exact phrase"
+    Exclude terms:    -unwanted
+    Project filter:   project:name
+    Decision status:  decision:active|superseded|deprecated
     """
     import json
     from datetime import datetime, timedelta
@@ -566,12 +572,14 @@ def search(
     Exact phrases:    "exact phrase"
     Exclude terms:    -unwanted
     Project filter:   project:name
+    Decision status:  decision:active|superseded|deprecated
 
     \b
     Examples:
         bob search "API configuration"
         bob search "error handling" -deprecated
         bob search deployment project:devops
+        bob search "decision:active logging"
     """
     import json
     from datetime import datetime, timedelta
