@@ -196,6 +196,9 @@ bob ask "python tutorial -beginner -introduction"
 # Inline project filter - same as --project flag
 bob ask "deployment guide project:devops"
 
+# Filter by decision status
+bob ask "decision:active decisions about logging"
+
 # Combine all syntax types
 bob ask '"error handling" best practices -deprecated project:docs'
 ```

@@ -7,7 +7,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 2. **Indexing** – `bob index <paths>` or `bob index --watchlist` drives `bob.index.index_paths`, chunking/embedding documents and respecting the `.bob_watchlist.yaml` targets as needed.
 3. **Watchlist helpers** – `bob watchlist list/add/remove/clear` live-manages watchlist entries, normalizing absolute paths for deduplication.
 4. **Connectors** – `bob connectors bookmarks` and `bob connectors highlight` import browser bookmarks and save manual highlights (scope level 2 + `browser_saves` toggle).
-5. **Querying** – `bob ask` synthesizes an answer (snippet + citations) while `bob search` surfaces raw chunks with decision badges, highlighting outdated sources and respecting max-age filters.
+5. **Querying** – `bob ask` synthesizes an answer (snippet + citations) while `bob search` surfaces raw chunks with decision badges, highlighting outdated sources, respecting max-age filters, and supporting `decision:active|superseded|deprecated` query filters.
 6. **Decision management** – `bob extract-decisions`, `bob decisions` (including `--older-than` cadence filters), `bob decision`, and `bob supersede` wrap the NLP-based extractor (`bob.extract.decisions`) plus the decision table stored with metadata.
 7. **Evaluation** – `bob eval run` and `bob eval compare` execute the evaluation harness (`tests`/`bob.eval.runner`) and expose metrics/JSON exports for regressions.
 8. **Status & Server** – `bob status` reports database stats, project breakdowns, and vector capability; `bob serve` boots the FastAPI app (with optional reload) that powers both the CLI’s API target and the static UI.

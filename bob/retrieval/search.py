@@ -86,6 +86,35 @@ def normalize_source_types(source_types: list[str] | None) -> list[str] | None:
     return unique or None
 
 
+def _filter_results_by_decision_status(
+    raw_results: list[dict[str, Any]],
+    decision_status: str | None,
+    db: Any,
+) -> list[dict[str, Any]]:
+    """Filter raw search results to chunks with matching decision status."""
+    if not decision_status or not raw_results:
+        return raw_results
+
+    chunk_ids = [row.get("id") for row in raw_results if row.get("id") is not None]
+    if not chunk_ids:
+        return []
+
+    placeholders = ",".join("?" * len(chunk_ids))
+    cursor = db.conn.execute(
+        f"""
+        SELECT DISTINCT chunk_id
+        FROM decisions
+        WHERE status = ?
+          AND chunk_id IN ({placeholders})
+        """,
+        [decision_status, *chunk_ids],
+    )
+    allowed = {row["chunk_id"] for row in cursor.fetchall()}
+    if not allowed:
+        return []
+    return [row for row in raw_results if row.get("id") in allowed]
+
+
 def search(
     query: str,
     project: str | None = None,
@@ -105,6 +134,7 @@ def search(
         - "phrase": Exact phrase match
         - -term: Exclude results containing term
         - project:name: Filter to specific project
+        - decision:active|superseded|deprecated: Filter by decision status
 
     Args:
         query: Natural language query with optional syntax.
@@ -190,6 +220,12 @@ def search(
     # Apply phrase and exclusion filters
     if parsed.has_filters():
         raw_results = filter_results_by_query(raw_results, parsed, content_key="content")
+
+    # Apply decision status filter when requested.
+    if parsed.decision_status:
+        raw_results = _filter_results_by_decision_status(
+            raw_results, parsed.decision_status, db
+        )
 
     if use_hybrid and raw_results:
         # Apply hybrid scoring
