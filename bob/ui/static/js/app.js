@@ -1365,6 +1365,15 @@
          Open indexing
        </button>`;
     }
+    if (
+      task.action === "raise_scope" ||
+      task.action === "allow_path" ||
+      task.action === "review_permissions"
+    ) {
+      return `<button type="button" class="btn btn-secondary btn-sm" data-fixqueue-settings="permissions">
+         Open settings
+       </button>`;
+    }
     return "";
   }
 
@@ -1398,6 +1407,12 @@
       } else {
         handleFixQueueIndexing("", project);
       }
+      return;
+    }
+
+    const settingsButton = event.target.closest("[data-fixqueue-settings]");
+    if (settingsButton) {
+      navigateTo("settings");
       return;
     }
 
