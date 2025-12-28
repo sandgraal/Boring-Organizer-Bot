@@ -1905,9 +1905,10 @@
 
     // Get filters
     const filters = getAskFilters();
-    state.lastAsk = { query, filters };
+    const finalQuery = applyDecisionStatusFilter(query);
+    state.lastAsk = { query: finalQuery, filters };
 
-    await submitAsk({ query, filters, showAnyway: false });
+    await submitAsk({ query: finalQuery, filters, showAnyway: false });
   }
 
   async function handleGlobalKeydown(event) {
@@ -1942,8 +1943,9 @@
       if (!query) return;
       event.preventDefault();
       const filters = getAskFilters();
-      state.lastAsk = { query, filters };
-      submitAsk({ query, filters, showAnyway: false });
+      const finalQuery = applyDecisionStatusFilter(query);
+      state.lastAsk = { query: finalQuery, filters };
+      submitAsk({ query: finalQuery, filters, showAnyway: false });
       return;
     }
 
@@ -1964,18 +1966,19 @@
     hideAllStates();
 
     try {
+      const finalQuery = applyDecisionStatusFilter(query);
       const coachModeEnabled = elements.coachToggle?.checked ?? false;
       const response = await API.ask(
-        query,
+        finalQuery,
         filters,
         5,
         coachModeEnabled,
         showAnyway
       );
-      state.lastAsk = { query, filters, response };
+      state.lastAsk = { query: finalQuery, filters, response };
 
       if (response.footer?.not_found) {
-        renderNotFoundResponse(response, query);
+        renderNotFoundResponse(response, finalQuery);
       } else {
         renderAnswer(response);
       }
@@ -2015,6 +2018,18 @@
       dateBefore,
       language,
     };
+  }
+
+  function applyDecisionStatusFilter(query) {
+    const status =
+      document.getElementById("decision-status-filter")?.value.trim() || "";
+    if (!status) {
+      return query;
+    }
+    if (/\bdecision:\S+/i.test(query)) {
+      return query;
+    }
+    return `decision:${status} ${query}`.trim();
   }
 
   /**

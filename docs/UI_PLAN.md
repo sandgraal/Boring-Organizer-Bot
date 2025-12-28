@@ -159,6 +159,7 @@ The main interface for querying knowledge.
   - Document type filter
   - Date range filter
   - Language filter (if multilingual)
+  - Decision status filter (active/superseded/deprecated)
 
 - **Query + Answer (Center)**
 

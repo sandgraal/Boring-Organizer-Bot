@@ -45,6 +45,12 @@ def test_language_filter_markup_exists() -> None:
     assert 'id="language-filter"' in html
 
 
+def test_decision_status_filter_markup_exists() -> None:
+    """Ask filters include a decision status selector."""
+    html = Path("bob/ui/index.html").read_text(encoding="utf-8")
+    assert 'id="decision-status-filter"' in html
+
+
 def test_locator_format_handles_section_and_line() -> None:
     """Source locator formatting includes section and line support."""
     js = Path("bob/ui/static/js/app.js").read_text(encoding="utf-8")
