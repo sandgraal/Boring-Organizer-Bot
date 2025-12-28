@@ -184,6 +184,16 @@ bob search "authentication" --max-age 90
 bob search "error handling" --json
 ```
 
+### Decision Review Cadence
+
+```bash
+# Review decisions older than 6 months
+bob decisions --older-than 6m
+
+# Review active decisions for a project
+bob decisions --status active --older-than 90d --project cdc
+```
+
 ### Advanced Search Syntax
 
 ```bash

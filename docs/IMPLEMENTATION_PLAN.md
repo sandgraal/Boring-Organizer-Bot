@@ -884,7 +884,7 @@ These are explicit non-goals to avoid scope creep:
 
 - [x] Decision lifecycle implemented with active/superseded/deprecated states
 - [ ] Supersession relationships tracked with chronology
-- [ ] Review cadence queries documented
+- [x] Review cadence queries documented
 - [ ] Extraction precision remains >80%
 
 ---
