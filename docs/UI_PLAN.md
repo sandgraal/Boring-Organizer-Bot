@@ -512,7 +512,7 @@ When audit data is available, show a tabbed Audit panel next to Sources.
 
 ### 4. "Not Found" Handling
 
-When query returns no relevant results, an actionable card helps users recover:
+When a query returns no relevant results, an actionable card helps users recover:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

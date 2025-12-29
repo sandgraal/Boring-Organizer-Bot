@@ -2006,3 +2006,30 @@ code {
     width: 100%;
   }
 }
+
+/* Reduced motion preference - accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+
+  .loading-skeleton {
+    animation: none;
+  }
+
+  .source-card.highlight {
+    animation: none;
+  }
+
+  @keyframes spin {
+    /* Disabled for reduced motion */
+  }
+
+  @keyframes skeleton-shimmer {
+    /* Disabled for reduced motion */
+  }
+
+  @keyframes pulse-highlight {
+    /* Disabled for reduced motion */
+  }
+}

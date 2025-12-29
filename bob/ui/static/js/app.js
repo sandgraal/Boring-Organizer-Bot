@@ -583,39 +583,72 @@
 
   /**
    * Render welcome stats showing indexed content summary.
+   * Uses cached state.indexedDocumentCount if available to avoid redundant API calls.
    */
   async function renderWelcomeStats() {
     const welcomeStats = document.getElementById("welcome-stats");
     if (!welcomeStats) return;
 
     try {
-      const response = await API.getHealth();
+      // Use cached count or fetch from API
+      if (state.indexedDocumentCount === undefined) {
+        const response = await API.getHealth();
+        state.indexedDocumentCount = response.indexed_documents || 0;
+      }
+
       const projectCount = state.projects.length;
-      const documentCount = response.indexed_documents || 0;
+      const documentCount = state.indexedDocumentCount;
+
+      // Clear previous content using DOM methods (safer than innerHTML)
+      welcomeStats.textContent = "";
 
       if (documentCount === 0 && projectCount === 0) {
-        welcomeStats.innerHTML = `
-          <div class="welcome-empty-state">
-            <p>No documents indexed yet.</p>
-            <a href="#indexing" class="btn btn-primary btn-sm">Index your first folder</a>
-          </div>
-        `;
+        const emptyState = document.createElement("div");
+        emptyState.className = "welcome-empty-state";
+
+        const p = document.createElement("p");
+        p.textContent = "No documents indexed yet.";
+        emptyState.appendChild(p);
+
+        const link = document.createElement("a");
+        link.href = "#indexing";
+        link.className = "btn btn-primary btn-sm";
+        link.textContent = "Index your first folder";
+        emptyState.appendChild(link);
+
+        welcomeStats.appendChild(emptyState);
         return;
       }
 
-      welcomeStats.innerHTML = `
-        <div class="welcome-stat">
-          <span class="welcome-stat-value">${documentCount}</span>
-          <span class="welcome-stat-label">Documents</span>
-        </div>
-        <div class="welcome-stat">
-          <span class="welcome-stat-value">${projectCount}</span>
-          <span class="welcome-stat-label">${projectCount === 1 ? 'Project' : 'Projects'}</span>
-        </div>
-      `;
+      // Create document stat
+      const docStat = document.createElement("div");
+      docStat.className = "welcome-stat";
+      const docValue = document.createElement("span");
+      docValue.className = "welcome-stat-value";
+      docValue.textContent = String(documentCount);
+      const docLabel = document.createElement("span");
+      docLabel.className = "welcome-stat-label";
+      docLabel.textContent = "Documents";
+      docStat.appendChild(docValue);
+      docStat.appendChild(docLabel);
+
+      // Create project stat
+      const projStat = document.createElement("div");
+      projStat.className = "welcome-stat";
+      const projValue = document.createElement("span");
+      projValue.className = "welcome-stat-value";
+      projValue.textContent = String(projectCount);
+      const projLabel = document.createElement("span");
+      projLabel.className = "welcome-stat-label";
+      projLabel.textContent = projectCount === 1 ? "Project" : "Projects";
+      projStat.appendChild(projValue);
+      projStat.appendChild(projLabel);
+
+      welcomeStats.appendChild(docStat);
+      welcomeStats.appendChild(projStat);
     } catch (err) {
       console.error("Failed to load welcome stats:", err);
-      welcomeStats.innerHTML = "";
+      welcomeStats.textContent = "";
     }
   }
 
