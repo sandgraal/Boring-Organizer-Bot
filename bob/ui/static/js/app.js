@@ -11,57 +11,49 @@
       id: "daily-checkin",
       label: "Daily Check-in",
       cadence: "Daily",
-      description:
-        "Capture your morning review, open loops, and today’s focus backed by retrievals.",
+      description: "Morning priorities and open loops",
     },
     {
       id: "daily-debrief",
       label: "End-of-Day Debrief",
       cadence: "Daily",
-      description:
-        "Summarize wins, lessons, and follow-ups from the day with cited context.",
+      description: "Log wins, lessons, and follow-ups",
     },
     {
       id: "weekly-review",
       label: "Weekly Review",
       cadence: "Weekly",
-      description:
-        "Highlight the week, flag stale decisions, and note actions for next week.",
+      description: "Highlights, stale decisions, next actions",
     },
     {
       id: "meeting-prep",
       label: "Meeting Prep",
       cadence: "Meeting",
-      description:
-        "Pull recent decisions and open questions into an agenda-ready prep note.",
+      description: "Agenda from recent decisions and questions",
     },
     {
       id: "meeting-debrief",
       label: "Meeting Debrief",
       cadence: "Meeting",
-      description:
-        "Capture decisions, rejected options, and next steps right after a meeting.",
+      description: "Decisions, rejected options, next steps",
     },
     {
       id: "new-decision",
       label: "New Decision",
       cadence: "Ad hoc",
-      description:
-        "Document a fresh decision with cited evidence and conflicting context.",
+      description: "Record a decision with evidence",
     },
     {
       id: "trip-debrief",
       label: "Trip Debrief",
       cadence: "Trip",
-      description:
-        "Turn travel notes into reusable lessons, checklists, and recipes.",
+      description: "Lessons, checklists, and tips",
     },
     {
       id: "trip-plan",
       label: "Trip Plan",
       cadence: "Trip",
-      description:
-        "Prepare for a new trip with logistics, packing lists, and prior learnings.",
+      description: "Logistics, packing, and prior learnings",
     },
   ];
 
@@ -1005,8 +997,7 @@
 
     if (elements.routinePreviewDescription) {
       elements.routinePreviewDescription.textContent =
-        action?.description ||
-        "Run a routine to preview its template and citations.";
+        action?.description || "Preview and run.";
     }
 
     const responseEntry = action ? state.routineResponses[action.id] : null;
@@ -1014,8 +1005,7 @@
 
     if (elements.routinePreviewContent) {
       elements.routinePreviewContent.textContent =
-        response?.content?.trim() ||
-        "Run the routine to preview the generated note.";
+        response?.content?.trim() || "Run to preview the generated note.";
     }
 
     if (elements.routinePreviewInfo) {
@@ -1044,7 +1034,7 @@
     if (!elements.routineRetrievals) return;
     if (!retrievals || retrievals.length === 0) {
       elements.routineRetrievals.innerHTML =
-        '<div class="loading-placeholder">Retrieval details will appear after a run.</div>';
+        '<div class="loading-placeholder">Sources appear after running.</div>';
       return;
     }
 
@@ -1279,9 +1269,9 @@
 
     state.fixQueueLoading = true;
     elements.failureSignalsList.innerHTML =
-      '<div class="loading-placeholder">Refreshing health metrics…</div>';
+      '<div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading health metrics"></div>';
     elements.fixQueueTasksList.innerHTML =
-      '<div class="loading-placeholder">Loading Fix Queue tasks…</div>';
+      '<div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading Fix Queue tasks"></div>';
     elements.refreshFixQueueBtn?.setAttribute("disabled", "true");
 
     try {
@@ -1309,7 +1299,7 @@
     if (!elements.failureSignalsList) return;
     if (!signals || signals.length === 0) {
       elements.failureSignalsList.innerHTML =
-        '<div class="loading-placeholder">No health signals available.</div>';
+        '<div class="loading-placeholder">No signals.</div>';
       return;
     }
 
@@ -1330,7 +1320,7 @@
     if (!elements.fixQueueTasksList) return;
     if (!tasks || tasks.length === 0) {
       elements.fixQueueTasksList.innerHTML =
-        '<div class="loading-placeholder">Nothing in the Fix Queue yet.</div>';
+        '<div class="loading-placeholder">No tasks.</div>';
       return;
     }
 
@@ -2833,7 +2823,7 @@
     if (!append) {
       state.documentPage = 1;
       elements.documentList.innerHTML =
-        '<div class="loading-placeholder">Loading documents...</div>';
+        '<div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading documents"></div>';
     }
 
     const project = elements.libraryProjectFilter?.value || null;

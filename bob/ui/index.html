@@ -46,7 +46,7 @@
                 <label class="filter-label">Projects</label>
                 <div id="project-filters" class="checkbox-list">
                   <!-- Populated by JS -->
-                  <div class="loading-placeholder">Loading...</div>
+                  <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading projects"></div>
                 </div>
               </div>
 
@@ -351,13 +351,11 @@
               <div class="section-header">
                 <h2>Routines</h2>
                 <p class="section-subtitle">
-                  One-click workflows that pull context from your notes.
+                  Capture workflows backed by your notes.
                 </p>
               </div>
               <div id="routine-actions-list" class="routine-actions-list">
-                <div class="loading-placeholder">
-                  Choose a routine to see what context it will gather.
-                </div>
+                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading routines"></div>
               </div>
             </section>
             <section class="routine-preview-panel">
@@ -365,7 +363,7 @@
                 <div>
                   <h3 id="routine-preview-title">Select a routine</h3>
                   <p id="routine-preview-description" class="section-subtitle">
-                    Preview the template and sources before creating your note.
+                    Preview and run.
                   </p>
                 </div>
                 <button id="run-selected-routine" class="btn btn-primary" disabled>
@@ -472,15 +470,13 @@
               <div class="routine-preview-body">
                 <div class="routine-preview-info" id="routine-preview-info"></div>
                 <h4>Preview</h4>
-                <pre id="routine-preview-content" class="routine-preview-content">Run a routine to preview the generated note.</pre>
+                <pre id="routine-preview-content" class="routine-preview-content">Run to preview the generated note.</pre>
               </div>
             </section>
             <section class="routine-citations-panel">
-              <h3>Retrievals & Citations</h3>
+              <h3>Citations</h3>
               <div id="routine-retrievals" class="routine-retrievals">
-                <div class="loading-placeholder">
-                  Retrieval buckets will populate after a routine run.
-                </div>
+                <div class="loading-placeholder">Sources appear after running.</div>
               </div>
             </section>
           </div>
@@ -852,15 +848,13 @@
           <div class="health-layout">
             <section class="health-signals-panel">
               <div class="section-header">
-                <h2>Health Signals</h2>
+                <h2>Health</h2>
                 <p class="section-subtitle">
-                  Failure metrics that drive the Fix Queue.
+                  Metrics driving the Fix Queue.
                 </p>
               </div>
               <div id="failure-signals-list" class="health-signals-list">
-                <div class="loading-placeholder">
-                  Loading failure signals…
-                </div>
+                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading health metrics"></div>
               </div>
             </section>
             <section class="health-tasks-panel">
@@ -868,7 +862,7 @@
                 <div>
                   <h2>Fix Queue</h2>
                   <p class="section-subtitle">
-                    Prioritized cleanup tasks derived from feedback and lint signals.
+                    Tasks from feedback and lint.
                   </p>
                 </div>
                 <div class="health-tasks-actions">
@@ -882,9 +876,7 @@
                 </div>
               </div>
               <div id="fixqueue-tasks-list" class="fixqueue-tasks-list">
-                <div class="loading-placeholder">
-                  Tasks will appear after we fetch the latest health data.
-                </div>
+                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading Fix Queue tasks"></div>
               </div>
             </section>
           </div>
