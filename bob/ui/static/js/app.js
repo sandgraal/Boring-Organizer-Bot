@@ -222,6 +222,7 @@
     elements.copyReportStatus = document.getElementById("copy-report-status");
     elements.notFoundState = document.getElementById("not-found-state");
     elements.notFoundQuery = document.getElementById("not-found-query");
+    elements.loadingState = document.getElementById("loading-state");
     elements.errorState = document.getElementById("error-state");
     elements.errorMessage = document.getElementById("error-message");
     elements.sourcesList = document.getElementById("sources-list");
@@ -2002,7 +2003,7 @@
   async function submitAsk({ query, filters, showAnyway }) {
     // Show loading state
     setAskLoading(true);
-    hideAllStates();
+    showLoadingState();
 
     try {
       const finalQuery = applyDecisionStatusFilter(query);
@@ -2170,6 +2171,7 @@
    */
   function hideAllStates() {
     elements.welcomeState.classList.add("hidden");
+    elements.loadingState?.classList.add("hidden");
     elements.answerContent.classList.add("hidden");
     elements.notFoundState.classList.add("hidden");
     elements.errorState.classList.add("hidden");
@@ -2181,6 +2183,14 @@
     setFeedbackButtonsEnabled(false);
     setFeedbackStatus("");
     setCopyReportEnabled(false);
+  }
+
+  /**
+   * Show the loading state.
+   */
+  function showLoadingState() {
+    hideAllStates();
+    elements.loadingState?.classList.remove("hidden");
   }
 
   function resetAskState() {
