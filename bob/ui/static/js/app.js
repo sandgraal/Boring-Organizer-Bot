@@ -191,6 +191,7 @@
     noteTemplateId: DEFAULT_NOTE_TEMPLATE_ID,
     noteResultPath: null,
     noteModalOpen: false,
+    shortcutsModalOpen: false,
     permissions: null,
     permissionsLoading: false,
   };
@@ -410,6 +411,11 @@
     elements.noteResultWarnings = document.getElementById("note-result-warnings");
     elements.noteOpenBtn = document.getElementById("note-open-btn");
 
+    // Shortcuts modal
+    elements.shortcutsModal = document.getElementById("shortcuts-modal");
+    elements.shortcutsModalClose = document.getElementById("shortcuts-modal-close");
+    elements.shortcutsBtn = document.getElementById("shortcuts-btn");
+
     // Health page
     elements.failureSignalsList = document.getElementById("failure-signals-list");
     elements.fixQueueTasksList = document.getElementById("fixqueue-tasks-list");
@@ -482,6 +488,11 @@
     elements.noteOpenBtn?.addEventListener("click", handleOpenCreatedNote);
     document.addEventListener("keydown", handleNoteModalKeydown);
     document.addEventListener("keydown", handleGlobalKeydown);
+
+    // Shortcuts modal
+    elements.shortcutsBtn?.addEventListener("click", openShortcutsModal);
+    elements.shortcutsModalClose?.addEventListener("click", closeShortcutsModal);
+    elements.shortcutsModal?.addEventListener("click", handleShortcutsModalBackdrop);
 
     elements.clearHistoryBtn?.addEventListener("click", handleClearHistory);
   }
@@ -714,6 +725,27 @@
   function handleNoteModalKeydown(event) {
     if (event.key === "Escape" && state.noteModalOpen) {
       closeNoteModal();
+    }
+  }
+
+  // Shortcuts modal functions
+  function openShortcutsModal() {
+    if (!elements.shortcutsModal) return;
+    elements.shortcutsModal.classList.remove("hidden");
+    elements.shortcutsModal.setAttribute("aria-hidden", "false");
+    state.shortcutsModalOpen = true;
+  }
+
+  function closeShortcutsModal() {
+    if (!elements.shortcutsModal) return;
+    elements.shortcutsModal.classList.add("hidden");
+    elements.shortcutsModal.setAttribute("aria-hidden", "true");
+    state.shortcutsModalOpen = false;
+  }
+
+  function handleShortcutsModalBackdrop(event) {
+    if (event.target === elements.shortcutsModal) {
+      closeShortcutsModal();
     }
   }
 
@@ -2076,6 +2108,15 @@
   async function handleGlobalKeydown(event) {
     if (state.noteModalOpen) return;
 
+    // Handle shortcuts modal
+    if (state.shortcutsModalOpen) {
+      if (event.key === "Escape" || event.key === "?") {
+        event.preventDefault();
+        closeShortcutsModal();
+      }
+      return;
+    }
+
     const target = event.target;
     const tagName = target?.tagName || "";
     const isEditable =
@@ -2083,6 +2124,13 @@
       tagName === "INPUT" ||
       tagName === "TEXTAREA" ||
       tagName === "SELECT";
+
+    // Open shortcuts help with ?
+    if (event.key === "?" && !isEditable) {
+      event.preventDefault();
+      openShortcutsModal();
+      return;
+    }
 
     if (event.key === "/" && !isEditable) {
       if (state.currentPage === "ask") {

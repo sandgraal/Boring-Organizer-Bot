@@ -27,6 +27,14 @@
           <a href="#health" class="nav-link" data-page="health">Health</a>
         </nav>
         <div class="header-actions">
+          <button
+            id="shortcuts-btn"
+            class="btn btn-secondary btn-sm header-shortcuts-btn"
+            type="button"
+            title="Keyboard shortcuts (?)"
+          >
+            <kbd>?</kbd>
+          </button>
           <button id="new-note-btn" class="btn btn-primary btn-sm" type="button">
             New note
           </button>
@@ -969,6 +977,61 @@
               </button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcuts-modal" class="modal hidden" aria-hidden="true">
+      <div
+        class="modal-card shortcuts-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-modal-title"
+      >
+        <div class="modal-header">
+          <h3 id="shortcuts-modal-title">Keyboard Shortcuts</h3>
+          <button id="shortcuts-modal-close" class="btn btn-secondary btn-sm" type="button">
+            Close
+          </button>
+        </div>
+        <div class="shortcuts-grid">
+          <div class="shortcuts-section">
+            <h4>Navigation</h4>
+            <div class="shortcut-row">
+              <kbd>?</kbd>
+              <span>Show this help</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>/</kbd>
+              <span>Focus search (Ask page)</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>Esc</kbd>
+              <span>Clear search / close modal</span>
+            </div>
+          </div>
+          <div class="shortcuts-section">
+            <h4>Search</h4>
+            <div class="shortcut-row">
+              <kbd>Enter</kbd>
+              <span>Submit query</span>
+            </div>
+            <div class="shortcut-row">
+              <kbd>⌘</kbd> + <kbd>Enter</kbd>
+              <span>Submit query (from anywhere)</span>
+            </div>
+          </div>
+          <div class="shortcuts-section">
+            <h4>Sources</h4>
+            <div class="shortcut-row">
+              <kbd>1</kbd> – <kbd>9</kbd>
+              <span>Open source 1-9 in editor</span>
+            </div>
+          </div>
+        </div>
+        <div class="shortcuts-footer">
+          <span class="shortcuts-hint">Press <kbd>Esc</kbd> or <kbd>?</kbd> to close</span>
         </div>
       </div>
     </div>
