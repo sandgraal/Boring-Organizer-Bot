@@ -180,6 +180,7 @@
     renderJobHistory();
     renderRoutineActions();
     renderRoutineDetails();
+    renderWelcomeStats();
 
     // Check if we have a hash route
     const hash = window.location.hash.slice(1) || "ask";
@@ -221,6 +222,7 @@
     elements.copyReportStatus = document.getElementById("copy-report-status");
     elements.notFoundState = document.getElementById("not-found-state");
     elements.notFoundQuery = document.getElementById("not-found-query");
+    elements.loadingState = document.getElementById("loading-state");
     elements.errorState = document.getElementById("error-state");
     elements.errorMessage = document.getElementById("error-message");
     elements.sourcesList = document.getElementById("sources-list");
@@ -576,6 +578,44 @@
 
     if (elements.noteProjectOptions) {
       elements.noteProjectOptions.innerHTML = options;
+    }
+  }
+
+  /**
+   * Render welcome stats showing indexed content summary.
+   */
+  async function renderWelcomeStats() {
+    const welcomeStats = document.getElementById("welcome-stats");
+    if (!welcomeStats) return;
+
+    try {
+      const response = await API.getHealth();
+      const projectCount = state.projects.length;
+      const documentCount = response.indexed_documents || 0;
+
+      if (documentCount === 0 && projectCount === 0) {
+        welcomeStats.innerHTML = `
+          <div class="welcome-empty-state">
+            <p>No documents indexed yet.</p>
+            <a href="#indexing" class="btn btn-primary btn-sm">Index your first folder</a>
+          </div>
+        `;
+        return;
+      }
+
+      welcomeStats.innerHTML = `
+        <div class="welcome-stat">
+          <span class="welcome-stat-value">${documentCount}</span>
+          <span class="welcome-stat-label">Documents</span>
+        </div>
+        <div class="welcome-stat">
+          <span class="welcome-stat-value">${projectCount}</span>
+          <span class="welcome-stat-label">${projectCount === 1 ? 'Project' : 'Projects'}</span>
+        </div>
+      `;
+    } catch (err) {
+      console.error("Failed to load welcome stats:", err);
+      welcomeStats.innerHTML = "";
     }
   }
 
@@ -1963,7 +2003,7 @@
   async function submitAsk({ query, filters, showAnyway }) {
     // Show loading state
     setAskLoading(true);
-    hideAllStates();
+    showLoadingState();
 
     try {
       const finalQuery = applyDecisionStatusFilter(query);
@@ -2131,6 +2171,7 @@
    */
   function hideAllStates() {
     elements.welcomeState.classList.add("hidden");
+    elements.loadingState?.classList.add("hidden");
     elements.answerContent.classList.add("hidden");
     elements.notFoundState.classList.add("hidden");
     elements.errorState.classList.add("hidden");
@@ -2142,6 +2183,14 @@
     setFeedbackButtonsEnabled(false);
     setFeedbackStatus("");
     setCopyReportEnabled(false);
+  }
+
+  /**
+   * Show the loading state.
+   */
+  function showLoadingState() {
+    hideAllStates();
+    elements.loadingState?.classList.remove("hidden");
   }
 
   function resetAskState() {
