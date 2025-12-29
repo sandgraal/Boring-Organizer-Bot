@@ -1269,9 +1269,9 @@
 
     state.fixQueueLoading = true;
     elements.failureSignalsList.innerHTML =
-      '<div class="loading-placeholder">Loading…</div>';
+      '<div class="loading-placeholder loading"></div>';
     elements.fixQueueTasksList.innerHTML =
-      '<div class="loading-placeholder">Loading…</div>';
+      '<div class="loading-placeholder loading"></div>';
     elements.refreshFixQueueBtn?.setAttribute("disabled", "true");
 
     try {
@@ -2823,7 +2823,7 @@
     if (!append) {
       state.documentPage = 1;
       elements.documentList.innerHTML =
-        '<div class="loading-placeholder">Loading documents...</div>';
+        '<div class="loading-placeholder loading"></div>';
     }
 
     const project = elements.libraryProjectFilter?.value || null;
