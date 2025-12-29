@@ -1184,8 +1184,12 @@
   function renderRoutineRetrievals(retrievals) {
     if (!elements.routineRetrievals) return;
     if (!retrievals || retrievals.length === 0) {
-      elements.routineRetrievals.innerHTML =
-        '<div class="loading-placeholder">Sources appear after running.</div>';
+      elements.routineRetrievals.innerHTML = `
+        <div class="routine-citations-empty">
+          <span class="routine-citations-empty-icon">📎</span>
+          <p>Run a routine to see cited sources here.</p>
+        </div>
+      `;
       return;
     }
 
