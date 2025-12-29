@@ -1010,8 +1010,8 @@
 
     if (elements.routinePreviewInfo) {
       elements.routinePreviewInfo.textContent = response
-        ? `${response.file_path}`
-        : "";
+        ? `File: ${response.file_path} • Template: ${response.template}`
+        : "No runs yet. Run the routine to see the rendered template.";
     }
 
     renderRoutineWarnings(response?.warnings || []);
@@ -1269,9 +1269,9 @@
 
     state.fixQueueLoading = true;
     elements.failureSignalsList.innerHTML =
-      '<div class="loading-placeholder loading"></div>';
+      '<div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading health metrics"></div>';
     elements.fixQueueTasksList.innerHTML =
-      '<div class="loading-placeholder loading"></div>';
+      '<div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading Fix Queue tasks"></div>';
     elements.refreshFixQueueBtn?.setAttribute("disabled", "true");
 
     try {
@@ -2823,7 +2823,7 @@
     if (!append) {
       state.documentPage = 1;
       elements.documentList.innerHTML =
-        '<div class="loading-placeholder loading"></div>';
+        '<div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading documents"></div>';
     }
 
     const project = elements.libraryProjectFilter?.value || null;
