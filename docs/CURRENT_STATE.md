@@ -32,6 +32,7 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 
 ## Web UI (`bob/ui/`)
 - Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar (projects, types, language, date, decision status), answer + footer, suggestion list, and a sources panel with an Audit tab for retrieved vs used chunks; answers now flag unsupported spans when detected.
+- The Ask page features a polished welcome experience with: inviting "What would you like to know?" heading, feature hints (ask, click sources, 100% local), dynamic stats showing indexed documents/projects, and keyboard shortcuts (/ to focus, Enter to search).
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, `notes/create`, and `health/fix-queue` endpoints today.
 - Coach Mode toggle, suggestion list (with routine run actions when available), source footer, and "not found"/error states are functional. The Routines page can run daily, weekly, meeting, decision, and trip routines (debrief and plan) with previews, warnings, and cited retrieval buckets. The Health page surfaces Fix Queue signals and tasks, with run routine, run query, open-file, and permission-settings actions where applicable.
 - Global "New note" action renders canonical templates into vault paths via `POST /notes/create`, echoing warnings and open actions for capture.

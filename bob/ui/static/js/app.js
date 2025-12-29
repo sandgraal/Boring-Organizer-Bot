@@ -180,6 +180,7 @@
     renderJobHistory();
     renderRoutineActions();
     renderRoutineDetails();
+    renderWelcomeStats();
 
     // Check if we have a hash route
     const hash = window.location.hash.slice(1) || "ask";
@@ -576,6 +577,44 @@
 
     if (elements.noteProjectOptions) {
       elements.noteProjectOptions.innerHTML = options;
+    }
+  }
+
+  /**
+   * Render welcome stats showing indexed content summary.
+   */
+  async function renderWelcomeStats() {
+    const welcomeStats = document.getElementById("welcome-stats");
+    if (!welcomeStats) return;
+
+    try {
+      const response = await API.getHealth();
+      const projectCount = state.projects.length;
+      const documentCount = response.indexed_documents || 0;
+
+      if (documentCount === 0 && projectCount === 0) {
+        welcomeStats.innerHTML = `
+          <div class="welcome-empty-state">
+            <p>No documents indexed yet.</p>
+            <a href="#indexing" class="btn btn-primary btn-sm">Index your first folder</a>
+          </div>
+        `;
+        return;
+      }
+
+      welcomeStats.innerHTML = `
+        <div class="welcome-stat">
+          <span class="welcome-stat-value">${documentCount}</span>
+          <span class="welcome-stat-label">Documents</span>
+        </div>
+        <div class="welcome-stat">
+          <span class="welcome-stat-value">${projectCount}</span>
+          <span class="welcome-stat-label">${projectCount === 1 ? 'Project' : 'Projects'}</span>
+        </div>
+      `;
+    } catch (err) {
+      console.error("Failed to load welcome stats:", err);
+      welcomeStats.innerHTML = "";
     }
   }
 

@@ -128,7 +128,7 @@
                     type="text"
                     id="query-input"
                     class="query-input"
-                    placeholder="Ask a question about your documents..."
+                    placeholder="What would you like to know?"
                     autocomplete="off"
                     autofocus
                   />
@@ -136,6 +136,9 @@
                     <span class="submit-text">Ask</span>
                     <span class="submit-loading hidden">...</span>
                   </button>
+                </div>
+                <div class="query-hints">
+                  <kbd>/</kbd> to focus &nbsp;·&nbsp; <kbd>Enter</kbd> to search
                 </div>
               </form>
               <div class="coach-toggle">
@@ -151,12 +154,26 @@
               <div id="answer-container" class="answer-container">
                 <!-- Welcome state -->
                 <div id="welcome-state" class="welcome-state">
-                  <div class="welcome-icon">🔍</div>
-                  <h2>Ask B.O.B anything</h2>
-                  <p>
-                    Your answers will be grounded in your indexed documents with
-                    full citations.
+                  <div class="welcome-icon">📚</div>
+                  <h2>What would you like to know?</h2>
+                  <p class="welcome-tagline">
+                    Every answer is grounded in your documents. No hallucinations, just citations.
                   </p>
+                  <div class="welcome-hints">
+                    <div class="welcome-hint">
+                      <span class="hint-icon">✨</span>
+                      <span class="hint-text">Ask about decisions, notes, or anything you've indexed</span>
+                    </div>
+                    <div class="welcome-hint">
+                      <span class="hint-icon">🔗</span>
+                      <span class="hint-text">Click any source to jump directly to the original</span>
+                    </div>
+                    <div class="welcome-hint">
+                      <span class="hint-icon">🛡️</span>
+                      <span class="hint-text">100% local - your data never leaves your machine</span>
+                    </div>
+                  </div>
+                  <div id="welcome-stats" class="welcome-stats"></div>
                 </div>
 
                 <!-- Answer content (hidden until query) -->
@@ -247,18 +264,33 @@
 
                 <!-- Not found state -->
                 <div id="not-found-state" class="not-found-state hidden">
-                  <div class="not-found-icon">📭</div>
-                  <h3>Not found in sources</h3>
-                  <p id="not-found-query"></p>
-                  <div class="suggestions">
-                    <p><strong>Suggestions:</strong></p>
-                    <ul>
-                      <li>Try different keywords</li>
-                      <li>Check if relevant documents are indexed</li>
-                      <li>
-                        Index more documents with <code>bob index ./path</code>
-                      </li>
-                    </ul>
+                  <div class="not-found-icon">🔍</div>
+                  <h3>No matches found</h3>
+                  <p id="not-found-query" class="not-found-query-text"></p>
+                  <div class="not-found-actions">
+                    <div class="not-found-action">
+                      <span class="action-icon">💡</span>
+                      <div class="action-content">
+                        <strong>Try different keywords</strong>
+                        <p>Rephrase your question or use specific terms from your documents</p>
+                      </div>
+                    </div>
+                    <div class="not-found-action">
+                      <span class="action-icon">📂</span>
+                      <div class="action-content">
+                        <strong>Check your library</strong>
+                        <p>Make sure the relevant documents are indexed</p>
+                        <a href="#library" class="btn btn-secondary btn-sm">Browse Library</a>
+                      </div>
+                    </div>
+                    <div class="not-found-action">
+                      <span class="action-icon">➕</span>
+                      <div class="action-content">
+                        <strong>Index more content</strong>
+                        <p>Add folders containing the information you need</p>
+                        <a href="#indexing" class="btn btn-primary btn-sm">Go to Indexing</a>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -266,7 +298,11 @@
                 <div id="error-state" class="error-state hidden">
                   <div class="error-icon">⚠️</div>
                   <h3>Something went wrong</h3>
-                  <p id="error-message"></p>
+                  <p id="error-message" class="error-message-text"></p>
+                  <div class="error-actions">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="location.reload()">Reload page</button>
+                    <a href="#health" class="btn btn-secondary btn-sm">Check system health</a>
+                  </div>
                 </div>
               </div>
             </section>

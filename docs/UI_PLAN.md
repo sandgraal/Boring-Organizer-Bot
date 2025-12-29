@@ -512,27 +512,36 @@ When audit data is available, show a tabbed Audit panel next to Sources.
 
 ### 4. "Not Found" Handling
 
-When query returns no relevant results:
+When query returns no relevant results, an actionable card helps users recover:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
+│                         🔍                                      │
+│                   No matches found                              │
+│              "your search query here"                           │
 │                                                                 │
-│  ⚠️ Not found in sources                                       │
-│                                                                 │
-│  No indexed documents contain information about your query.     │
-│                                                                 │
-│  Suggestions:                                                   │
-│  • Check if relevant documents are indexed (Library view)       │
-│  • Try different keywords or phrasing                           │
-│  • Index additional content (Indexing view)                     │
-│                                                                 │
-│  ─────────────────────────────────────────────────────────────  │
-│  📋 Sources: 0 documents                                        │
-│  📅 Date Confidence: N/A                                        │
-│  ─────────────────────────────────────────────────────────────  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 💡 Try different keywords                                │    │
+│  │    Rephrase your question or use specific terms         │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ 📂 Check your library                                    │    │
+│  │    Make sure the relevant documents are indexed          │    │
+│  │    [Browse Library]                                      │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ ➕ Index more content                                    │    │
+│  │    Add folders containing the information you need       │    │
+│  │    [Go to Indexing]                                      │    │
+│  └─────────────────────────────────────────────────────────┘    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+Each action card provides:
+- Clear icon + heading for quick scanning
+- Helpful explanation text
+- Direct action button where applicable (Browse Library, Go to Indexing)
 
 ### 5. Indexing Progress
 
@@ -690,24 +699,31 @@ The Fix Queue dashboard surface the failure metrics that drive the Fix Queue scr
 +------------------+--------------------------------+------------------+
 |                  |                                |                  |
 |  [B.O.B Logo]    |  ┌──────────────────────────┐  |  SOURCES         |
-|                  |  │ [Query input...        ] │  |                  |
+|                  |  │ What would you like...   │  |                  |
 |  ══════════════  |  └──────────────────────────┘  |  (empty)         |
-|                  |                                |                  |
-|  PROJECTS        |  Recent queries:               |  Enter a query   |
-|  ☑ All (156)     |  • "How to configure..."      |  to see sources  |
-|  ☐ docs (45)     |  • "What decisions about..."  |                  |
-|  ☐ recipes (23)  |  • "Recipe for..."            |                  |
-|  ☐ work (88)     |                                |                  |
-|                  |                                |                  |
+|                  |      [/] focus · [Enter] ask   |                  |
+|  PROJECTS        |                                |  Enter a query   |
+|  ☑ All (156)     |           📚                   |  to see sources  |
+|  ☐ docs (45)     |  What would you like to know?  |                  |
+|  ☐ recipes (23)  |                                |                  |
+|  ☐ work (88)     |  Every answer is grounded in   |                  |
+|                  |  your documents.               |                  |
 |  ══════════════  |                                |                  |
-|                  |                                |                  |
-|  DOCUMENT TYPE   |                                |                  |
-|  ☑ All           |                                |                  |
-|  ☐ Markdown      |                                |                  |
-|  ☐ PDF           |                                |                  |
-|                  |                                |                  |
+|                  |  ┌────────────────────────────┐|                  |
+|  DOCUMENT TYPE   |  │ ✨ Ask about decisions... ││                  |
+|  ☑ All           |  │ 🔗 Click source to jump...││                  |
+|  ☐ Markdown      |  │ 🛡️ 100% local...          ││                  |
+|  ☐ PDF           |  └────────────────────────────┘|                  |
+|                  |     [156 Documents] [3 Projects]                  |
 +------------------+--------------------------------+------------------+
 ```
+
+The welcome state includes:
+- Inviting heading: "What would you like to know?"
+- Value proposition: grounded answers, no hallucinations
+- Feature hints (ask, click sources, 100% local)
+- Stats showing indexed document/project counts
+- Keyboard hint for power users (/ to focus, Enter to search)
 
 ### Ask Page - Answer State
 
