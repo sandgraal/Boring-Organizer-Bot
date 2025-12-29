@@ -6,54 +6,98 @@
 (function () {
   "use strict";
 
+  const ROUTINE_GROUPS = [
+    {
+      id: "daily",
+      label: "Daily",
+      icon: "sun",
+    },
+    {
+      id: "weekly",
+      label: "Weekly",
+      icon: "calendar",
+    },
+    {
+      id: "meeting",
+      label: "Meetings",
+      icon: "users",
+    },
+    {
+      id: "decision",
+      label: "Decisions",
+      icon: "check-circle",
+    },
+    {
+      id: "trip",
+      label: "Trips",
+      icon: "map",
+    },
+  ];
+
   const ROUTINE_ACTIONS = [
     {
       id: "daily-checkin",
-      label: "Daily Check-in",
+      label: "Morning Check-in",
+      group: "daily",
       cadence: "Daily",
-      description: "Morning priorities and open loops",
+      shortDescription: "Start your day with focus",
+      description: "Review open loops and set your focus for today.",
     },
     {
       id: "daily-debrief",
-      label: "End-of-Day Debrief",
+      label: "Evening Debrief",
+      group: "daily",
       cadence: "Daily",
-      description: "Log wins, lessons, and follow-ups",
+      shortDescription: "Capture wins and lessons",
+      description: "Record what went well, what you learned, and what's next.",
     },
     {
       id: "weekly-review",
       label: "Weekly Review",
+      group: "weekly",
       cadence: "Weekly",
-      description: "Highlights, stale decisions, next actions",
+      shortDescription: "Big picture check-in",
+      description: "Review highlights, stale decisions, and plan next week.",
     },
     {
       id: "meeting-prep",
       label: "Meeting Prep",
+      group: "meeting",
       cadence: "Meeting",
-      description: "Agenda from recent decisions and questions",
+      shortDescription: "Get ready with context",
+      description: "Gather relevant decisions and questions before a meeting.",
     },
     {
       id: "meeting-debrief",
       label: "Meeting Debrief",
+      group: "meeting",
       cadence: "Meeting",
-      description: "Decisions, rejected options, next steps",
+      shortDescription: "Capture outcomes",
+      description: "Record decisions, action items, and key takeaways.",
     },
     {
       id: "new-decision",
       label: "New Decision",
+      group: "decision",
       cadence: "Ad hoc",
-      description: "Record a decision with evidence",
-    },
-    {
-      id: "trip-debrief",
-      label: "Trip Debrief",
-      cadence: "Trip",
-      description: "Lessons, checklists, and tips",
+      shortDescription: "Document a choice",
+      description: "Record a decision with context, evidence, and alternatives considered.",
     },
     {
       id: "trip-plan",
       label: "Trip Plan",
+      group: "trip",
       cadence: "Trip",
-      description: "Logistics, packing, and prior learnings",
+      shortDescription: "Prepare for adventure",
+      description: "Plan logistics, packing, and questions based on past trips.",
+    },
+    {
+      id: "trip-debrief",
+      label: "Trip Debrief",
+      group: "trip",
+      cadence: "Trip",
+      shortDescription: "Preserve learnings",
+      description: "Turn experiences into reusable lessons and checklists.",
     },
   ];
 
@@ -951,28 +995,103 @@
     return ROUTINE_ACTIONS.find((action) => action.id === actionId) || null;
   }
 
+  /**
+   * Derive unique groups from ROUTINE_ACTIONS.
+   * Falls back to ROUTINE_GROUPS for metadata (label, icon) if defined.
+   */
+  function getRoutineGroups() {
+    const seenGroups = new Set();
+    const groups = [];
+    for (const action of ROUTINE_ACTIONS) {
+      if (action.group && !seenGroups.has(action.group)) {
+        seenGroups.add(action.group);
+        const meta = ROUTINE_GROUPS.find((g) => g.id === action.group);
+        groups.push({
+          id: action.group,
+          label: meta?.label || action.group,
+          icon: meta?.icon || null,
+        });
+      }
+    }
+    return groups;
+  }
+
+  /**
+   * Create a routine card element safely using DOM APIs.
+   */
+  function createRoutineCard(action, isActive) {
+    const card = document.createElement("div");
+    card.className = "routine-card" + (isActive ? " active" : "");
+    card.dataset.action = action.id;
+
+    const header = document.createElement("div");
+    header.className = "routine-card-header";
+
+    const label = document.createElement("span");
+    label.className = "routine-card-label";
+    label.textContent = action.label;
+    header.appendChild(label);
+
+    card.appendChild(header);
+
+    if (action.shortDescription) {
+      const short = document.createElement("p");
+      short.className = "routine-card-short";
+      short.textContent = action.shortDescription;
+      card.appendChild(short);
+    }
+
+    return card;
+  }
+
+  /**
+   * Create a routine group element safely using DOM APIs.
+   */
+  function createRoutineGroup(group, actions) {
+    const groupEl = document.createElement("div");
+    groupEl.className = "routine-group";
+
+    const headerEl = document.createElement("div");
+    headerEl.className = "routine-group-header";
+
+    const iconEl = document.createElement("span");
+    iconEl.className = "routine-group-icon";
+    if (group.icon) {
+      iconEl.dataset.icon = group.icon;
+    }
+    headerEl.appendChild(iconEl);
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "routine-group-label";
+    labelEl.textContent = group.label;
+    headerEl.appendChild(labelEl);
+
+    groupEl.appendChild(headerEl);
+
+    const itemsEl = document.createElement("div");
+    itemsEl.className = "routine-group-items";
+
+    for (const action of actions) {
+      const isActive = state.selectedRoutineId === action.id;
+      itemsEl.appendChild(createRoutineCard(action, isActive));
+    }
+
+    groupEl.appendChild(itemsEl);
+    return groupEl;
+  }
+
   function renderRoutineActions() {
     if (!elements.routineActionsList) return;
 
-    const html = ROUTINE_ACTIONS.map((action) => {
-      const isActive = state.selectedRoutineId === action.id;
-      return `
-        <div class="routine-card ${isActive ? "active" : ""}" data-action="${action.id}">
-          <div class="routine-card-header">
-            <span class="routine-card-label">${escapeHtml(action.label)}</span>
-            <span class="routine-card-cadence">${escapeHtml(action.cadence)}</span>
-          </div>
-          <p class="routine-card-description">${escapeHtml(action.description)}</p>
-          <div class="routine-card-actions">
-            <button type="button" class="btn btn-secondary btn-sm" data-run-action="${action.id}">
-              Run
-            </button>
-          </div>
-        </div>
-      `;
-    });
+    // Clear existing content safely
+    elements.routineActionsList.textContent = "";
 
-    elements.routineActionsList.innerHTML = html.join("");
+    const groups = getRoutineGroups();
+    for (const group of groups) {
+      const groupActions = ROUTINE_ACTIONS.filter((a) => a.group === group.id);
+      if (groupActions.length === 0) continue;
+      elements.routineActionsList.appendChild(createRoutineGroup(group, groupActions));
+    }
   }
 
   function updateRoutineFieldVisibility(actionId) {
@@ -1885,9 +2004,12 @@
    */
   function updateCoachStatus(enabled) {
     if (!elements.coachModeStatus) return;
-    elements.coachModeStatus.textContent = enabled
-      ? "Coach Mode"
-      : "Boring B.O.B";
+    elements.coachModeStatus.textContent = enabled ? "On" : "Off";
+    elements.coachModeStatus.classList.toggle("coach-mode-on", enabled);
+    elements.coachModeStatus.setAttribute(
+      "aria-label",
+      enabled ? "Coach Mode: On" : "Coach Mode: Off"
+    );
   }
 
   /**
