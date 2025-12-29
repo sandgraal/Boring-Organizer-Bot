@@ -589,8 +589,12 @@
    */
   function renderProjectFilters() {
     if (state.projects.length === 0) {
-      elements.projectFilters.innerHTML =
-        '<div class="loading-placeholder">No projects indexed</div>';
+      elements.projectFilters.innerHTML = `
+        <div class="filter-empty-state">
+          <p>No projects yet</p>
+          <a href="#indexing" class="filter-empty-link">Index documents</a>
+        </div>
+      `;
       renderProjectSuggestions();
       return;
     }
