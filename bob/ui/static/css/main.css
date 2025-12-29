@@ -268,6 +268,27 @@ code {
   opacity: 0.8;
 }
 
+/* Icon variants via data attribute - allows theming without JS changes */
+.routine-group-icon[data-icon="sun"]::before {
+  content: "\2600"; /* Sun symbol */
+}
+
+.routine-group-icon[data-icon="calendar"]::before {
+  content: "\1F4C5"; /* Calendar */
+}
+
+.routine-group-icon[data-icon="users"]::before {
+  content: "\1F465"; /* People */
+}
+
+.routine-group-icon[data-icon="check-circle"]::before {
+  content: "\2714"; /* Checkmark */
+}
+
+.routine-group-icon[data-icon="map"]::before {
+  content: "\1F4CD"; /* Map pin */
+}
+
 .routine-group-label {
   font-size: 0.75rem;
   font-weight: 600;

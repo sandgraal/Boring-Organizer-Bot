@@ -995,50 +995,103 @@
     return ROUTINE_ACTIONS.find((action) => action.id === actionId) || null;
   }
 
-  function getGroupIcon(iconName) {
-    const icons = {
-      sun: "&#9728;",        // Sun symbol
-      calendar: "&#128197;", // Calendar
-      users: "&#128101;",    // People
-      "check-circle": "&#10004;", // Checkmark
-      map: "&#128205;",      // Map pin
-    };
-    return icons[iconName] || "";
+  /**
+   * Derive unique groups from ROUTINE_ACTIONS.
+   * Falls back to ROUTINE_GROUPS for metadata (label, icon) if defined.
+   */
+  function getRoutineGroups() {
+    const seenGroups = new Set();
+    const groups = [];
+    for (const action of ROUTINE_ACTIONS) {
+      if (action.group && !seenGroups.has(action.group)) {
+        seenGroups.add(action.group);
+        const meta = ROUTINE_GROUPS.find((g) => g.id === action.group);
+        groups.push({
+          id: action.group,
+          label: meta?.label || action.group,
+          icon: meta?.icon || null,
+        });
+      }
+    }
+    return groups;
+  }
+
+  /**
+   * Create a routine card element safely using DOM APIs.
+   */
+  function createRoutineCard(action, isActive) {
+    const card = document.createElement("div");
+    card.className = "routine-card" + (isActive ? " active" : "");
+    card.dataset.action = action.id;
+
+    const header = document.createElement("div");
+    header.className = "routine-card-header";
+
+    const label = document.createElement("span");
+    label.className = "routine-card-label";
+    label.textContent = action.label;
+    header.appendChild(label);
+
+    card.appendChild(header);
+
+    if (action.shortDescription) {
+      const short = document.createElement("p");
+      short.className = "routine-card-short";
+      short.textContent = action.shortDescription;
+      card.appendChild(short);
+    }
+
+    return card;
+  }
+
+  /**
+   * Create a routine group element safely using DOM APIs.
+   */
+  function createRoutineGroup(group, actions) {
+    const groupEl = document.createElement("div");
+    groupEl.className = "routine-group";
+
+    const headerEl = document.createElement("div");
+    headerEl.className = "routine-group-header";
+
+    const iconEl = document.createElement("span");
+    iconEl.className = "routine-group-icon";
+    if (group.icon) {
+      iconEl.dataset.icon = group.icon;
+    }
+    headerEl.appendChild(iconEl);
+
+    const labelEl = document.createElement("span");
+    labelEl.className = "routine-group-label";
+    labelEl.textContent = group.label;
+    headerEl.appendChild(labelEl);
+
+    groupEl.appendChild(headerEl);
+
+    const itemsEl = document.createElement("div");
+    itemsEl.className = "routine-group-items";
+
+    for (const action of actions) {
+      const isActive = state.selectedRoutineId === action.id;
+      itemsEl.appendChild(createRoutineCard(action, isActive));
+    }
+
+    groupEl.appendChild(itemsEl);
+    return groupEl;
   }
 
   function renderRoutineActions() {
     if (!elements.routineActionsList) return;
 
-    const groupedHtml = ROUTINE_GROUPS.map((group) => {
+    // Clear existing content safely
+    elements.routineActionsList.textContent = "";
+
+    const groups = getRoutineGroups();
+    for (const group of groups) {
       const groupActions = ROUTINE_ACTIONS.filter((a) => a.group === group.id);
-      if (groupActions.length === 0) return "";
-
-      const actionsHtml = groupActions.map((action) => {
-        const isActive = state.selectedRoutineId === action.id;
-        return `
-          <div class="routine-card ${isActive ? "active" : ""}" data-action="${action.id}">
-            <div class="routine-card-header">
-              <span class="routine-card-label">${escapeHtml(action.label)}</span>
-            </div>
-            <p class="routine-card-short">${escapeHtml(action.shortDescription)}</p>
-          </div>
-        `;
-      }).join("");
-
-      return `
-        <div class="routine-group">
-          <div class="routine-group-header">
-            <span class="routine-group-icon">${getGroupIcon(group.icon)}</span>
-            <span class="routine-group-label">${escapeHtml(group.label)}</span>
-          </div>
-          <div class="routine-group-items">
-            ${actionsHtml}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    elements.routineActionsList.innerHTML = groupedHtml;
+      if (groupActions.length === 0) continue;
+      elements.routineActionsList.appendChild(createRoutineGroup(group, groupActions));
+    }
   }
 
   function updateRoutineFieldVisibility(actionId) {
@@ -1953,6 +2006,10 @@
     if (!elements.coachModeStatus) return;
     elements.coachModeStatus.textContent = enabled ? "On" : "Off";
     elements.coachModeStatus.classList.toggle("coach-mode-on", enabled);
+    elements.coachModeStatus.setAttribute(
+      "aria-label",
+      enabled ? "Coach Mode: On" : "Coach Mode: Off"
+    );
   }
 
   /**
