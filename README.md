@@ -107,6 +107,8 @@ bob serve
 
 Open `http://localhost:8080` in your browser to use the UI.
 
+**Keyboard shortcuts**: Press `?` to see all shortcuts, or use `/` to focus search, `1-9` to open sources.
+
 If `bob` is not on your PATH, run:
 
 ```bash

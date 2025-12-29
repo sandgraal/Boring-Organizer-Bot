@@ -32,10 +32,11 @@ This document summarizes what is implemented today (CLI + API + UI flow) and out
 
 ## Web UI (`bob/ui/`)
 - Built as a 3-pane experience with navigation tabs (Ask, Routines, Library, Indexing, Settings, Health), filter sidebar (projects, types, language, date, decision status), answer + footer, suggestion list, and a sources panel with an Audit tab for retrieved vs used chunks; answers now flag unsupported spans when detected.
-- The Ask page features a polished welcome experience with: inviting "What would you like to know?" heading, feature hints (ask, click sources, 100% local), dynamic stats showing indexed documents/projects, and keyboard shortcuts (/ to focus, Enter to search). Coach Mode toggle uses clear On/Off states with visual feedback.
+- The Ask page features a polished welcome experience with: inviting "What would you like to know?" heading, feature hints (ask, click sources, 100% local), dynamic stats showing indexed documents/projects, and keyboard shortcuts (`/` to focus, `Enter` to search, `1-9` to open sources). Coach Mode toggle uses clear On/Off states with visual feedback.
+- **Keyboard shortcuts**: Press `?` to open a help modal showing all shortcuts; a `?` button in the header provides mouse access.
 - The Routines page organizes routines by category (Daily, Weekly, Meetings, Decisions, Trips) with clear visual hierarchy, concise action-oriented labels, and one-click access. Each routine shows a short description on the card with full details in the preview panel.
-- The Indexing page guides new users with helpful onboarding copy, field hints, and a supported formats section. The Library page includes subtitle context for filtering.
-- The Health page uses friendly language ("Signals" and "Fix Queue") with clear descriptions of what each section does. Settings includes explanatory copy for Coach Mode, permissions summary, and connector import actions.
+- The Indexing page guides new users with helpful onboarding copy, field hints, and a supported formats section. The Library page includes subtitle context for filtering and a clear empty state with CTA to indexing.
+- The Health page uses friendly language ("Signals" and "Fix Queue") with clear descriptions of what each section does. Empty states show positive "All clear" / "Nothing to fix" messaging rather than ambiguous text. Settings includes explanatory copy for Coach Mode, permissions summary, and connector import actions.
 - All pages follow a consistent header pattern with section titles and descriptive subtitles for first-time user clarity.
 - Interacts with the API endpoints above; it is fully local and wired to the `ask`, `documents`, `index`, `settings`, `routines`, `notes/create`, and `health/fix-queue` endpoints today.
 - Global "New note" action renders canonical templates into vault paths via `POST /notes/create`, echoing warnings and open actions for capture.
