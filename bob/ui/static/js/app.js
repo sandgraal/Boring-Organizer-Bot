@@ -1417,8 +1417,13 @@
   function renderFailureSignals(signals) {
     if (!elements.failureSignalsList) return;
     if (!signals || signals.length === 0) {
-      elements.failureSignalsList.innerHTML =
-        '<div class="loading-placeholder">No signals.</div>';
+      elements.failureSignalsList.innerHTML = `
+        <div class="health-empty-state">
+          <div class="health-empty-icon">✓</div>
+          <strong>All clear</strong>
+          <p>No issues detected in your knowledge base.</p>
+        </div>
+      `;
       return;
     }
 
@@ -1438,8 +1443,13 @@
   function renderFixQueueTasks(tasks) {
     if (!elements.fixQueueTasksList) return;
     if (!tasks || tasks.length === 0) {
-      elements.fixQueueTasksList.innerHTML =
-        '<div class="loading-placeholder">No tasks.</div>';
+      elements.fixQueueTasksList.innerHTML = `
+        <div class="health-empty-state">
+          <div class="health-empty-icon">🎉</div>
+          <strong>Nothing to fix</strong>
+          <p>Your notes are in good shape. Keep capturing!</p>
+        </div>
+      `;
       return;
     }
 
@@ -2986,8 +2996,14 @@
     if (!append) {
       elements.documentList.innerHTML = "";
       if (state.documents.length === 0) {
-        elements.documentList.innerHTML =
-          '<div class="loading-placeholder">No documents indexed yet.</div>';
+        elements.documentList.innerHTML = `
+          <div class="library-empty-state">
+            <div class="library-empty-icon">📚</div>
+            <h3>Your library is empty</h3>
+            <p>Index some documents to get started. Point B.O.B at your notes, docs, or recipes.</p>
+            <a href="#indexing" class="btn btn-primary">Go to Indexing</a>
+          </div>
+        `;
         return;
       }
     }

@@ -468,6 +468,31 @@ code {
   background: transparent;
 }
 
+/* Health empty states */
+.health-empty-state {
+  text-align: center;
+  padding: var(--space-xl) var(--space-lg);
+  color: var(--color-text-secondary);
+}
+
+.health-empty-icon {
+  font-size: 2rem;
+  margin-bottom: var(--space-sm);
+  color: var(--color-success);
+}
+
+.health-empty-state strong {
+  display: block;
+  font-size: 1rem;
+  color: var(--color-text);
+  margin-bottom: var(--space-xs);
+}
+
+.health-empty-state p {
+  font-size: 0.875rem;
+  margin: 0;
+}
+
 .health-signals-list,
 .fixqueue-tasks-list {
   display: flex;
@@ -1541,6 +1566,34 @@ code {
 .load-more-container {
   text-align: center;
   margin-top: var(--space-lg);
+}
+
+/* Library empty state */
+.library-empty-state {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-lg);
+  background: var(--color-bg-card);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--border-radius);
+  max-width: 400px;
+  margin: var(--space-xl) auto;
+}
+
+.library-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--space-md);
+}
+
+.library-empty-state h3 {
+  color: var(--color-text);
+  margin-bottom: var(--space-sm);
+}
+
+.library-empty-state p {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  margin-bottom: var(--space-lg);
+  line-height: 1.5;
 }
 
 /* Indexing Page */
