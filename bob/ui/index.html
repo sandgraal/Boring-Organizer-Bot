@@ -146,9 +146,7 @@
                   <input type="checkbox" id="coach-toggle" />
                   <span>Coach Mode</span>
                 </label>
-                <span id="coach-mode-status" class="coach-mode-status"
-                  >Boring B.O.B</span
-                >
+                <span id="coach-mode-status" class="coach-mode-status">Off</span>
               </div>
 
               <div id="answer-container" class="answer-container">
@@ -351,7 +349,7 @@
               <div class="section-header">
                 <h2>Routines</h2>
                 <p class="section-subtitle">
-                  Capture workflows backed by your notes.
+                  Capture context from your notes with one click.
                 </p>
               </div>
               <div id="routine-actions-list" class="routine-actions-list">
@@ -363,7 +361,7 @@
                 <div>
                   <h3 id="routine-preview-title">Select a routine</h3>
                   <p id="routine-preview-description" class="section-subtitle">
-                    Preview and run.
+                    Choose a routine to preview and run.
                   </p>
                 </div>
                 <button id="run-selected-routine" class="btn btn-primary" disabled>
@@ -520,10 +518,11 @@
 
             <section class="document-list-section">
               <div class="section-header">
-                <h2>Documents</h2>
-                <span id="document-count" class="document-count"
-                  >Loading...</span
-                >
+                <div>
+                  <h2>Library</h2>
+                  <p class="section-subtitle">Browse and filter your indexed documents.</p>
+                </div>
+                <span id="document-count" class="document-count">Loading...</span>
               </div>
               <div id="document-list" class="document-list">
                 <!-- Populated by JS -->
@@ -541,41 +540,44 @@
         <div id="page-indexing" class="page">
           <div class="indexing-layout">
             <section class="indexing-section">
-              <h2>Index Documents</h2>
+              <div class="indexing-header">
+                <h2>Index Documents</h2>
+                <p class="section-subtitle">
+                  Point B.O.B at your notes, docs, or recipes. It will chunk, embed, and make them searchable.
+                </p>
+              </div>
 
               <form id="index-form" class="index-form">
                 <div class="form-group">
-                  <label for="index-path" class="form-label"
-                    >Path to index</label
-                  >
+                  <label for="index-path" class="form-label">Folder path</label>
                   <div class="index-path-row">
                     <input
                       type="text"
                       id="index-path"
                       class="text-input"
-                      placeholder="/path/to/documents"
+                      placeholder="~/Documents/notes"
                     />
                     <button
                       type="button"
                       id="path-open-btn"
                       class="btn btn-secondary btn-sm"
                     >
-                      Open in Explorer
+                      Open
                     </button>
                   </div>
+                  <p class="field-hint">Absolute path to a folder containing markdown, PDFs, or other supported files.</p>
                 </div>
                 <div class="form-group">
-                  <label for="index-project" class="form-label"
-                    >Project name</label
-                  >
+                  <label for="index-project" class="form-label">Project name</label>
                   <input
                     type="text"
                     id="index-project"
                     list="index-project-options"
                     class="text-input"
-                    placeholder="my-project"
+                    placeholder="personal-notes"
                   />
                   <datalist id="index-project-options"></datalist>
+                  <p class="field-hint">Group documents for filtering. Use lowercase with dashes.</p>
                 </div>
                 <button
                   type="submit"
@@ -587,10 +589,17 @@
               </form>
 
               <div id="index-feedback" class="index-feedback hidden"></div>
-              <p class="watchlist-tip">
-                Save repeat targets with <code>bob watchlist add /path --project my-project</code>
-                and run <code>bob index --watchlist</code> to refresh them.
-              </p>
+
+              <div class="indexing-tips">
+                <h4>Supported formats</h4>
+                <div class="format-pills">
+                  <span class="format-pill">Markdown</span>
+                  <span class="format-pill">PDF</span>
+                  <span class="format-pill">Word</span>
+                  <span class="format-pill">Excel</span>
+                  <span class="format-pill">Recipes</span>
+                </div>
+              </div>
 
               <!-- Job Progress -->
               <div id="job-progress" class="job-progress hidden">
@@ -675,22 +684,20 @@
             <section class="settings-section">
               <div class="section-header">
                 <h2>Settings</h2>
+                <p class="section-subtitle">Configure how B.O.B works for you.</p>
               </div>
               <div class="settings-card">
-                <h3>Coach Mode Defaults</h3>
+                <h3>Coach Mode</h3>
+                <p class="settings-card-desc">When enabled, B.O.B suggests routines and improvements based on your usage patterns.</p>
                 <div class="form-group">
-                  <label class="form-label" for="settings-coach-default"
-                    >Default Mode</label
-                  >
+                  <label class="form-label" for="settings-coach-default">Default state</label>
                   <select id="settings-coach-default" class="select-input">
-                    <option value="boring">Boring B.O.B</option>
-                    <option value="coach">Coach Mode</option>
+                    <option value="boring">Off</option>
+                    <option value="coach">On</option>
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label" for="settings-coach-cooldown"
-                    >Cooldown (days)</label
-                  >
+                  <label class="form-label" for="settings-coach-cooldown">Suggestion cooldown (days)</label>
                   <input
                     type="number"
                     id="settings-coach-cooldown"
@@ -699,6 +706,7 @@
                     max="365"
                     value="7"
                   />
+                  <p class="field-hint">How long to wait before showing the same suggestion again.</p>
                 </div>
               </div>
               <div class="settings-card">
@@ -848,13 +856,13 @@
           <div class="health-layout">
             <section class="health-signals-panel">
               <div class="section-header">
-                <h2>Health</h2>
+                <h2>Signals</h2>
                 <p class="section-subtitle">
-                  Metrics driving the Fix Queue.
+                  Issues detected in your knowledge base.
                 </p>
               </div>
               <div id="failure-signals-list" class="health-signals-list">
-                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading health metrics"></div>
+                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Checking for issues"></div>
               </div>
             </section>
             <section class="health-tasks-panel">
@@ -862,7 +870,7 @@
                 <div>
                   <h2>Fix Queue</h2>
                   <p class="section-subtitle">
-                    Tasks from feedback and lint.
+                    Suggested actions to improve your notes.
                   </p>
                 </div>
                 <div class="health-tasks-actions">
@@ -876,7 +884,7 @@
                 </div>
               </div>
               <div id="fixqueue-tasks-list" class="fixqueue-tasks-list">
-                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading Fix Queue tasks"></div>
+                <div class="loading-placeholder loading" role="status" aria-busy="true" aria-label="Loading suggestions"></div>
               </div>
             </section>
           </div>
